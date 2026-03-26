@@ -6,9 +6,9 @@ Thanks for your interest in contributing! Whether it's a bug fix, new widget, tr
 
 ### Prerequisites
 
-- **Node.js 20+** and **npm** — for the Svelte frontend
-- **Go 1.24+** — for the backend (or use Docker)
-- **Docker** (optional) — for containerized builds and testing
+- **Node.js 24+** and **npm** — for the Svelte frontend
+- **Docker** — for Go builds, linting, and containerized testing
+- **Go 1.24+** (optional) — only needed if running the backend locally without Docker
 
 ### Local development
 
@@ -17,12 +17,17 @@ Thanks for your interest in contributing! Whether it's a bug fix, new widget, tr
 git clone https://github.com/tdebuilt/Nidus-Dashboard.git
 cd Nidus-Dashboard
 
+# Set up git hooks (lint on commit)
+make setup
+
 # Install frontend dependencies
 cd web && npm ci && cd ..
 
-# Run in dev mode (Go backend + Svelte dev server)
-make dev
+# Run via Docker (recommended)
+docker compose up --build -d
 
+# Or run in dev mode (requires Go installed)
+make dev
 # Open http://localhost:5173 (Svelte dev server with HMR)
 # API runs on http://localhost:3777
 ```
@@ -30,26 +35,24 @@ make dev
 ### Running tests
 
 ```bash
-# All tests
-make test
+# Lint (Go via Docker + frontend via eslint)
+make lint
 
-# Frontend only
+# Frontend tests
 cd web && npm test -- --run
 
-# Backend only (requires Go installed, or use Docker)
-go test ./...
-# or via Docker:
-docker compose exec nidus go test ./...
+# E2E tests (requires app running)
+make test-e2e
 ```
 
 ### Building
 
 ```bash
-# Full production build (frontend + Go binary)
-make build
-
-# Docker
+# Docker (primary method)
 docker compose up --build -d
+
+# Full production build (frontend + Go binary, requires Go)
+make build
 ```
 
 ## Project structure
@@ -66,24 +69,39 @@ internal/
   services/             # External API clients
     portainer/           #   Docker via Portainer
     proxmox/             #   Proxmox VE
-    homeassistant/       #   Home Assistant
+    homeassistant/       #   Home Assistant (REST + WebSocket)
     adguard/             #   AdGuard Home
+    uptimekuma/          #   Uptime Kuma
+    mediaserver/         #   Plex / Jellyfin
+    arr/                 #   Sonarr / Radarr / Lidarr / Prowlarr
+    pihole/              #   Pi-hole
+    weather/             #   OpenWeatherMap
+    calendar/            #   iCal / CalDAV
+    rss/                 #   RSS / Atom feeds
+    system/              #   Host system stats
+    reolink/             #   Reolink cameras
+    finance/             #   Yahoo Finance
     jdownloader/         #   MyJDownloader
     transmission/        #   Transmission RPC
+    notifications/       #   Gotify, Ntfy, Apprise
+    go2rtc/              #   Embedded go2rtc process manager
   cache/                # In-memory cache with TTL
   server/               # HTTP server setup and routing
+  websocket/            # WebSocket hub for real-time broadcasts
 web/
   src/
     lib/
       api/              # API client
       components/       # Svelte components (organized by widget type)
-      config/           # Widget config forms
-      i18n/             # Translation files (fr.json, en.json)
+      i18n/             # Translation files (11 languages)
       stores/           # Svelte stores (auth, theme, edit mode...)
+      themes/           # Theme definitions and utilities
+      utils/            # Shared utilities (polling, etc.)
       widgetRegistry.ts # Central widget registration
     pages/              # Page components (Dashboard, Login, Setup, Settings)
-  public/               # Static assets (icons, manifest, service worker)
+  e2e/                  # Playwright E2E tests
   static/               # Build output (embedded in Go binary)
+.githooks/              # Pre-commit hooks (Go lint + frontend lint)
 data/                   # Runtime data (SQLite DB) — not committed
 ```
 
@@ -152,7 +170,7 @@ register({
 })
 ```
 
-Don't forget to add translations in `web/src/lib/i18n/fr.json` and `en.json`.
+Don't forget to add translations in all locale files under `web/src/lib/i18n/`.
 
 ## How to add a translation
 
@@ -166,9 +184,11 @@ Adding a new language requires only 2 steps:
 
 That's it — the i18n system auto-discovers JSON files via `import.meta.glob` and registers them automatically.
 
+A blank template with all keys is available at `docs/i18n-template.json`.
+
 ### Translation file format
 
-Translation files are JSON with **one level of nesting** — sections containing key-value pairs:
+Translation files are JSON with nested sections:
 
 ```json
 {
@@ -182,7 +202,7 @@ Translation files are JSON with **one level of nesting** — sections containing
 **Rules:**
 - **Keys** are in English, dot-separated when used in code: `$t('section.key')`
 - **Values** are the translated strings in the target language
-- **Placeholders** use `{paramName}` syntax — these are replaced at runtime
+- **Placeholders** use `{paramName}` syntax — replaced at runtime
 - **Keep all keys identical** to `fr.json` (the reference file) — don't add or remove keys
 - Run `npm run i18n:validate` to verify your file matches the reference
 
@@ -198,10 +218,10 @@ On first visit (no stored preference), Nidus detects the browser language and se
 ## Code conventions
 
 - **Code language**: English (variable names, functions, comments)
-- **UI language**: French by default, English supported — all user-facing strings go through i18n
+- **UI language**: French by default — all user-facing strings go through i18n
 - **Backend**: Go standard formatting (`go fmt`), packages in `internal/`
 - **Frontend**: Svelte 5 (runes: `$state`, `$derived`, `$effect`), Tailwind CSS with CSS variables
-- **Tests**: `*_test.go` for Go, `*.test.ts` for Svelte (vitest + testing-library)
+- **Tests**: `*_test.go` for Go, `*.test.ts` for Svelte (vitest + testing-library), `*.spec.ts` for E2E (Playwright)
 
 ## Commit messages
 
@@ -213,6 +233,7 @@ fix: correct CPU calculation for paused containers
 docs: update installation instructions
 refactor: extract cache logic into shared helper
 test: add WidgetGrid drag-and-drop tests
+ci: optimize GitHub Actions workflow
 ```
 
 ## Pull request process
