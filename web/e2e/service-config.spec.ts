@@ -15,8 +15,14 @@ test.describe('Service configuration', () => {
     await page.getByTestId('settings-pill-services').click()
     await expect(page.getByTestId('settings-services')).toBeVisible()
 
-    // Add a new service via dialog
-    await page.getByTestId('service-add-empty-btn').click()
+    // Add a new service via dialog (empty-btn in empty state, add-btn otherwise)
+    const emptyBtn = page.getByTestId('service-add-empty-btn')
+    const addBtn = page.getByTestId('service-add-btn')
+    if (await emptyBtn.isVisible().catch(() => false)) {
+      await emptyBtn.click()
+    } else {
+      await addBtn.click()
+    }
     await expect(page.getByTestId('add-service-dialog')).toBeVisible()
 
     await page.getByTestId(`service-type-${serviceType}`).click()
@@ -39,7 +45,8 @@ test.describe('Service configuration', () => {
     const serviceRow = page.getByTestId(`service-row-${serviceType}`)
     await expect(serviceRow).toBeVisible()
 
-    // Delete the service
+    // Open overflow menu then delete
+    await serviceRow.getByTestId('service-overflow-btn').click()
     await serviceRow.getByTestId('service-delete-btn').click()
 
     // Confirm deletion
