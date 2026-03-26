@@ -246,7 +246,7 @@ All modules are configured via the UI during setup or in settings.
 
 ## Roadmap
 
-See [ROADMAP_TASKS.md](./planning/ROADMAP_TASKS.md) for the full detailed task breakdown.
+See [ROADMAP_TASKS.md](./todo/ROADMAP_TASKS.md) for the full detailed task breakdown.
 
 **Completed (256/262 tasks):**
 - [x] Go backend (Chi, SQLite, config, JWT auth, TOTP 2FA)
@@ -294,8 +294,8 @@ make setup              # Configure git hooks
 - [Configuration Reference](./docs/CONFIG_YAML.md) — YAML config format and options
 - [API Examples](./docs/EXAMPLES.md) — curl examples for common API calls
 - [Translation Guide](./docs/TRANSLATING.md) — How to add a new language
-- [Full Specification](./planning/SPEC.md) — Detailed technical spec with all module definitions
-- [Detailed Tasks](./planning/ROADMAP_TASKS.md) — Full task breakdown (262 tasks across 6 phases)
+- [Full Specification](./todo/SPEC.md) — Detailed technical spec with all module definitions
+- [Detailed Tasks](./todo/ROADMAP_TASKS.md) — Full task breakdown (262 tasks across 6 phases)
 
 ## License
 

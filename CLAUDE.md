@@ -9,7 +9,7 @@ Nidus is a self-hosted dashboard for managing Docker (via Portainer), Proxmox, a
 - `SPEC.md` — Full project specification
 - `ROADMAP.md` — Roadmap (planned, ideas, completed)
 - `CHANGELOG.md` — Changelog by version
-- `planning/TESTING.md` — Manual testing checklist
+- `todo/TESTING.md` — Manual testing checklist
 - `README.md` — Project description
 
 ## Progress

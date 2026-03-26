@@ -14,11 +14,11 @@ You are implementing a task for the Nidus Dashboard project. Follow this workflo
 ## Step 0 — Find the task
 
 ### Mode A — No arguments
-1. Read `planning/OPEN_SOURCE_TASKS.md` first (Phase 1 has priority)
-2. If all Phase 1 tasks are done, read `planning/ROADMAP_TASKS.md` and find the first `[ ]` (pending) task
+1. Read `todo/OPEN_SOURCE_TASKS.md` first (Phase 1 has priority)
+2. If all Phase 1 tasks are done, read `todo/ROADMAP_TASKS.md` and find the first `[ ]` (pending) task
 
 ### Mode B — Roadmap reference (`$ARGUMENTS` matches a task)
-1. Read `planning/ROADMAP_TASKS.md` (and `planning/OPEN_SOURCE_TASKS.md` if needed)
+1. Read `todo/ROADMAP_TASKS.md` (and `todo/OPEN_SOURCE_TASKS.md` if needed)
 2. Find the task matching the argument: phase number (e.g. `4.7`), section name, or keyword (e.g. `widget RSS`)
 3. If found, implement that task
 
@@ -68,7 +68,7 @@ Execute each sub-task:
 
 ## Step 5 — Update task status (Modes A & B only)
 
-1. In the task file (`planning/OPEN_SOURCE_TASKS.md` or `planning/ROADMAP_TASKS.md`), change `[ ]` to `[x]` for the completed task
+1. In the task file (`todo/OPEN_SOURCE_TASKS.md` or `todo/ROADMAP_TASKS.md`), change `[ ]` to `[x]` for the completed task
 2. Update the summary table counts (Finish +1, Pending -1)
 3. If a task was blocked, change `[ ]` to `[⏳ blocked: reason]`
 
