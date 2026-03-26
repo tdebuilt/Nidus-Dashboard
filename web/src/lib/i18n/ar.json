@@ -275,7 +275,7 @@
     "noServices": "لم يتم تهيئة أي خدمات",
     "addService": "إضافة خدمة",
     "chooseService": "اختر خدمة",
-    "availableServices": "الخدمات المتاحة",
+    "allServicesConfigured": "جميع الخدمات مهيأة بالفعل",
     "alreadyConfigured": "تم التهيئة مسبقاً",
     "deleteService": "حذف الخدمة",
     "deleteServiceConfirm": "حذف تهيئة {name}؟",

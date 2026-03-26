@@ -275,7 +275,7 @@
     "noServices": "Сервисы не настроены",
     "addService": "Добавить сервис",
     "chooseService": "Выберите сервис",
-    "availableServices": "Доступные сервисы",
+    "allServicesConfigured": "Все сервисы уже настроены",
     "alreadyConfigured": "Уже настроен",
     "deleteService": "Удалить сервис",
     "deleteServiceConfirm": "Удалить конфигурацию {name}?",

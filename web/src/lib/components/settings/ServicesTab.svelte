@@ -6,9 +6,9 @@
   import { t, translate } from '../../i18n'
   import { onMount, onDestroy } from 'svelte'
   import ServiceCard from './ServiceCard.svelte'
-  import DynamicIcon from '../DynamicIcon.svelte'
-  import { getServiceIcon, getServiceGroup, groupOrder } from './serviceIcons'
+  import { getServiceGroup, groupOrder } from './serviceIcons'
   import { serviceStatuses, startServiceStatusPolling, stopServiceStatusPolling } from '../../stores/serviceStatus'
+  import AddServiceDialog from './AddServiceDialog.svelte'
 
   // Service type definitions
   interface ServiceTypeDef {
@@ -22,7 +22,7 @@
   let _servicesLoading = $state(true)
   let serviceTypeDefs = $state<ServiceTypeDef[]>([])
 
-  let showAddServicePanel = $state(false)
+  let showAddDialog = $state(false)
   let editingService = $state<string | null>(null)
   let serviceUrl = $state('')
   let serviceToken = $state('')
@@ -134,20 +134,6 @@
     const svc = services.find((s) => s.type === type)
     editingService = type
     serviceUrl = svc?.url || ''
-    serviceToken = ''
-    serviceUsername = ''
-    servicePassword = ''
-    serviceAuthMode = 'token'
-    proxmoxTokenId = ''
-    proxmoxTokenSecret = ''
-    jdEmail = ''
-    jdPassword = ''
-  }
-
-  function startAddService(type: string) {
-    showAddServicePanel = false
-    editingService = type
-    serviceUrl = ''
     serviceToken = ''
     serviceUsername = ''
     servicePassword = ''
@@ -381,14 +367,22 @@
           {$t('settings.servicesSection')}
         {/if}
       </h3>
+      {#if availableToAdd.length > 0}
+        <button onclick={() => showAddDialog = true}
+          class="ml-auto flex items-center justify-center rounded-lg border border-[var(--color-border)] p-1.5 text-[var(--color-text-secondary)] transition-colors hover:border-[var(--color-primary)] hover:text-[var(--color-primary)]"
+          title={$t('settings.addService')}
+          data-testid="service-add-btn">
+          <Plus size={16} />
+        </button>
+      {/if}
     </div>
 
-    {#if configuredServices.length === 0 && !editingService}
+    {#if configuredServices.length === 0}
       <div class="rounded-lg border border-dashed border-[var(--color-border)] p-6 text-center" data-testid="services-empty">
         <p class="mb-3 text-sm text-[var(--color-text-secondary)]">{$t('settings.noServices')}</p>
-        <button onclick={() => showAddServicePanel = !showAddServicePanel}
+        <button onclick={() => showAddDialog = true}
           class="inline-flex items-center gap-1.5 rounded-lg bg-[var(--color-primary)] px-4 py-2 text-sm text-white hover:bg-[var(--color-primary-hover)]"
-          data-testid="service-add-btn">
+          data-testid="service-add-empty-btn">
           <Plus size={16} />
           {$t('settings.addService')}
         </button>
@@ -454,62 +448,16 @@
           </div>
         {/each}
 
-        {#if editingService && !configuredServices.includes(editingService)}
-          <div class="rounded-lg border border-dashed border-[var(--color-primary)]" data-testid="service-row-{editingService}">
-            <div class="flex items-center gap-2 px-4 py-3">
-              <DynamicIcon name={getServiceIcon(editingService)} size={18} class="text-[var(--color-primary)]" />
-              <span class="text-sm font-medium text-[var(--color-text)]">{serviceDisplayName(editingService)}</span>
-            </div>
-            <div class="space-y-3 border-t border-[var(--color-border)] px-4 py-4" data-testid="service-form-{editingService}">
-              {#if needsURL(editingService)}
-                <div>
-                  <label for="svc-url-{editingService}" class="mb-1 block text-xs text-[var(--color-text-secondary)]">{$t('settings.url')}</label>
-                  <input id="svc-url-{editingService}" type="url" bind:value={serviceUrl} placeholder="https://..."
-                    class="w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-2 text-sm text-[var(--color-text)] outline-none focus:border-[var(--color-primary)]"
-                    data-testid="service-url-input" />
-                </div>
-              {/if}
-              {@render authFields(editingService)}
-              <div class="flex justify-end gap-2 pt-1">
-                <button onclick={() => editingService = null}
-                  class="rounded-lg border border-[var(--color-border)] px-4 py-1.5 text-sm text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-tertiary)]"
-                  data-testid="service-cancel">{$t('common.cancel')}</button>
-                <button onclick={saveService}
-                  class="rounded-lg bg-[var(--color-primary)] px-4 py-1.5 text-sm text-white hover:bg-[var(--color-primary-hover)]"
-                  data-testid="service-save">{$t('common.save')}</button>
-              </div>
-            </div>
-          </div>
-        {/if}
-
-        {#if availableToAdd.length > 0 && !editingService}
-          <button onclick={() => showAddServicePanel = !showAddServicePanel}
-            class="flex w-full items-center justify-center gap-1.5 rounded-lg border border-dashed border-[var(--color-border)] p-4 text-sm text-[var(--color-text-secondary)] transition-colors hover:border-[var(--color-primary)] hover:text-[var(--color-primary)]"
-            data-testid="service-add-btn">
-            <Plus size={16} />
-            {$t('settings.addService')}
-          </button>
-        {/if}
       </div>
     {/if}
 
-    {#if showAddServicePanel}
-      <div class="mt-3 rounded-lg border border-[var(--color-border)] p-4" data-testid="service-add-panel">
-        <p class="mb-3 text-sm font-medium text-[var(--color-text)]">{$t('settings.chooseService')}</p>
-        <div class="grid grid-cols-2 gap-2">
-          {#each availableToAdd as type (type)}
-            <button
-              onclick={() => startAddService(type)}
-              class="flex items-center gap-2 rounded-lg border border-[var(--color-border)] px-3 py-2 text-start text-sm text-[var(--color-text)] transition-colors hover:border-[var(--color-primary)] hover:bg-[var(--color-bg-tertiary)]"
-              data-testid="service-add-option-{type}"
-            >
-              <DynamicIcon name={getServiceIcon(type)} size={16} class="text-[var(--color-primary)]" />
-              {serviceDisplayName(type)}
-            </button>
-          {/each}
-        </div>
-      </div>
-    {/if}
+    <AddServiceDialog
+      open={showAddDialog}
+      {serviceTypeDefs}
+      {availableToAdd}
+      onClose={() => showAddDialog = false}
+      onCreated={() => { loadServices(); showAddDialog = false }}
+    />
   </section>
 
   <!-- go2rtc Streaming -->

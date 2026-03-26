@@ -275,7 +275,7 @@
     "noServices": "未配置任何服务",
     "addService": "添加服务",
     "chooseService": "选择服务",
-    "availableServices": "可用服务",
+    "allServicesConfigured": "所有服务均已配置",
     "alreadyConfigured": "已配置",
     "deleteService": "删除服务",
     "deleteServiceConfirm": "确定要删除 {name} 的配置吗？",

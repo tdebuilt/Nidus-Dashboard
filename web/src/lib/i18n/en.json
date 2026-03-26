@@ -275,7 +275,7 @@
     "noServices": "No services configured",
     "addService": "Add a service",
     "chooseService": "Choose a service",
-    "availableServices": "Available services",
+    "allServicesConfigured": "All services are already configured",
     "alreadyConfigured": "Already configured",
     "deleteService": "Delete service",
     "deleteServiceConfirm": "Delete the configuration for {name}?",

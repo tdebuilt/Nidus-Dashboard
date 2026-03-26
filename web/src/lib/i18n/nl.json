@@ -275,7 +275,7 @@
     "noServices": "Geen services geconfigureerd",
     "addService": "Service toevoegen",
     "chooseService": "Kies een service",
-    "availableServices": "Beschikbare services",
+    "allServicesConfigured": "Alle services zijn al geconfigureerd",
     "alreadyConfigured": "Reeds geconfigureerd",
     "deleteService": "Service verwijderen",
     "deleteServiceConfirm": "Configuratie van {name} verwijderen?",

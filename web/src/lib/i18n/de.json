@@ -275,7 +275,7 @@
     "noServices": "Keine Dienste konfiguriert",
     "addService": "Dienst hinzufügen",
     "chooseService": "Dienst auswählen",
-    "availableServices": "Verfügbare Dienste",
+    "allServicesConfigured": "Alle Dienste sind bereits konfiguriert",
     "alreadyConfigured": "Bereits konfiguriert",
     "deleteService": "Dienst löschen",
     "deleteServiceConfirm": "Konfiguration für {name} löschen?",
