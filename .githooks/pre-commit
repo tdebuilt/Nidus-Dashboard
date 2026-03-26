@@ -1,16 +1,79 @@
 #!/bin/bash
-set -e
+set -euo pipefail
 
-echo "=== Pre-commit: Go lint ==="
-make lint-go
+# Detect staged file types
+STAGED_FILES=$(git diff --cached --name-only --diff-filter=ACMR)
 
-echo "=== Pre-commit: Go tests ==="
-docker run --rm -v "$(pwd)":/app -w /app golang:1.24 go test ./...
+if [ -z "$STAGED_FILES" ]; then
+  exit 0
+fi
 
-echo "=== Pre-commit: Frontend lint ==="
-cd web && npm run lint
+HAS_GO=false
+HAS_FRONTEND=false
 
-echo "=== Pre-commit: Frontend tests ==="
-npm test -- --run
+while IFS= read -r file; do
+  case "$file" in
+    *.go|go.mod|go.sum|.golangci.yml)
+      HAS_GO=true
+      ;;
+    web/static/*)
+      ;;
+    web/*)
+      HAS_FRONTEND=true
+      ;;
+  esac
+done <<< "$STAGED_FILES"
+
+if ! $HAS_GO && ! $HAS_FRONTEND; then
+  echo "=== Pre-commit: No Go or frontend changes, skipping checks ==="
+  exit 0
+fi
+
+# Check functions
+run_go_checks() {
+  echo "=== Pre-commit: Go lint + tests ==="
+  docker run --rm \
+    -v "$(pwd)":/app \
+    -v nidus-gomodcache:/go/pkg/mod \
+    -v nidus-gocache:/root/.cache \
+    -w /app \
+    golangci/golangci-lint:v2.11.4 \
+    sh -c 'golangci-lint run && go test ./...'
+}
+
+run_frontend_checks() {
+  echo "=== Pre-commit: Frontend lint + tests ==="
+  cd web && npm run lint && npm test -- --run
+}
+
+# Run checks (parallel when both needed)
+GO_EXIT=0
+FE_EXIT=0
+
+if $HAS_GO && $HAS_FRONTEND; then
+  run_go_checks &
+  GO_PID=$!
+
+  run_frontend_checks &
+  FE_PID=$!
+
+  wait $GO_PID || GO_EXIT=$?
+  wait $FE_PID || FE_EXIT=$?
+
+elif $HAS_GO; then
+  run_go_checks || GO_EXIT=$?
+
+elif $HAS_FRONTEND; then
+  run_frontend_checks || FE_EXIT=$?
+fi
+
+# Report results
+if [ $GO_EXIT -ne 0 ] || [ $FE_EXIT -ne 0 ]; then
+  echo ""
+  echo "=== Pre-commit: FAILED ==="
+  [ $GO_EXIT -ne 0 ] && echo "  - Go checks failed (exit $GO_EXIT)"
+  [ $FE_EXIT -ne 0 ] && echo "  - Frontend checks failed (exit $FE_EXIT)"
+  exit 1
+fi
 
 echo "=== Pre-commit: All checks passed ==="

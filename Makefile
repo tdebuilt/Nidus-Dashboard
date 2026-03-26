@@ -47,10 +47,10 @@ test-frontend:
 lint: lint-go lint-frontend
 
 lint-go:
-	docker run --rm -v $(PWD):/app -w /app golangci/golangci-lint:v2.11.4 golangci-lint run
+	docker run --rm -v $(PWD):/app -v nidus-gomodcache:/go/pkg/mod -v nidus-gocache:/root/.cache -w /app golangci/golangci-lint:v2.11.4 golangci-lint run
 
 lint-go-fix:
-	docker run --rm -v $(PWD):/app -w /app golangci/golangci-lint:v2.11.4 golangci-lint run --fix
+	docker run --rm -v $(PWD):/app -v nidus-gomodcache:/go/pkg/mod -v nidus-gocache:/root/.cache -w /app golangci/golangci-lint:v2.11.4 golangci-lint run --fix
 
 lint-frontend:
 	@cd web && npm run lint 2>/dev/null || true
