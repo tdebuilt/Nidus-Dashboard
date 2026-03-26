@@ -10,6 +10,18 @@
 - [ ] Developer documentation for creating plugins
 - [ ] Starter plugin template
 
+### Grafana Widget
+- [ ] Backend service `internal/services/grafana/` (API client)
+- [ ] Fetch dashboards list, panels, and snapshots
+- [ ] Embed panels via iframe or render snapshots
+- [ ] Handler `internal/handlers/grafana.go` + routes
+- [ ] Add `grafana` to ServiceRegistry
+- [ ] Frontend component `web/src/lib/components/grafana/`
+- [ ] Widget config: Grafana URL, API key, dashboard/panel selection
+- [ ] Register in `widgetRegistry.ts`
+- [ ] Add translations (all locales)
+- [ ] Tests backend + frontend
+
 ## Ideas (Not Yet Planned)
 
 - **Mobile app** — React Native or Flutter companion app
@@ -18,7 +30,6 @@
 - **Widget marketplace** — community-contributed widgets
 - **Backup scheduling** — automated periodic config exports
 - **LDAP/SSO authentication** — integrate with existing identity providers
-- **Prometheus/Grafana integration** — import and display Grafana panels
 - **Notification rules engine** — advanced conditions with templating
 
 ## Completed
