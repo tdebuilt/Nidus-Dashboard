@@ -20,7 +20,8 @@ Update these files in order:
 3. `SPEC.md` — ensure all widgets, features, and architecture are documented
 4. `README.md` — ensure badges, installation instructions, and feature list are current
 5. `CONTRIBUTING.md` — ensure project structure, commands, and conventions are current
-6. `docs/i18n-template.json` — regenerate from `fr.json` if keys are out of sync
+6. `.todo/TESTING.md` — ensure all implemented features have test cases
+7. `docs/i18n-template.json` — regenerate from `fr.json` if keys are out of sync
 
 ## Step 1: Gather Current State
 
@@ -73,7 +74,17 @@ Categorize changes as: Added, Changed, Fixed, Removed (following Keep a Changelo
 3. Verify Node/Go version requirements match `package.json` and `go.mod`
 4. Check the widget development guide is still accurate
 
-## Step 7: Regenerate i18n Template
+## Step 7: Update .todo/TESTING.md
+
+1. Read `.todo/TESTING.md` and the current codebase
+2. Compare test cases against implemented features (widgets, services, settings, etc.)
+3. Add missing test cases for new features (new widgets, new settings sections, new UI flows)
+4. Remove test cases for features that have been removed
+5. Update test cases that no longer match the current behavior
+6. Keep the same format: `## N. Section Name` with `- [ ]` checkboxes
+7. Do NOT check any boxes — this is a checklist for manual testing
+
+## Step 8: Regenerate i18n Template
 
 Run this check:
 ```python
@@ -110,7 +121,7 @@ with open('docs/i18n-template.json', 'w') as f:
 "
 ```
 
-## Step 8: Summary
+## Step 9: Summary
 
 After all updates, display a summary:
 
@@ -121,6 +132,7 @@ After all updates, display a summary:
 - SPEC.md: [updated/no changes]
 - README.md: [updated/no changes]
 - CONTRIBUTING.md: [updated/no changes]
+- TESTING.md: [updated/no changes]
 - i18n-template.json: [regenerated (N new keys)/up to date]
 ```
 

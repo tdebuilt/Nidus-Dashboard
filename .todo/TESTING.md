@@ -37,7 +37,23 @@
 - [ ] Auto-compaction verticale (no gaps)
 - [ ] Navigate between categories via sidebar
 
-## 3. Docker (Portainer)
+## 3. Services Settings
+
+- [ ] Services listed in flat alphabetical order (no categories)
+- [ ] Sort toggle (A→Z / Z→A) changes service order
+- [ ] "+" button visible in section header when services available to add
+- [ ] Click "+" opens add service modal dialog
+- [ ] Modal shows available services as clickable cards with icons
+- [ ] Sort toggle in modal works (A→Z / Z→A)
+- [ ] Click a service type → config form appears (URL, credentials)
+- [ ] Back button returns to service type grid
+- [ ] Save → service added, modal closes, list refreshes
+- [ ] Empty state shows "Add a service" button that opens modal
+- [ ] Edit existing service inline (click gear icon on card)
+- [ ] Test service connection (lightning bolt icon)
+- [ ] Delete service (overflow menu → confirmation)
+
+## 4. Docker (Portainer)
 
 - [ ] Configure Portainer in Settings (URL + token or username/password)
 - [ ] Test Portainer connection
@@ -50,7 +66,7 @@
 - [ ] External link to mapped container port
 - [ ] Expand/collapse stacks
 
-## 4. Proxmox
+## 5. Proxmox
 
 - [ ] Configure Proxmox in Settings (URL + token or username/password)
 - [ ] Proxmox widget shows VMs and LXCs
@@ -58,7 +74,7 @@
 - [ ] Start/stop/shutdown/reboot buttons
 - [ ] Confirmation before stop/shutdown
 
-## 5. Home Assistant
+## 6. Home Assistant
 
 - [ ] Configure HA in Settings (URL + long-lived access token)
 - [ ] HA widget shows entities filtered by domain
@@ -70,7 +86,7 @@
 - [ ] Widget config: filter by `entities` or `domains` in JSON
 - [ ] Real-time updates via WebSocket
 
-## 6. AdGuard
+## 7. AdGuard
 
 - [ ] Configure AdGuard in Settings (URL + username/password)
 - [ ] Widget shows total DNS queries count
@@ -79,7 +95,7 @@
 - [ ] Active filters and rules count
 - [ ] Toggle protection on/off (confirmation to disable)
 
-## 7. JDownloader
+## 8. JDownloader
 
 - [ ] Configure JDownloader in Settings (direct URL)
 - [ ] Widget shows download queue
@@ -89,7 +105,7 @@
 - [ ] "+" button opens add links dialog
 - [ ] Add links (multi-line textarea) → appear in queue
 
-## 8. Transmission
+## 9. Transmission
 
 - [ ] Configure Transmission in Settings (URL + username/password)
 - [ ] Widget shows torrents with progress bars
@@ -101,7 +117,7 @@
 - [ ] Add magnet link → torrent appears
 - [ ] Ratio displayed for seeding torrents
 
-## 9. Uptime Kuma
+## 10. Uptime Kuma
 
 - [ ] Configure Uptime Kuma in Settings (URL)
 - [ ] Widget shows list of monitors
@@ -109,7 +125,7 @@
 - [ ] Uptime percentage displayed
 - [ ] Latency displayed
 
-## 10. Media Server (Plex / Jellyfin)
+## 11. Media Server (Plex / Jellyfin)
 
 - [ ] Configure Plex in Settings (URL + token)
 - [ ] Configure Jellyfin in Settings (URL + API key)
@@ -118,7 +134,7 @@
 - [ ] Playback progress bar
 - [ ] Config: choose between Plex and Jellyfin
 
-## 11. Weather
+## 12. Weather
 
 - [ ] Configure weather widget (city or GPS coordinates)
 - [ ] Current temperature displayed
@@ -127,20 +143,20 @@
 - [ ] 5-day forecast
 - [ ] Config: units (°C/°F)
 
-## 12. Calendar (iCal)
+## 13. Calendar (iCal)
 
 - [ ] Configure calendar widget with iCal URL
 - [ ] List view shows upcoming events
 - [ ] Mini-calendar view works
 - [ ] Config: number of days to display
 
-## 13. RSS Feed
+## 14. RSS Feed
 
 - [ ] Configure RSS widget with feed URL
 - [ ] Recent articles listed with title, date, source
 - [ ] Config: number of articles to display
 
-## 14. System Monitor
+## 15. System Monitor
 
 - [ ] System widget shows CPU usage (gauge)
 - [ ] RAM usage (gauge)
@@ -149,7 +165,7 @@
 - [ ] Hostname displayed
 - [ ] Temperature (if available)
 
-## 15. Bookmarks (App Links)
+## 16. Bookmarks (App Links)
 
 - [ ] Create bookmark widget
 - [ ] Links display with favicon (auto-fetched)
@@ -157,7 +173,16 @@
 - [ ] Click link opens in new tab
 - [ ] Health check: green dot if service responds
 
-## 16. Internationalization (i18n)
+## 17. Grafana
+
+- [ ] Configure Grafana in Settings (URL + API token)
+- [ ] Test Grafana connection
+- [ ] Grafana widget shows embedded panels
+- [ ] Panel picker lists dashboards and panels from Grafana API
+- [ ] Multi-panel grid layout displays selected panels
+- [ ] Config: select dashboard and panels to embed
+
+## 18. Internationalization (i18n)
 
 - [ ] Switch language in Settings (dropdown with flag + native name)
 - [ ] French: all labels correct
@@ -168,7 +193,7 @@
 - [ ] Browser language auto-detected on first visit
 - [ ] Language preference persists after reload
 
-## 17. Themes & Customization
+## 19. Themes & Customization
 
 - [ ] Settings → Theme selector with live preview
 - [ ] Dark theme: all elements properly styled
@@ -181,7 +206,7 @@
 - [ ] Custom CSS textarea in Settings
 - [ ] Custom CSS injected and applied
 
-## 18. Multi-user & Roles
+## 20. Multi-user & Roles
 
 - [ ] Admin can manage users in Settings
 - [ ] Create invitation link/code
@@ -190,7 +215,7 @@
 - [ ] **Editor**: can modify dashboard (widgets, categories) but NOT settings/services
 - [ ] **Viewer**: read-only (edit mode hidden)
 
-## 19. YAML Configuration
+## 21. YAML Configuration
 
 - [ ] Settings → Export YAML: file downloaded
 - [ ] Exported YAML contains categories, widgets, services, settings
@@ -199,7 +224,7 @@
 - [ ] After failed import, existing data intact
 - [ ] Auto-import from `config.yaml` on first startup (empty DB)
 
-## 20. Notifications
+## 22. Notifications
 
 - [ ] Settings → Notifications section (admin only)
 - [ ] Add Gotify provider (URL + token)
@@ -211,7 +236,7 @@
 - [ ] Delete notification rule
 - [ ] Event types: container down, service unreachable
 
-## 21. Kiosk Mode
+## 23. Kiosk Mode
 
 - [ ] Navigate to `/kiosk`
 - [ ] No sidebar, no header, no edit buttons
@@ -228,7 +253,7 @@
 - [ ] Keyboard: F → fullscreen
 - [ ] Rotation indicator dots at bottom
 
-## 22. Search
+## 24. Search
 
 - [ ] Search bar visible in header
 - [ ] Type >= 2 chars → results in dropdown
@@ -236,21 +261,21 @@
 - [ ] Click result navigates to correct category
 - [ ] Escape or click outside closes dropdown
 
-## 23. Polling & Refresh
+## 25. Polling & Refresh
 
 - [ ] Settings → Refresh interval selector
 - [ ] Options: 10s, 15s, 30s, 60s, 120s, 300s
 - [ ] Change interval → widgets refresh at new rate
 - [ ] Setting persists after reload
 
-## 24. JSON Export/Import
+## 26. JSON Export/Import
 
 - [ ] Settings → Export JSON config → file downloaded
 - [ ] Import exported JSON → config restored
 - [ ] Import invalid JSON → error message
 - [ ] After failed import, existing data intact
 
-## 25. PWA & Offline
+## 27. PWA & Offline
 
 - [ ] Site is installable (button in browser address bar)
 - [ ] Manifest visible in DevTools > Application > Manifest
@@ -259,7 +284,7 @@
 - [ ] Cached data still displayed while offline
 - [ ] Restore network → banner disappears
 
-## 26. Mobile / Responsive
+## 28. Mobile / Responsive
 
 - [ ] Mobile: single column grid
 - [ ] Action buttons large enough for touch (>= 44px)
@@ -268,7 +293,7 @@
 - [ ] No horizontal scroll
 - [ ] Dialogs usable on mobile
 
-## 27. General
+## 29. General
 
 - [ ] 404 page for unknown routes
 - [ ] Network error page with retry button

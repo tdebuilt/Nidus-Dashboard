@@ -20,7 +20,12 @@
     "disabled": "",
     "optional": "",
     "export": "",
-    "import": ""
+    "import": "",
+    "columns": "",
+    "desktop": "",
+    "tablet": "",
+    "mobile": "",
+    "moreActions": ""
   },
   "theme": {
     "switchToLight": "",
@@ -208,6 +213,18 @@
     "keyboardShortcutsEnabled": "",
     "keyboardShortcutsHint": "",
     "servicesSection": "",
+    "servicesCount": "",
+    "serviceOnline": "",
+    "serviceOffline": "",
+    "serviceChecking": "",
+    "serviceGroup": {
+      "infra": "",
+      "media": "",
+      "home": "",
+      "network": "",
+      "downloads": "",
+      "monitoring": ""
+    },
     "twoFaSection": "",
     "exportImportSection": "",
     "french": "",
@@ -258,6 +275,7 @@
     "noServices": "",
     "addService": "",
     "chooseService": "",
+    "allServicesConfigured": "",
     "alreadyConfigured": "",
     "deleteService": "",
     "deleteServiceConfirm": "",
@@ -736,6 +754,24 @@
         "portfolio": ""
       }
     },
+    "grafana": {
+      "title": "",
+      "prerequisite": "",
+      "configDesc": "",
+      "setupSteps": {
+        "step1": "",
+        "step2": "",
+        "step3": "",
+        "step4": "",
+        "step5": ""
+      },
+      "features": {
+        "embed": "",
+        "browse": "",
+        "multiPanel": "",
+        "theme": ""
+      }
+    },
     "system": {
       "title": "",
       "prerequisite": "",
@@ -1071,6 +1107,23 @@
     "cameras": "",
     "hint": "",
     "actionError": ""
+  },
+  "grafana": {
+    "loading": "",
+    "notConfigured": "",
+    "configureHint": "",
+    "fetchError": "",
+    "noDashboards": "",
+    "selectDashboard": "",
+    "selectPanel": "",
+    "noPanels": "",
+    "theme": "",
+    "themeDark": "",
+    "themeLight": "",
+    "embedHint": "",
+    "addPanel": "",
+    "panels": "",
+    "noPanel": ""
   },
   "iconPicker": {
     "search": "",

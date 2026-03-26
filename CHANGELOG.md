@@ -6,6 +6,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 
 ## [Unreleased]
 
+### Added
+- Grafana widget — embed panels from Grafana dashboards with multi-panel grid
+- Add service dialog — modal with type selection grid (replaces inline panel)
+- Alphabetical sort toggle (A→Z / Z→A) for services list and add service dialog
+- Responsive column config per widget (desktop/tablet/mobile)
+
+### Changed
+- Services settings page uses flat alphabetical list instead of category grouping
+- Widget components are lazy-loaded with dynamic imports (code-splitting)
+- Pre-commit hook now runs Go and frontend tests in addition to linting
+
 ## [0.1.0] - Initial Release
 
 ### Core

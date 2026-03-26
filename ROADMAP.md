@@ -10,19 +10,6 @@
 - [ ] Developer documentation for creating plugins
 - [ ] Starter plugin template
 
-### Grafana Widget
-- [ ] Backend service `internal/services/grafana/` (API client)
-- [ ] Fetch dashboards list, panels, and snapshots
-- [ ] Embed panels via iframe or render snapshots
-- [ ] Handler `internal/handlers/grafana.go` + routes
-- [ ] Add `grafana` to ServiceRegistry
-- [ ] Frontend component `web/src/lib/components/grafana/`
-- [ ] Widget config: Grafana URL, API key, dashboard/panel selection
-- [ ] Register in `widgetRegistry.ts`
-- [ ] Add translations (all locales)
-- [ ] Tests backend + frontend
-
-
 ## Ideas (Not Yet Planned)
 
 - **Mobile app** — React Native or Flutter companion app
@@ -45,7 +32,7 @@
 - [x] Pre-commit hooks (golangci-lint + eslint)
 
 ### Features
-- [x] 17 widget types (Docker, Proxmox, Home Assistant, Uptime Kuma, Plex/Jellyfin, *arr stack, Pi-hole, Weather, Calendar, RSS, System, Bookmarks, Reolink, Finance, AdGuard, JDownloader, Transmission)
+- [x] 18 widget types (Docker, Proxmox, Home Assistant, Uptime Kuma, Plex/Jellyfin, *arr stack, Pi-hole, Weather, Calendar, RSS, System, Bookmarks, Reolink, Finance, AdGuard, JDownloader, Transmission, Grafana)
 - [x] Multi-user with roles (admin, editor, viewer)
 - [x] 4 built-in themes with accent color picker and custom CSS
 - [x] 11 languages with RTL support
@@ -56,3 +43,7 @@
 - [x] Free-placement drag & drop grid
 - [x] Responsive layout (mobile, tablet, desktop, TV)
 - [x] Embedded go2rtc for camera streaming
+- [x] Grafana widget (embed panels via iframe, multi-panel grid, dashboard/panel picker)
+- [x] Lazy-loaded widget components (code-splitting)
+- [x] Responsive column config per widget (desktop/tablet/mobile)
+- [x] Add service modal dialog with type selection grid and alphabetical sort

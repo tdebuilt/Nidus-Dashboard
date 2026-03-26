@@ -216,6 +216,13 @@ Service configuration is done afterward in Settings.
 - Volume, day high/low
 - Market state indicator
 
+### Grafana
+
+- Embed Grafana panels via iframe
+- Multi-panel grid layout
+- Dashboard and panel picker from Grafana API
+- Configurable Grafana URL and API token
+
 ### JDownloader
 
 - Download queue with progress

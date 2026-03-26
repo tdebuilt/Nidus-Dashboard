@@ -80,6 +80,7 @@ Nidus fills the gap: a **fast, lightweight dashboard** with real container manag
 - **Sonarr / Radarr / Lidarr / Prowlarr** — Calendar, download queue, status
 - **Uptime Kuma** — Monitor status, uptime percentage, latency
 - **Reolink cameras** — Live RTSP streams via embedded go2rtc (WebRTC)
+- **Grafana** — Embed Grafana panels with dashboard and panel picker
 - **App Links** — Custom bookmarks with automatic health checks and favicons
 
 ### Additional widgets
@@ -236,6 +237,7 @@ Configuration can also be set via a `config.yaml` file. See [docs/DEPLOYMENT.md]
 | **Lidarr / Prowlarr** | *arr API | Music library, indexer status |
 | **Uptime Kuma** | Uptime Kuma API | Monitor status, uptime %, latency |
 | **Reolink** | RTSP via embedded go2rtc | Live camera streams (WebRTC) |
+| **Grafana** | Grafana API | Embed panels, dashboard picker |
 | **Weather** | OpenWeatherMap API | Current + 5-day forecast |
 | **Calendar** | iCalendar (ICS) | Upcoming events from any ICS URL |
 | **RSS** | RSS/Atom feeds | Aggregated article list |
@@ -246,9 +248,9 @@ All modules are configured via the UI during setup or in settings.
 
 ## Roadmap
 
-See [ROADMAP_TASKS.md](./todo/ROADMAP_TASKS.md) for the full detailed task breakdown.
+See [ROADMAP.md](./ROADMAP.md) for the full roadmap.
 
-**Completed (256/262 tasks):**
+**Completed:**
 - [x] Go backend (Chi, SQLite, config, JWT auth, TOTP 2FA)
 - [x] Svelte frontend (sidebar, 12-col grid, custom themes)
 - [x] Categories & widget layout (drag-and-drop, resize, edit mode)
@@ -259,6 +261,7 @@ See [ROADMAP_TASKS.md](./todo/ROADMAP_TASKS.md) for the full detailed task break
 - [x] Plex/Jellyfin, Sonarr/Radarr/Lidarr/Prowlarr, Uptime Kuma modules
 - [x] Weather, Calendar, RSS, System stats, Finance widgets
 - [x] Reolink cameras with embedded go2rtc streaming
+- [x] Grafana panel embedding
 - [x] App links with health checks and favicons
 - [x] Multi-user with roles (admin/editor/viewer) and invitation system
 - [x] Custom themes, accent colors, and custom CSS
@@ -294,8 +297,8 @@ make setup              # Configure git hooks
 - [Configuration Reference](./docs/CONFIG_YAML.md) — YAML config format and options
 - [API Examples](./docs/EXAMPLES.md) — curl examples for common API calls
 - [Translation Guide](./docs/TRANSLATING.md) — How to add a new language
-- [Full Specification](./todo/SPEC.md) — Detailed technical spec with all module definitions
-- [Detailed Tasks](./todo/ROADMAP_TASKS.md) — Full task breakdown (262 tasks across 6 phases)
+- [Full Specification](./SPEC.md) — Detailed technical spec with all module definitions
+- [Roadmap](./ROADMAP.md) — Planned and completed features
 
 ## License
 

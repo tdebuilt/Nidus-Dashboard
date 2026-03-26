@@ -83,6 +83,7 @@ internal/
     finance/             #   Yahoo Finance
     jdownloader/         #   MyJDownloader
     transmission/        #   Transmission RPC
+    grafana/             #   Grafana panel embedding
     notifications/       #   Gotify, Ntfy, Apprise
     go2rtc/              #   Embedded go2rtc process manager
   cache/                # In-memory cache with TTL
@@ -156,16 +157,14 @@ Your widget component receives a `config` prop (JSON string):
 In `web/src/lib/widgetRegistry.ts`:
 
 ```typescript
-import YourWidget from './components/yourwidget/YourWidget.svelte'
-import YourWidgetConfig from './components/yourwidget/YourWidgetConfig.svelte' // optional
 import { SomeIcon } from 'lucide-svelte'
 
 register({
   type: 'yourwidget',
   label: 'Your Widget',
   icon: SomeIcon,
-  component: YourWidget,
-  configComponent: YourWidgetConfig, // omit if no config needed
+  component: () => import('./components/yourwidget/YourWidget.svelte'),
+  configComponent: () => import('./components/config/YourWidgetConfig.svelte'), // optional
   serviceType: 'yourwidget',        // must match ServiceRegistry key
 })
 ```
