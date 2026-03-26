@@ -3,6 +3,15 @@ import { describe, it, expect, afterEach, vi, beforeEach } from 'vitest'
 import WidgetGrid from './WidgetGrid.svelte'
 import { editMode } from '../stores/editMode'
 
+vi.mock('../widgetRegistry', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../widgetRegistry')>()
+  return {
+    ...actual,
+    loadWidgetComponent: vi.fn().mockResolvedValue(undefined),
+    loadConfigComponent: vi.fn().mockResolvedValue(undefined),
+  }
+})
+
 describe('WidgetGrid', () => {
   beforeEach(() => {
     globalThis.fetch = vi.fn().mockResolvedValue({

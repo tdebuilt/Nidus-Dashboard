@@ -4,7 +4,13 @@ set -e
 echo "=== Pre-commit: Go lint ==="
 make lint-go
 
+echo "=== Pre-commit: Go tests ==="
+docker run --rm -v "$(pwd)":/app -w /app golang:1.24 go test ./...
+
 echo "=== Pre-commit: Frontend lint ==="
 cd web && npm run lint
+
+echo "=== Pre-commit: Frontend tests ==="
+npm test -- --run
 
 echo "=== Pre-commit: All checks passed ==="
