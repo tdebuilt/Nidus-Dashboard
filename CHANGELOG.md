@@ -6,6 +6,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 
 ## [Unreleased]
 
+## [0.1.0] - 2026-03-26
+
 ### Core
 - Go backend (Chi router) with SQLite database and embedded Svelte frontend
 - JWT authentication with optional TOTP 2FA
