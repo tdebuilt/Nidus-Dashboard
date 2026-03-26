@@ -24,7 +24,8 @@
     "columns": "Columns",
     "desktop": "Desktop",
     "tablet": "Tablet",
-    "mobile": "Mobile"
+    "mobile": "Mobile",
+    "moreActions": "More actions"
   },
   "theme": {
     "switchToLight": "Switch to light mode",
@@ -212,6 +213,18 @@
     "keyboardShortcutsEnabled": "Enable keyboard shortcuts",
     "keyboardShortcutsHint": "Use keyboard shortcuts to navigate faster (press ? for help)",
     "servicesSection": "Services",
+    "servicesCount": "{count} service(s) configured",
+    "serviceOnline": "Online",
+    "serviceOffline": "Offline",
+    "serviceChecking": "Checking...",
+    "serviceGroup": {
+      "infra": "Infrastructure",
+      "media": "Media",
+      "home": "Home automation",
+      "network": "Network",
+      "downloads": "Downloads",
+      "monitoring": "Monitoring"
+    },
     "twoFaSection": "Two-factor authentication",
     "exportImportSection": "Export / Import",
     "french": "Français",

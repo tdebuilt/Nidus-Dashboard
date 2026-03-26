@@ -24,7 +24,8 @@
     "columns": "Kolommen",
     "desktop": "Desktop",
     "tablet": "Tablet",
-    "mobile": "Mobiel"
+    "mobile": "Mobiel",
+    "moreActions": "Meer acties"
   },
   "theme": {
     "switchToLight": "Overschakelen naar lichte modus",
@@ -212,6 +213,18 @@
     "keyboardShortcutsEnabled": "",
     "keyboardShortcutsHint": "",
     "servicesSection": "Services",
+    "servicesCount": "{count} service(s) geconfigureerd",
+    "serviceOnline": "Online",
+    "serviceOffline": "Offline",
+    "serviceChecking": "Controleren...",
+    "serviceGroup": {
+      "infra": "Infrastructuur",
+      "media": "Media",
+      "home": "Domotica",
+      "network": "Netwerk",
+      "downloads": "Downloads",
+      "monitoring": "Monitoring"
+    },
     "twoFaSection": "Tweefactorauthenticatie",
     "exportImportSection": "Exporteren / Importeren",
     "french": "Français",

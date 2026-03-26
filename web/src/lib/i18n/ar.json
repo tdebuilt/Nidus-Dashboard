@@ -24,7 +24,8 @@
     "columns": "الأعمدة",
     "desktop": "سطح المكتب",
     "tablet": "جهاز لوحي",
-    "mobile": "جوال"
+    "mobile": "جوال",
+    "moreActions": "إجراءات أخرى"
   },
   "theme": {
     "switchToLight": "التبديل إلى الوضع الفاتح",
@@ -212,6 +213,18 @@
     "keyboardShortcutsEnabled": "",
     "keyboardShortcutsHint": "",
     "servicesSection": "الخدمات",
+    "servicesCount": "{count} خدمة مُهيأة",
+    "serviceOnline": "متصل",
+    "serviceOffline": "غير متصل",
+    "serviceChecking": "جاري الفحص...",
+    "serviceGroup": {
+      "infra": "البنية التحتية",
+      "media": "الوسائط",
+      "home": "المنزل الذكي",
+      "network": "الشبكة",
+      "downloads": "التنزيلات",
+      "monitoring": "المراقبة"
+    },
     "twoFaSection": "المصادقة الثنائية",
     "exportImportSection": "تصدير / استيراد",
     "french": "Français",

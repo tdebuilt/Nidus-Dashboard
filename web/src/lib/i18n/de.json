@@ -24,7 +24,8 @@
     "columns": "Spalten",
     "desktop": "Desktop",
     "tablet": "Tablet",
-    "mobile": "Mobil"
+    "mobile": "Mobil",
+    "moreActions": "Weitere Aktionen"
   },
   "theme": {
     "switchToLight": "Zum hellen Modus wechseln",
@@ -212,6 +213,18 @@
     "keyboardShortcutsEnabled": "",
     "keyboardShortcutsHint": "",
     "servicesSection": "Dienste",
+    "servicesCount": "{count} Dienst(e) konfiguriert",
+    "serviceOnline": "Online",
+    "serviceOffline": "Offline",
+    "serviceChecking": "Überprüfung...",
+    "serviceGroup": {
+      "infra": "Infrastruktur",
+      "media": "Medien",
+      "home": "Hausautomation",
+      "network": "Netzwerk",
+      "downloads": "Downloads",
+      "monitoring": "Monitoring"
+    },
     "twoFaSection": "Zwei-Faktor-Authentifizierung",
     "exportImportSection": "Export / Import",
     "french": "Français",

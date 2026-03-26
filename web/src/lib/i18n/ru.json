@@ -24,7 +24,8 @@
     "columns": "Столбцы",
     "desktop": "ПК",
     "tablet": "Планшет",
-    "mobile": "Мобильный"
+    "mobile": "Мобильный",
+    "moreActions": "Другие действия"
   },
   "theme": {
     "switchToLight": "Переключить на светлую тему",
@@ -212,6 +213,18 @@
     "keyboardShortcutsEnabled": "",
     "keyboardShortcutsHint": "",
     "servicesSection": "Сервисы",
+    "servicesCount": "{count} сервис(ов) настроено",
+    "serviceOnline": "Онлайн",
+    "serviceOffline": "Офлайн",
+    "serviceChecking": "Проверка...",
+    "serviceGroup": {
+      "infra": "Инфраструктура",
+      "media": "Медиа",
+      "home": "Умный дом",
+      "network": "Сеть",
+      "downloads": "Загрузки",
+      "monitoring": "Мониторинг"
+    },
     "twoFaSection": "Двухфакторная аутентификация",
     "exportImportSection": "Экспорт / Импорт",
     "french": "Français",

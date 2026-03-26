@@ -142,6 +142,7 @@ func New(cfg config.Config, db *database.DB) *chi.Mux {
 
 				svcHandler := &handlers.ServicesHandler{DB: db, Cache: ServiceCache}
 				r.Get("/services", svcHandler.List)
+				r.Get("/services/status", svcHandler.BatchStatus)
 
 				settingsHandler := &handlers.SettingsHandler{DB: db}
 				r.Get("/settings", settingsHandler.Get)

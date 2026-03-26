@@ -24,7 +24,8 @@
     "columns": "Colonnes",
     "desktop": "Bureau",
     "tablet": "Tablette",
-    "mobile": "Mobile"
+    "mobile": "Mobile",
+    "moreActions": "Plus d'actions"
   },
   "theme": {
     "switchToLight": "Passer en mode clair",
@@ -212,6 +213,18 @@
     "keyboardShortcutsEnabled": "Activer les raccourcis clavier",
     "keyboardShortcutsHint": "Utilisez les raccourcis clavier pour naviguer plus vite (appuyez sur ? pour l'aide)",
     "servicesSection": "Services",
+    "servicesCount": "{count} service(s) configuré(s)",
+    "serviceOnline": "En ligne",
+    "serviceOffline": "Hors ligne",
+    "serviceChecking": "Vérification...",
+    "serviceGroup": {
+      "infra": "Infrastructure",
+      "media": "Médias",
+      "home": "Domotique",
+      "network": "Réseau",
+      "downloads": "Téléchargements",
+      "monitoring": "Monitoring"
+    },
     "twoFaSection": "Authentification 2FA",
     "exportImportSection": "Export / Import",
     "french": "Français",

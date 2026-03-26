@@ -1,9 +1,11 @@
 package handlers
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"sync"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -285,6 +287,65 @@ func (h *ServicesHandler) Test(w http.ResponseWriter, r *http.Request) {
 			Message: fmt.Sprintf("server returned HTTP %d", resp.StatusCode),
 		})
 	}
+}
+
+// BatchStatus returns connectivity status for all configured services.
+func (h *ServicesHandler) BatchStatus(w http.ResponseWriter, r *http.Request) {
+	services, err := h.DB.GetServices()
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "failed to list services"})
+		return
+	}
+
+	statuses := make(map[string]bool)
+	var mu sync.Mutex
+	var wg sync.WaitGroup
+
+	ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
+	defer cancel()
+
+	client := &http.Client{Timeout: 5 * time.Second}
+
+	for _, svc := range services {
+		if svc.URL == "" {
+			continue
+		}
+
+		wg.Add(1)
+		go func(svcType, svcURL string) {
+			defer wg.Done()
+
+			testURL := svcURL
+			if def, ok := ServiceRegistry[svcType]; ok && def.TestPath != "" {
+				testURL += def.TestPath
+			}
+
+			req, err := http.NewRequestWithContext(ctx, http.MethodGet, testURL, nil)
+			if err != nil {
+				mu.Lock()
+				statuses[svcType] = false
+				mu.Unlock()
+				return
+			}
+
+			resp, err := client.Do(req)
+			if err != nil {
+				mu.Lock()
+				statuses[svcType] = false
+				mu.Unlock()
+				return
+			}
+			resp.Body.Close()
+
+			reachable := resp.StatusCode >= 200 && resp.StatusCode < 500
+			mu.Lock()
+			statuses[svcType] = reachable
+			mu.Unlock()
+		}(svc.Type, svc.URL)
+	}
+
+	wg.Wait()
+	writeJSON(w, http.StatusOK, map[string]interface{}{"statuses": statuses})
 }
 
 // invalidateServiceCache clears cached data for a given service type.

@@ -24,7 +24,8 @@
     "columns": "Colonne",
     "desktop": "Desktop",
     "tablet": "Tablet",
-    "mobile": "Mobile"
+    "mobile": "Mobile",
+    "moreActions": "Altre azioni"
   },
   "theme": {
     "switchToLight": "Passa alla modalità chiara",
@@ -212,6 +213,18 @@
     "keyboardShortcutsEnabled": "",
     "keyboardShortcutsHint": "",
     "servicesSection": "Servizi",
+    "servicesCount": "{count} servizio/i configurato/i",
+    "serviceOnline": "Online",
+    "serviceOffline": "Offline",
+    "serviceChecking": "Verifica...",
+    "serviceGroup": {
+      "infra": "Infrastruttura",
+      "media": "Media",
+      "home": "Domotica",
+      "network": "Rete",
+      "downloads": "Download",
+      "monitoring": "Monitoraggio"
+    },
     "twoFaSection": "Autenticazione a due fattori",
     "exportImportSection": "Esporta / Importa",
     "french": "Français",

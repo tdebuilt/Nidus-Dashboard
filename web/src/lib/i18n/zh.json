@@ -24,7 +24,8 @@
     "columns": "列数",
     "desktop": "桌面",
     "tablet": "平板",
-    "mobile": "手机"
+    "mobile": "手机",
+    "moreActions": "更多操作"
   },
   "theme": {
     "switchToLight": "切换到浅色模式",
@@ -212,6 +213,18 @@
     "keyboardShortcutsEnabled": "",
     "keyboardShortcutsHint": "",
     "servicesSection": "服务",
+    "servicesCount": "已配置 {count} 个服务",
+    "serviceOnline": "在线",
+    "serviceOffline": "离线",
+    "serviceChecking": "检查中...",
+    "serviceGroup": {
+      "infra": "基础设施",
+      "media": "媒体",
+      "home": "智能家居",
+      "network": "网络",
+      "downloads": "下载",
+      "monitoring": "监控"
+    },
     "twoFaSection": "双重身份验证",
     "exportImportSection": "导出 / 导入",
     "french": "Français",

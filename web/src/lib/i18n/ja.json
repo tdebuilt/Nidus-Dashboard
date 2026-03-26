@@ -24,7 +24,8 @@
     "columns": "列数",
     "desktop": "デスクトップ",
     "tablet": "タブレット",
-    "mobile": "モバイル"
+    "mobile": "モバイル",
+    "moreActions": "その他のアクション"
   },
   "theme": {
     "switchToLight": "ライトモードに切り替え",
@@ -212,6 +213,18 @@
     "keyboardShortcutsEnabled": "",
     "keyboardShortcutsHint": "",
     "servicesSection": "サービス",
+    "servicesCount": "{count} 件のサービスが設定済み",
+    "serviceOnline": "オンライン",
+    "serviceOffline": "オフライン",
+    "serviceChecking": "確認中...",
+    "serviceGroup": {
+      "infra": "インフラ",
+      "media": "メディア",
+      "home": "ホームオートメーション",
+      "network": "ネットワーク",
+      "downloads": "ダウンロード",
+      "monitoring": "モニタリング"
+    },
     "twoFaSection": "二要素認証",
     "exportImportSection": "エクスポート / インポート",
     "french": "Français",
