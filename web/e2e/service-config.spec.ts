@@ -15,15 +15,15 @@ test.describe('Service configuration', () => {
     await page.getByTestId('settings-pill-services').click()
     await expect(page.getByTestId('settings-services')).toBeVisible()
 
-    // Add a new service
-    await page.getByTestId('service-add-btn').click()
-    await expect(page.getByTestId('service-add-panel')).toBeVisible()
+    // Add a new service via dialog
+    await page.getByTestId('service-add-empty-btn').click()
+    await expect(page.getByTestId('add-service-dialog')).toBeVisible()
 
-    await page.getByTestId(`service-add-option-${serviceType}`).click()
+    await page.getByTestId(`service-type-${serviceType}`).click()
 
     // Fill service URL
     await page.getByTestId('service-url-input').fill(serviceUrl)
-    await page.getByTestId('service-save').click()
+    await page.getByTestId('service-save-btn').click()
 
     // Verify service row appears
     await expect(page.getByTestId(`service-row-${serviceType}`)).toBeVisible()
