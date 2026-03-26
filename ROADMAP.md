@@ -22,6 +22,19 @@
 - [ ] Add translations (all locales)
 - [ ] Tests backend + frontend
 
+### Prometheus Widget
+- [ ] Backend service `internal/services/prometheus/` (API client)
+- [ ] Query targets status (up/down)
+- [ ] Fetch active alerts
+- [ ] PromQL query support for custom metrics
+- [ ] Handler `internal/handlers/prometheus.go` + routes
+- [ ] Add `prometheus` to ServiceRegistry
+- [ ] Frontend component `web/src/lib/components/prometheus/`
+- [ ] Widget config: Prometheus URL, optional queries
+- [ ] Register in `widgetRegistry.ts`
+- [ ] Add translations (all locales)
+- [ ] Tests backend + frontend
+
 ## Ideas (Not Yet Planned)
 
 - **Mobile app** — React Native or Flutter companion app
