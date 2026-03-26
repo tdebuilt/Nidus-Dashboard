@@ -9,5 +9,4 @@ services:
       - ./data:/data
     environment:
       - NIDUS_DB_PATH=/data/nidus.db
-      - NIDUS_ENABLE_DOCS=true
     restart: unless-stopped

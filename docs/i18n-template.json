@@ -29,7 +29,29 @@
     "light": "",
     "nord": "",
     "dracula": "",
-    "toggle": ""
+    "toggle": "",
+    "createTheme": "",
+    "editTheme": "",
+    "deleteTheme": "",
+    "deleteThemeConfirm": "",
+    "themeName": "",
+    "baseTheme": "",
+    "colorBackground": "",
+    "colorText": "",
+    "colorPrimary": "",
+    "colorAccent": "",
+    "colorDanger": "",
+    "colorSuccess": "",
+    "colorWarning": "",
+    "advancedJson": "",
+    "jsonError": "",
+    "themeCreated": "",
+    "themeUpdated": "",
+    "themeDeleted": "",
+    "themeError": "",
+    "themeLimitReached": "",
+    "themeNameRequired": "",
+    "namePlaceholder": ""
   },
   "sidebar": {
     "closeMenu": "",
@@ -37,7 +59,8 @@
     "categories": "",
     "settings": "",
     "help": "",
-    "logout": ""
+    "logout": "",
+    "dashboard": ""
   },
   "dashboard": {
     "editModeOn": "",
@@ -91,7 +114,8 @@
     "noCategories": "",
     "noCategoriesHint": "",
     "createFirst": "",
-    "manageCategories": ""
+    "manageCategories": "",
+    "namePlaceholder": ""
   },
   "widget": {
     "addWidget": "",
@@ -165,7 +189,9 @@
       "security": "",
       "notifications": "",
       "webhooks": "",
-      "backup": ""
+      "backup": "",
+      "account": "",
+      "users": ""
     },
     "themeSection": "",
     "accentSection": "",
@@ -334,6 +360,8 @@
     "stopAll": "",
     "allStarted": "",
     "allStopped": "",
+    "cleanup": "",
+    "cleanupDone": "",
     "stopConfirm": "",
     "stopMessage": "",
     "actionSuccess": "",
@@ -480,20 +508,6 @@
     "longitude": "",
     "units": ""
   },
-  "calendar": {
-    "loading": "",
-    "notConfigured": "",
-    "configureHint": "",
-    "fetchError": "",
-    "noEvents": "",
-    "today": "",
-    "tomorrow": "",
-    "allDay": "",
-    "icalUrls": "",
-    "icalUrlsHint": "",
-    "addUrl": "",
-    "daysToShow": ""
-  },
   "applink": {
     "loading": "",
     "noLinks": "",
@@ -503,7 +517,14 @@
     "statusPending": "",
     "openLink": "",
     "healthError": "",
-    "groupPlaceholder": ""
+    "groupPlaceholder": "",
+    "columns": "",
+    "sortBy": "",
+    "sortManual": "",
+    "sortNameAsc": "",
+    "sortNameDesc": "",
+    "sortStatusUp": "",
+    "sortStatusDown": ""
   },
   "search": {
     "placeholder": "",
@@ -616,8 +637,8 @@
       "features": {
         "torrents": "",
         "speed": "",
-        "add": "",
-        "control": ""
+        "control": "",
+        "cleanup": ""
       }
     },
     "mediaserver": {
@@ -626,15 +647,103 @@
       "setupSteps": {
         "plex1": "",
         "plex2": "",
+        "plex3": "",
         "jellyfin1": "",
         "jellyfin2": ""
       },
-      "configDesc": "",
       "features": {
         "sessions": "",
         "poster": "",
         "progress": "",
         "user": ""
+      }
+    },
+    "uptimekuma": {
+      "title": "",
+      "prerequisite": "",
+      "features": {
+        "monitors": "",
+        "status": "",
+        "uptime": ""
+      }
+    },
+    "pihole": {
+      "title": "",
+      "prerequisite": "",
+      "features": {
+        "stats": "",
+        "toggle": "",
+        "topDomains": ""
+      }
+    },
+    "arr": {
+      "title": "",
+      "prerequisite": "",
+      "features": {
+        "overview": "",
+        "queue": "",
+        "calendar": "",
+        "status": ""
+      }
+    },
+    "reolink": {
+      "title": "",
+      "prerequisite": "",
+      "features": {
+        "snapshot": "",
+        "live": "",
+        "fullscreen": "",
+        "multiCam": ""
+      }
+    },
+    "weather": {
+      "title": "",
+      "prerequisite": "",
+      "configDesc": "",
+      "features": {
+        "current": "",
+        "forecast": "",
+        "details": ""
+      }
+    },
+    "calendar": {
+      "title": "",
+      "prerequisite": "",
+      "configDesc": "",
+      "features": {
+        "events": "",
+        "ical": "",
+        "multiCal": ""
+      }
+    },
+    "rss": {
+      "title": "",
+      "prerequisite": "",
+      "configDesc": "",
+      "features": {
+        "feeds": "",
+        "multiSource": "",
+        "preview": ""
+      }
+    },
+    "finance": {
+      "title": "",
+      "prerequisite": "",
+      "configDesc": "",
+      "features": {
+        "quotes": "",
+        "chart": "",
+        "portfolio": ""
+      }
+    },
+    "system": {
+      "title": "",
+      "prerequisite": "",
+      "features": {
+        "cpu": "",
+        "memory": "",
+        "disk": "",
+        "network": ""
       }
     },
     "applinks": {
@@ -645,6 +754,35 @@
         "links": "",
         "health": "",
         "icons": ""
+      }
+    },
+    "notifications": {
+      "title": "",
+      "prerequisite": "",
+      "features": {
+        "gotify": "",
+        "rules": "",
+        "events": "",
+        "test": ""
+      }
+    },
+    "webhooks_help": {
+      "title": "",
+      "prerequisite": "",
+      "features": {
+        "incoming": "",
+        "hmac": "",
+        "actions": "",
+        "notify": ""
+      }
+    },
+    "users": {
+      "title": "",
+      "prerequisite": "",
+      "features": {
+        "roles": "",
+        "invite": "",
+        "manage": ""
       }
     }
   },
@@ -657,6 +795,20 @@
     "serviceUnavailable": "",
     "serviceMessage": "",
     "offline": ""
+  },
+  "calendar": {
+    "loading": "",
+    "notConfigured": "",
+    "configureHint": "",
+    "fetchError": "",
+    "noEvents": "",
+    "today": "",
+    "tomorrow": "",
+    "allDay": "",
+    "icalUrls": "",
+    "icalUrlsHint": "",
+    "addUrl": "",
+    "daysToShow": ""
   },
   "rss": {
     "loading": "",
@@ -693,6 +845,7 @@
     "symbols": "",
     "symbolsHint": "",
     "removeSymbol": "",
+    "maxReached": "",
     "marketOpen": "",
     "marketClosed": "",
     "marketPre": "",
@@ -725,7 +878,14 @@
     "copyLink": "",
     "linkCopied": "",
     "generateInvite": "",
-    "pendingInvites": ""
+    "pendingInvites": "",
+    "resetUser": "",
+    "resetConfirmTitle": "",
+    "resetConfirmMessage": "",
+    "resetConfirm": "",
+    "resetCreated": "",
+    "resetReady": "",
+    "copyResetLink": ""
   },
   "register": {
     "title": "",
@@ -741,6 +901,37 @@
     "error": "",
     "hasAccount": "",
     "login": ""
+  },
+  "account": {
+    "title": "",
+    "changeUsername": "",
+    "newUsername": "",
+    "changePassword": "",
+    "currentPassword": "",
+    "newPassword": "",
+    "confirmPassword": "",
+    "passwordMismatch": "",
+    "passwordTooShort": "",
+    "usernameRequired": "",
+    "currentPasswordRequired": "",
+    "noChanges": "",
+    "updated": "",
+    "error": "",
+    "wrongPassword": ""
+  },
+  "resetPassword": {
+    "title": "",
+    "subtitle": "",
+    "newPassword": "",
+    "confirmPassword": "",
+    "submit": "",
+    "submitting": "",
+    "success": "",
+    "goToLogin": "",
+    "passwordMismatch": "",
+    "passwordTooShort": "",
+    "noCode": "",
+    "error": ""
   },
   "notifications": {
     "title": "",
@@ -853,6 +1044,8 @@
     "fetchError": "",
     "noCameras": "",
     "live": "",
+    "liveStream": "",
+    "liveFast": "",
     "snapshot": "",
     "discover": "",
     "discovering": "",
@@ -865,17 +1058,27 @@
     "password": "",
     "channel": "",
     "cameras": "",
-    "columns": ""
+    "columns": "",
+    "fullscreen": ""
   },
   "go2rtc": {
-    "title": "Live Streaming (go2rtc)",
-    "running": "Running",
-    "stopped": "Stopped",
-    "start": "Start",
-    "stop": "Stop",
-    "restart": "Restart",
-    "cameras": "cameras",
-    "hint": "When go2rtc is active, Reolink cameras support live streaming. Otherwise, they use snapshot-only mode.",
-    "actionError": "go2rtc action failed"
+    "title": "",
+    "running": "",
+    "stopped": "",
+    "start": "",
+    "stop": "",
+    "restart": "",
+    "cameras": "",
+    "hint": "",
+    "actionError": ""
+  },
+  "iconPicker": {
+    "search": "",
+    "favorites": "",
+    "noResults": "",
+    "tooMany": ""
+  },
+  "services": {
+    "apiKey": ""
   }
 }
