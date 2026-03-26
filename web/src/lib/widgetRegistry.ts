@@ -1,43 +1,15 @@
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type AnyComponent = any
+type LazyComponent = () => Promise<{ default: AnyComponent }>
+
 import { Container, Monitor, Activity, Shield, Download, Radio, Link, HeartPulse, MonitorPlay, CloudSun, CalendarDays, Rss, Server, ShieldCheck, Film, Camera, TrendingUp, LayoutDashboard } from 'lucide-svelte'
-
-import DockerWidget from './components/docker/DockerWidget.svelte'
-import ProxmoxWidget from './components/proxmox/ProxmoxWidget.svelte'
-import HomeAssistantWidget from './components/homeassistant/HomeAssistantWidget.svelte'
-import AdGuardWidget from './components/adguard/AdGuardWidget.svelte'
-import JDownloaderWidget from './components/jdownloader/JDownloaderWidget.svelte'
-import TransmissionWidget from './components/transmission/TransmissionWidget.svelte'
-import UptimeKumaWidget from './components/uptimekuma/UptimeKumaWidget.svelte'
-import MediaServerWidget from './components/mediaserver/MediaServerWidget.svelte'
-import WeatherWidget from './components/weather/WeatherWidget.svelte'
-import CalendarWidget from './components/calendar/CalendarWidget.svelte'
-import RSSWidget from './components/rss/RSSWidget.svelte'
-import SystemWidget from './components/system/SystemWidget.svelte'
-import AppLinkWidget from './components/applink/AppLinkWidget.svelte'
-import PiholeWidget from './components/pihole/PiholeWidget.svelte'
-import ArrWidget from './components/arr/ArrWidget.svelte'
-import ReolinkWidget from './components/reolink/ReolinkWidget.svelte'
-import FinanceWidget from './components/finance/FinanceWidget.svelte'
-import GrafanaWidget from './components/grafana/GrafanaWidget.svelte'
-
-import DockerConfig from './components/config/DockerConfig.svelte'
-import HomeAssistantConfig from './components/config/HomeAssistantConfig.svelte'
-import MediaServerConfig from './components/config/MediaServerConfig.svelte'
-import WeatherConfig from './components/config/WeatherConfig.svelte'
-import CalendarConfig from './components/config/CalendarConfig.svelte'
-import RSSConfig from './components/config/RSSConfig.svelte'
-import AppLinkConfig from './components/config/AppLinkConfig.svelte'
-import ReolinkConfig from './components/config/ReolinkConfig.svelte'
-import FinanceConfig from './components/config/FinanceConfig.svelte'
-import GrafanaConfig from './components/config/GrafanaConfig.svelte'
 
 export interface WidgetDefinition {
   type: string
   label: string
   icon: AnyComponent
-  component: AnyComponent
-  configComponent?: AnyComponent
+  component: LazyComponent
+  configComponent?: LazyComponent
   /** Backend service type(s) that must be configured (null for standalone widgets like applink) */
   serviceType?: string | string[]
   /** Extra props passed to the widget component beyond `config` */
@@ -56,8 +28,8 @@ register({
   type: 'docker',
   label: 'Docker / Portainer',
   icon: Container,
-  component: DockerWidget,
-  configComponent: DockerConfig,
+  component: () => import('./components/docker/DockerWidget.svelte'),
+  configComponent: () => import('./components/config/DockerConfig.svelte'),
   serviceType: 'portainer',
 })
 
@@ -65,7 +37,7 @@ register({
   type: 'proxmox',
   label: 'Proxmox',
   icon: Monitor,
-  component: ProxmoxWidget,
+  component: () => import('./components/proxmox/ProxmoxWidget.svelte'),
   serviceType: 'proxmox',
 })
 
@@ -73,8 +45,8 @@ register({
   type: 'homeassistant',
   label: 'Home Assistant',
   icon: Activity,
-  component: HomeAssistantWidget,
-  configComponent: HomeAssistantConfig,
+  component: () => import('./components/homeassistant/HomeAssistantWidget.svelte'),
+  configComponent: () => import('./components/config/HomeAssistantConfig.svelte'),
   serviceType: 'homeassistant',
   extraProps: ['widgetId', 'widgetType', 'widgetTitle'],
 })
@@ -83,7 +55,7 @@ register({
   type: 'adguard',
   label: 'AdGuard',
   icon: Shield,
-  component: AdGuardWidget,
+  component: () => import('./components/adguard/AdGuardWidget.svelte'),
   serviceType: 'adguard',
 })
 
@@ -91,7 +63,7 @@ register({
   type: 'jdownloader',
   label: 'JDownloader',
   icon: Download,
-  component: JDownloaderWidget,
+  component: () => import('./components/jdownloader/JDownloaderWidget.svelte'),
   serviceType: 'jdownloader',
 })
 
@@ -99,7 +71,7 @@ register({
   type: 'transmission',
   label: 'Transmission',
   icon: Radio,
-  component: TransmissionWidget,
+  component: () => import('./components/transmission/TransmissionWidget.svelte'),
   serviceType: 'transmission',
 })
 
@@ -107,7 +79,7 @@ register({
   type: 'uptimekuma',
   label: 'Uptime Kuma',
   icon: HeartPulse,
-  component: UptimeKumaWidget,
+  component: () => import('./components/uptimekuma/UptimeKumaWidget.svelte'),
   serviceType: 'uptimekuma',
 })
 
@@ -115,8 +87,8 @@ register({
   type: 'mediaserver',
   label: 'Plex / Jellyfin',
   icon: MonitorPlay,
-  component: MediaServerWidget,
-  configComponent: MediaServerConfig,
+  component: () => import('./components/mediaserver/MediaServerWidget.svelte'),
+  configComponent: () => import('./components/config/MediaServerConfig.svelte'),
   serviceType: ['plex', 'jellyfin'],
 })
 
@@ -124,46 +96,46 @@ register({
   type: 'weather',
   label: 'Météo',
   icon: CloudSun,
-  component: WeatherWidget,
-  configComponent: WeatherConfig,
+  component: () => import('./components/weather/WeatherWidget.svelte'),
+  configComponent: () => import('./components/config/WeatherConfig.svelte'),
 })
 
 register({
   type: 'calendar',
   label: 'Calendrier',
   icon: CalendarDays,
-  component: CalendarWidget,
-  configComponent: CalendarConfig,
+  component: () => import('./components/calendar/CalendarWidget.svelte'),
+  configComponent: () => import('./components/config/CalendarConfig.svelte'),
 })
 
 register({
   type: 'rss',
   label: 'Flux RSS',
   icon: Rss,
-  component: RSSWidget,
-  configComponent: RSSConfig,
+  component: () => import('./components/rss/RSSWidget.svelte'),
+  configComponent: () => import('./components/config/RSSConfig.svelte'),
 })
 
 register({
   type: 'system',
   label: 'Système',
   icon: Server,
-  component: SystemWidget,
+  component: () => import('./components/system/SystemWidget.svelte'),
 })
 
 register({
   type: 'applink',
   label: 'Web Links',
   icon: Link,
-  component: AppLinkWidget,
-  configComponent: AppLinkConfig,
+  component: () => import('./components/applink/AppLinkWidget.svelte'),
+  configComponent: () => import('./components/config/AppLinkConfig.svelte'),
 })
 
 register({
   type: 'pihole',
   label: 'Pi-hole',
   icon: ShieldCheck,
-  component: PiholeWidget,
+  component: () => import('./components/pihole/PiholeWidget.svelte'),
   serviceType: 'pihole',
 })
 
@@ -171,7 +143,7 @@ register({
   type: 'arr',
   label: 'Sonarr / Radarr',
   icon: Film,
-  component: ArrWidget,
+  component: () => import('./components/arr/ArrWidget.svelte'),
   serviceType: ['sonarr', 'radarr', 'lidarr', 'prowlarr'],
 })
 
@@ -179,16 +151,16 @@ register({
   type: 'finance',
   label: 'Finance',
   icon: TrendingUp,
-  component: FinanceWidget,
-  configComponent: FinanceConfig,
+  component: () => import('./components/finance/FinanceWidget.svelte'),
+  configComponent: () => import('./components/config/FinanceConfig.svelte'),
 })
 
 register({
   type: 'reolink',
   label: 'Cameras',
   icon: Camera,
-  component: ReolinkWidget,
-  configComponent: ReolinkConfig,
+  component: () => import('./components/reolink/ReolinkWidget.svelte'),
+  configComponent: () => import('./components/config/ReolinkConfig.svelte'),
   serviceType: 'reolink',
 })
 
@@ -196,8 +168,8 @@ register({
   type: 'grafana',
   label: 'Grafana',
   icon: LayoutDashboard,
-  component: GrafanaWidget,
-  configComponent: GrafanaConfig,
+  component: () => import('./components/grafana/GrafanaWidget.svelte'),
+  configComponent: () => import('./components/config/GrafanaConfig.svelte'),
   serviceType: 'grafana',
 })
 
@@ -211,16 +183,18 @@ export function getAllWidgetTypes(): WidgetDefinition[] {
   return Array.from(registry.values())
 }
 
-export function getWidgetComponent(type: string): AnyComponent | undefined {
-  return registry.get(type)?.component
+export async function loadWidgetComponent(type: string): Promise<AnyComponent | undefined> {
+  const def = registry.get(type)
+  if (!def) return undefined
+  const mod = await def.component()
+  return mod.default
 }
 
-export function getConfigComponent(type: string): AnyComponent | undefined {
-  return registry.get(type)?.configComponent
-}
-
-export function hasConfig(type: string): boolean {
-  return registry.get(type)?.configComponent != null
+export async function loadConfigComponent(type: string): Promise<AnyComponent | undefined> {
+  const def = registry.get(type)
+  if (!def?.configComponent) return undefined
+  const mod = await def.configComponent()
+  return mod.default
 }
 
 /** Map service type → widget type for filtering available widgets */

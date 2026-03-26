@@ -1,0 +1,1 @@
+function m(t,e,s){const n=t.columns??s,o=t.columnsTablet??Math.min(n,2),a=t.columnsMobile??1;return e==="mobile"?a:e==="tablet"?o:n}function l(t,e,s){const n=Math.max(1,Math.min(4,t)),o=Math.max(1,Math.min(n,e)),a=Math.max(1,Math.min(o,s));return{desktop:n,tablet:o,mobile:a}}export{l as c,m as g};

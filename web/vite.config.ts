@@ -8,6 +8,14 @@ export default defineConfig({
   build: {
     outDir: 'static',
     emptyOutDir: true,
+    chunkSizeWarningLimit: 1500,
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'vendor-svelte': ['svelte', 'svelte/internal', 'svelte/store', 'svelte/reactivity'],
+        },
+      },
+    },
   },
   server: {
     proxy: {

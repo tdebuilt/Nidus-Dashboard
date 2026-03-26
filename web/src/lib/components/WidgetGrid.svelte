@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { Plus, Trash2, ChevronDown, ChevronUp, Pencil, Maximize2 } from 'lucide-svelte'
+  import { Plus, Trash2, ChevronDown, ChevronUp, Pencil, Maximize2, Loader2 } from 'lucide-svelte'
   import { api } from '../api/client'
   import { toasts } from '../stores/toast'
   import { confirm } from '../stores/confirm'
@@ -8,7 +8,7 @@
   import { t, translate } from '../i18n'
   import AddWidgetDialog from './AddWidgetDialog.svelte'
   import EditWidgetDialog from './EditWidgetDialog.svelte'
-  import { getWidget, type WidgetDefinition } from '../widgetRegistry'
+  import { getWidget, loadWidgetComponent, type WidgetDefinition } from '../widgetRegistry'
 
   interface Widget {
     id: number
@@ -461,6 +461,25 @@
     return props
   }
 
+  // Lazy-loaded widget components
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let loadedComponents = $state<Record<string, any>>({})
+
+  async function ensureWidgetLoaded(type: string) {
+    if (loadedComponents[type]) return
+    const comp = await loadWidgetComponent(type)
+    if (comp) {
+      loadedComponents = { ...loadedComponents, [type]: comp }
+    }
+  }
+
+  $effect(() => {
+    const types = new Set(widgets.map(w => w.type))
+    for (const type of types) {
+      ensureWidgetLoaded(type)
+    }
+  })
+
   // Ensure grid min-height covers all widgets (needed because align-self:start
   // prevents widgets from stretching, so the grid height may be too small)
   function updateGridMinHeight() {
@@ -601,10 +620,15 @@
             </div>
             <!-- Content -->
             {#if !widget.collapsed}
-              {#if getWidget(widget.type)}
-                {@const widgetDef = getWidget(widget.type)!}
+              {@const widgetDef = getWidget(widget.type)}
+              {@const WidgetComp = loadedComponents[widget.type]}
+              {#if widgetDef && WidgetComp}
                 <div class="mt-2 flex-1 overflow-y-auto rounded-lg bg-[var(--color-bg)] p-2 text-xs text-[var(--color-text-muted)]">
-                  <widgetDef.component {...getWidgetProps(widget, widgetDef)} />
+                  <WidgetComp {...getWidgetProps(widget, widgetDef)} />
+                </div>
+              {:else if widgetDef}
+                <div class="mt-2 flex flex-1 items-center justify-center rounded-lg bg-[var(--color-bg)] p-2">
+                  <Loader2 size={16} class="animate-spin text-[var(--color-text-muted)]" />
                 </div>
               {:else}
                 <div class="mt-2 flex-1 overflow-y-auto rounded-lg bg-[var(--color-bg)] p-2 text-xs text-[var(--color-text-muted)]">
