@@ -1,10 +1,10 @@
 ---
 name: next-task
-description: "Implement a task for Nidus Dashboard. Three modes: (1) no args → picks next pending task from roadmap, (2) task reference (e.g. '4.7', 'widget RSS') → finds and implements that roadmap task, (3) free-form description (e.g. 'ajouter un bouton de reset') → implements it as a custom task. Use when user says 'tâche suivante', 'next task', or describes something to implement."
+description: "Implement a task for Nidus Dashboard. Three modes: (1) no args → picks next pending task from roadmap, (2) task reference (e.g. 'plugin system') → finds and implements that roadmap task, (3) free-form description (e.g. 'add a reset button') → implements it as a custom task. Use when user says 'tâche suivante', 'next task', or describes something to implement."
 user-invocable: true
 disable-model-invocation: false
 effort: high
-argument-hint: "[optional: task number (4.7), keyword (widget RSS), or free-form description]"
+argument-hint: "[optional: task keyword (plugin system), or free-form description]"
 ---
 
 # Next Task Workflow
@@ -14,20 +14,20 @@ You are implementing a task for the Nidus Dashboard project. Follow this workflo
 ## Step 0 — Find the task
 
 ### Mode A — No arguments
-1. Read `todo/OPEN_SOURCE_TASKS.md` first (Phase 1 has priority)
-2. If all Phase 1 tasks are done, read `todo/ROADMAP_TASKS.md` and find the first `[ ]` (pending) task
+1. Read `ROADMAP.md` and find the first uncompleted item in the "Planned" section
+2. If all planned tasks are done, inform the user
 
 ### Mode B — Roadmap reference (`$ARGUMENTS` matches a task)
-1. Read `todo/ROADMAP_TASKS.md` (and `todo/OPEN_SOURCE_TASKS.md` if needed)
-2. Find the task matching the argument: phase number (e.g. `4.7`), section name, or keyword (e.g. `widget RSS`)
+1. Read `ROADMAP.md`
+2. Find the task matching the argument: section name or keyword (e.g. `plugin system`)
 3. If found, implement that task
 
 ### Mode C — Custom task (`$ARGUMENTS` doesn't match any roadmap task)
 1. Treat `$ARGUMENTS` as a free-form task description
-2. This is a custom task — it won't have a checkbox in the roadmap files
+2. This is a custom task — it won't have an entry in the roadmap
 3. Skip Step 5 (no roadmap status to update) but still follow all other steps
 
-**If the task requires external input** (screenshots, manual testing, external API keys, translations by native speakers), mark it as `[⏳ blocked]` with a reason, skip it, and move to the next `[ ]` task. (Only applies to Modes A and B.)
+**If the task requires external input** (screenshots, manual testing, external API keys, translations by native speakers), mark it as blocked with a reason, skip it, and move to the next task. (Only applies to Modes A and B.)
 
 Announce to the user which task you're working on.
 
@@ -48,55 +48,53 @@ Create a concrete list of sub-tasks. For each sub-task, specify:
 - What exactly to change
 - Any new dependencies needed
 
-Share the plan with the user via Telegram (chat_id from the most recent Telegram message) or as text output. **Do NOT wait for confirmation** — proceed immediately unless the task is architecturally significant (new service, DB schema change, breaking change).
+Share the plan with the user. **Do NOT wait for confirmation** — proceed immediately unless the task is architecturally significant (new service, DB schema change, breaking change).
 
 ## Step 3 — Implement
 
 Execute each sub-task:
 - Follow existing code conventions (check nearby files for patterns)
-- Backend Go: packages in `internal/`, English code, French UI strings
+- Backend Go: packages in `internal/`, English code
 - Frontend Svelte: components in `web/src/lib/components/`, use the widget registry for new widgets
-- i18n: update both `fr.json` and `en.json` (and all other locale files)
+- i18n: update all locale files under `web/src/lib/i18n/`
 - Keep changes minimal and focused — don't refactor unrelated code
 
 ## Step 4 — Test
 
-- Run frontend tests: `cd /home/claude-user/Nidus-Dashboard/web && npx vitest run`
+- Run frontend lint: `cd web && npm run lint`
+- Run frontend tests: `cd web && npm test -- --run`
+- Run Go lint: `make lint-go`
 - If tests fail, fix the issue and re-run
 - If you created new components, write tests for them
-- Backend Go tests can only run via Docker (not available locally) — ensure the code compiles by checking syntax
 
 ## Step 5 — Update task status (Modes A & B only)
 
-1. In the task file (`todo/OPEN_SOURCE_TASKS.md` or `todo/ROADMAP_TASKS.md`), change `[ ]` to `[x]` for the completed task
-2. Update the summary table counts (Finish +1, Pending -1)
-3. If a task was blocked, change `[ ]` to `[⏳ blocked: reason]`
+1. In `ROADMAP.md`, move the completed item from "Planned" to "Completed" with `[x]`
+2. If a task was blocked, note the reason
 
 **Skip this step for Mode C (custom tasks).**
 
-## Step 6 — Commit & push
+## Step 6 — Build & commit
 
+- Rebuild the app: `docker compose up --build -d`
 - Stage only relevant files (no `git add -A`)
 - Write a descriptive commit message in English
 - Push to origin
-- **Do NOT create a release** unless explicitly asked
 
 ## Step 7 — Report
 
-Send a summary of what was done:
+Output a summary of what was done:
 - Which task was completed
 - Files created/modified
 - Test results
 - Any issues encountered
 - What the next pending task is (for Modes A & B)
 
-If Telegram is available, send the report there. Otherwise output as text.
-
 ## Important rules
 
 - **One task per invocation** — complete one task fully, then stop
 - **Never skip tests** — always run the test suite
 - **Never break existing functionality** — if tests fail after your changes, fix them
-- **Follow CLAUDE.md conventions** — no "Claude" in commits, no co-author, English code, French UI
+- **Follow CLAUDE.md conventions** — English code, all documentation in English
 - **Use the widget registry** when adding new widgets — don't hardcode
-- **Commit message style**: lowercase prefix (`feat:`, `fix:`, `docs:`, `refactor:`, `test:`)
+- **Commit message style**: lowercase prefix (`feat:`, `fix:`, `docs:`, `refactor:`, `test:`, `ci:`)
