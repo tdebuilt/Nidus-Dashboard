@@ -1,71 +1,81 @@
-# Nidus — Instructions pour Claude
+# Nidus — Instructions
 
-## Projet
+## Project
 
-Nidus est un dashboard self-hosted pour gérer Docker (via Portainer), Proxmox, et des services (HA, AdGuard, JDownloader, Transmission). Stack : Go (Chi) + Svelte + SQLite.
+Nidus is a self-hosted dashboard for managing Docker (via Portainer), Proxmox, and services (HA, AdGuard, Uptime Kuma, Plex/Jellyfin, etc.). Stack: Go (Chi) + Svelte 5 + SQLite.
 
-## Fichiers clés
+## Key Files
 
-- `SPEC.md` — Spécification complète du projet
+- `SPEC.md` — Full project specification
 - `ROADMAP.md` — Roadmap (planned, ideas, completed)
-- `CHANGELOG.md` — Changelog par version
-- `planning/TESTING.md` — Checklist de tests manuels
-- `README.md` — Description du projet
+- `CHANGELOG.md` — Changelog by version
+- `planning/TESTING.md` — Manual testing checklist
+- `README.md` — Project description
 
-## Avancement
+## Progress
 
-Suivi dans `ROADMAP.md`. Utiliser `/next-task` pour implémenter la prochaine tâche pending.
+Tracked in `ROADMAP.md`. Use `/next-task` to implement the next pending task.
 
 ## Conventions
 
-- **Langue du code** : anglais (noms de variables, fonctions, commentaires)
-- **Langue de l'UI** : français par défaut, anglais supporté (i18n)
-- **Backend Go** : packages dans `internal/`, point d'entrée dans `cmd/nidus/`
-- **Frontend Svelte** : dans `web/`, build vers `web/static/` (embedded dans le binaire Go)
-- **Base de données** : SQLite dans `./data/nidus.db`
-- **Credentials** : chiffrés AES-256-GCM en base, jamais en clair
+- **Code language**: English (variable names, functions, comments)
+- **UI language**: French by default, 11 languages supported (i18n)
+- **Backend Go**: packages in `internal/`, entry point in `cmd/nidus/`
+- **Frontend Svelte**: in `web/`, builds to `web/static/` (embedded in Go binary)
+- **Database**: SQLite in `./data/nidus.db`
+- **Credentials**: AES-256-GCM encrypted in DB, never in plaintext
 
-## Structure cible
+## Project Structure
 
 ```
 cmd/nidus/main.go
 internal/
-  config/       # Chargement config.yaml + env vars
-  database/     # Connexion SQLite, migrations, queries
+  config/       # config.yaml + env vars
+  database/     # SQLite connection, migrations, queries
   crypto/       # AES-256-GCM encrypt/decrypt
-  middleware/   # Auth JWT, rate limiting, CORS
+  middleware/   # JWT auth, rate limiting, CORS
   handlers/     # HTTP handlers (auth, categories, widgets, services, settings)
-  models/       # Structs Go (User, Category, Widget, Service, etc.)
-  services/     # Clients API externes (portainer, proxmox, homeassistant, adguard, jdownloader, transmission)
+  models/       # Go structs (User, Category, Widget, Service, etc.)
+  services/     # External API clients (portainer, proxmox, homeassistant, etc.)
+  websocket/    # WebSocket hub for real-time broadcasts
 web/
-  src/          # Code source Svelte
+  src/          # Svelte source code
   static/       # Build output (embedded)
-data/           # Volume Docker (nidus.db, config.yaml)
+  e2e/          # Playwright E2E tests
+data/           # Docker volume (nidus.db, config.yaml)
+.githooks/      # Pre-commit hooks (lint)
 ```
 
 ## Build
 
-- **Go et les outils backend ne sont pas installés localement** — tout passe par Docker
-- **Build complet** : `docker compose up --build -d` (méthode principale)
-- **Frontend seul** : `cd web && npm run build` (Node/npm sont disponibles localement)
+- **Go and backend tools are NOT installed locally** — everything goes through Docker
+- **Full build**: `docker compose up --build -d` (primary method)
+- **Frontend only**: `cd web && npm run build` (Node/npm available locally)
 
 ## Tests
 
-- **Backend Go** : `docker compose exec nidus go test ./...` (via Docker)
-- **Frontend Svelte** : `vitest` après chaque composant
-- **Lint** : `go vet ./...` (via Docker) + `eslint` (local)
-- Les fichiers de test Go suivent la convention `*_test.go` dans le même package
-- Les tests Svelte sont dans `web/src/**/*.test.ts`
+- **Go lint**: `make lint-go` (golangci-lint via Docker)
+- **Frontend lint**: `cd web && npm run lint` (eslint, local)
+- **Frontend tests**: `cd web && npm test -- --run` (vitest)
+- **E2E tests**: `make test-e2e` (Playwright, requires app running)
+- **Pre-commit hook**: runs Go lint + frontend lint automatically (`make setup` to enable)
+- Go test files follow `*_test.go` convention in the same package
+- Svelte tests are in `web/src/**/*.test.ts`
+- E2E tests are in `web/e2e/**/*.spec.ts`
 
 ## Git
 
-- **Ne jamais mentionner "Claude"** dans les messages de commit, noms de branches, ou métadonnées git
-- **Ne jamais s'ajouter comme co-author** (pas de `Co-authored-by`)
-- Les commits doivent avoir l'air écrits par un développeur humain
+- **Never mention "Claude"** in commit messages, branch names, or git metadata
+- **Never add as co-author** (no `Co-authored-by`)
+- Commits must look like they were written by a human developer
+- All commits must be authored by `tdelix <24230775+tdelix@users.noreply.github.com>`
 
-## Commandes
+## Commands
 
-- `docker compose up --build -d` — **Build et lance l'app via Docker** (méthode principale)
-- `make dev` — Lance le backend Go + frontend Svelte en dev (hors Docker)
-- `make build` — Build production (Svelte → embed → Go binary, via Docker)
-- `docker compose up` — Lance via Docker
+- `docker compose up --build -d` — **Build and run the app via Docker** (primary method)
+- `make lint-go` — Run golangci-lint via Docker
+- `make lint` — Run Go lint + frontend lint
+- `make test-e2e` — Run Playwright E2E tests
+- `make setup` — Configure git hooks (run after cloning)
+- `make dev` — Run Go backend + Svelte dev server (local, requires Go)
+- `make build` — Production build (Svelte → embed → Go binary)
