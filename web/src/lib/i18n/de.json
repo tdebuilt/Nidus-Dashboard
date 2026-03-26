@@ -275,6 +275,7 @@
     "noServices": "Keine Dienste konfiguriert",
     "addService": "Dienst hinzufügen",
     "chooseService": "Dienst auswählen",
+    "availableServices": "Verfügbare Dienste",
     "alreadyConfigured": "Bereits konfiguriert",
     "deleteService": "Dienst löschen",
     "deleteServiceConfirm": "Konfiguration für {name} löschen?",
@@ -751,6 +752,24 @@
         "quotes": "Echtzeitkurse von Aktien und Indizes",
         "chart": "Leistungsdiagramm",
         "portfolio": "Mehrere Symbole gleichzeitig verfolgen"
+      }
+    },
+    "grafana": {
+      "title": "Grafana",
+      "prerequisite": "Grafana in den Einstellungen konfigurieren (URL + Service-Account-Token).",
+      "configDesc": "Dashboards und Panels auswählen, die im Widget eingebettet werden sollen.",
+      "setupSteps": {
+        "step1": "In Grafana unter Administration → Service Accounts gehen",
+        "step2": "Einen neuen Service Account mit der Rolle Viewer erstellen",
+        "step3": "Einen Token für diesen Service Account generieren",
+        "step4": "Den Token in Nidus → Einstellungen → Grafana einfügen",
+        "step5": "Anonymen Zugriff aktivieren oder öffentliche Dashboards für eingebettete Panels erstellen"
+      },
+      "features": {
+        "embed": "Beliebiges Grafana-Panel per iframe einbetten",
+        "browse": "Dashboards und Panels im Konfigurationsformular durchsuchen",
+        "multiPanel": "Mehrere Panels pro Widget in einem responsiven Raster",
+        "theme": "Dunkles oder helles Theme für eingebettete Panels"
       }
     },
     "system": {

@@ -4,7 +4,7 @@
     Container, Server, Home, Shield, Download, Link,
     HeartPulse, MonitorPlay, CloudSun, CalendarDays, Rss,
     ShieldCheck, Film, Camera, TrendingUp, Activity,
-    Bell, Webhook, Users
+    LayoutDashboard, Bell, Webhook, Users
   } from 'lucide-svelte'
   import { t } from '../lib/i18n'
   import { navigate } from '../lib/stores/router'
@@ -81,6 +81,13 @@
       key: 'reolink',
       icon: Camera,
       featureKeys: ['snapshot', 'live', 'fullscreen', 'multiCam']
+    },
+    {
+      key: 'grafana',
+      icon: LayoutDashboard,
+      hasConfig: true,
+      setupStepKeys: ['step1', 'step2', 'step3', 'step4', 'step5'],
+      featureKeys: ['embed', 'browse', 'multiPanel', 'theme']
     },
     {
       key: 'weather',

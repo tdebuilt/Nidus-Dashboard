@@ -275,6 +275,7 @@
     "noServices": "Nessun servizio configurato",
     "addService": "Aggiungi un servizio",
     "chooseService": "Scegli un servizio",
+    "availableServices": "Servizi disponibili",
     "alreadyConfigured": "Già configurato",
     "deleteService": "Elimina servizio",
     "deleteServiceConfirm": "Eliminare la configurazione di {name}?",
@@ -751,6 +752,24 @@
         "quotes": "Quotazioni in tempo reale di azioni e indici",
         "chart": "Grafico delle prestazioni",
         "portfolio": "Monitoraggio di più simboli contemporaneamente"
+      }
+    },
+    "grafana": {
+      "title": "Grafana",
+      "prerequisite": "Configura Grafana nelle Impostazioni (URL + token dell'account di servizio).",
+      "configDesc": "Seleziona dashboard e pannelli da incorporare nel widget.",
+      "setupSteps": {
+        "step1": "In Grafana, andare in Amministrazione → Account di servizio",
+        "step2": "Creare un nuovo account di servizio con il ruolo Viewer",
+        "step3": "Generare un token per questo account di servizio",
+        "step4": "Incollare il token in Nidus → Impostazioni → Grafana",
+        "step5": "Abilitare l'accesso anonimo o creare dashboard pubbliche per i pannelli incorporati"
+      },
+      "features": {
+        "embed": "Incorporare qualsiasi pannello Grafana tramite iframe",
+        "browse": "Sfogliare dashboard e pannelli dal modulo di configurazione",
+        "multiPanel": "Più pannelli per widget in una griglia reattiva",
+        "theme": "Tema scuro o chiaro per i pannelli incorporati"
       }
     },
     "system": {

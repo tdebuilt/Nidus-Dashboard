@@ -275,6 +275,7 @@
     "noServices": "サービスが設定されていません",
     "addService": "サービスを追加",
     "chooseService": "サービスを選択",
+    "availableServices": "利用可能なサービス",
     "alreadyConfigured": "設定済み",
     "deleteService": "サービスを削除",
     "deleteServiceConfirm": "{name} の設定を削除しますか？",
@@ -751,6 +752,24 @@
         "quotes": "株式・指数のリアルタイム相場",
         "chart": "パフォーマンスチャート",
         "portfolio": "複数の銘柄を同時に追跡"
+      }
+    },
+    "grafana": {
+      "title": "Grafana",
+      "prerequisite": "設定で Grafana を構成してください（URL + サービスアカウントトークン）。",
+      "configDesc": "ウィジェットに埋め込むダッシュボードとパネルを選択します。",
+      "setupSteps": {
+        "step1": "Grafana で管理 → サービスアカウントに移動",
+        "step2": "Viewer ロールの新しいサービスアカウントを作成",
+        "step3": "このサービスアカウントのトークンを生成",
+        "step4": "Nidus → 設定 → Grafana にトークンを貼り付け",
+        "step5": "匿名アクセスを有効にするか、埋め込みパネル用の公開ダッシュボードを作成"
+      },
+      "features": {
+        "embed": "iframe で任意の Grafana パネルを埋め込み",
+        "browse": "設定フォームからダッシュボードとパネルを閲覧",
+        "multiPanel": "レスポンシブグリッドでウィジェットごとに複数パネル",
+        "theme": "埋め込みパネルのダーク・ライトテーマ"
       }
     },
     "system": {

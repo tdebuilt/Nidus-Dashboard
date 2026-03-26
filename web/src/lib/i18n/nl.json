@@ -275,6 +275,7 @@
     "noServices": "Geen services geconfigureerd",
     "addService": "Service toevoegen",
     "chooseService": "Kies een service",
+    "availableServices": "Beschikbare services",
     "alreadyConfigured": "Reeds geconfigureerd",
     "deleteService": "Service verwijderen",
     "deleteServiceConfirm": "Configuratie van {name} verwijderen?",
@@ -751,6 +752,24 @@
         "quotes": "Realtime koersen van aandelen en indices",
         "chart": "Prestatiediagram",
         "portfolio": "Meerdere symbolen tegelijk volgen"
+      }
+    },
+    "grafana": {
+      "title": "Grafana",
+      "prerequisite": "Configureer Grafana in Instellingen (URL + Service Account Token).",
+      "configDesc": "Selecteer dashboards en panelen om in de widget in te sluiten.",
+      "setupSteps": {
+        "step1": "Ga in Grafana naar Administratie → Serviceaccounts",
+        "step2": "Maak een nieuw serviceaccount aan met de rol Viewer",
+        "step3": "Genereer een token voor dit serviceaccount",
+        "step4": "Plak het token in Nidus → Instellingen → Grafana",
+        "step5": "Schakel anonieme toegang in of maak publieke dashboards voor ingesloten panelen"
+      },
+      "features": {
+        "embed": "Elk Grafana-paneel insluiten via iframe",
+        "browse": "Dashboards en panelen doorzoeken vanuit het configuratieformulier",
+        "multiPanel": "Meerdere panelen per widget in een responsief raster",
+        "theme": "Donker of licht thema voor ingesloten panelen"
       }
     },
     "system": {

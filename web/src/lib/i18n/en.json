@@ -275,6 +275,7 @@
     "noServices": "No services configured",
     "addService": "Add a service",
     "chooseService": "Choose a service",
+    "availableServices": "Available services",
     "alreadyConfigured": "Already configured",
     "deleteService": "Delete service",
     "deleteServiceConfirm": "Delete the configuration for {name}?",
@@ -751,6 +752,24 @@
         "quotes": "Real-time stock and index prices",
         "chart": "Performance chart",
         "portfolio": "Track multiple symbols simultaneously"
+      }
+    },
+    "grafana": {
+      "title": "Grafana",
+      "prerequisite": "Configure Grafana in Settings (URL + Service Account Token).",
+      "configDesc": "Select dashboards and panels to embed in the widget.",
+      "setupSteps": {
+        "step1": "In Grafana, go to Administration → Service Accounts",
+        "step2": "Create a new Service Account with Viewer role",
+        "step3": "Generate a token for this Service Account",
+        "step4": "Paste the token in Nidus → Settings → Grafana",
+        "step5": "Enable anonymous access or create public dashboards for embedded panels"
+      },
+      "features": {
+        "embed": "Embed any Grafana panel via iframe",
+        "browse": "Browse dashboards and panels from the config form",
+        "multiPanel": "Multiple panels per widget in a responsive grid",
+        "theme": "Dark or light theme for embedded panels"
       }
     },
     "system": {

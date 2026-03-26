@@ -275,6 +275,7 @@
     "noServices": "未配置任何服务",
     "addService": "添加服务",
     "chooseService": "选择服务",
+    "availableServices": "可用服务",
     "alreadyConfigured": "已配置",
     "deleteService": "删除服务",
     "deleteServiceConfirm": "确定要删除 {name} 的配置吗？",
@@ -751,6 +752,24 @@
         "quotes": "实时股票和指数报价",
         "chart": "走势图表",
         "portfolio": "同时跟踪多个代码"
+      }
+    },
+    "grafana": {
+      "title": "Grafana",
+      "prerequisite": "在设置中配置 Grafana（URL + 服务账户令牌）。",
+      "configDesc": "选择要嵌入小组件的仪表盘和面板。",
+      "setupSteps": {
+        "step1": "在 Grafana 中，前往管理 → 服务账户",
+        "step2": "创建一个具有 Viewer 角色的新服务账户",
+        "step3": "为该服务账户生成令牌",
+        "step4": "将令牌粘贴到 Nidus → 设置 → Grafana",
+        "step5": "启用匿名访问或为嵌入面板创建公共仪表盘"
+      },
+      "features": {
+        "embed": "通过 iframe 嵌入任意 Grafana 面板",
+        "browse": "从配置表单中浏览仪表盘和面板",
+        "multiPanel": "每个小组件支持多个面板，响应式网格布局",
+        "theme": "嵌入面板支持深色或浅色主题"
       }
     },
     "system": {
