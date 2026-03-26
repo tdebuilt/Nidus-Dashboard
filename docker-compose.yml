@@ -1,0 +1,12 @@
+services:
+  nidus:
+    build: .
+    container_name: nidus
+    ports:
+      - "3777:3777"
+      - "1984:1984"
+    volumes:
+      - ./data:/data
+    environment:
+      - NIDUS_DB_PATH=/data/nidus.db
+    restart: unless-stopped

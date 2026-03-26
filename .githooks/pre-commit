@@ -1,0 +1,10 @@
+#!/bin/bash
+set -e
+
+echo "=== Pre-commit: Go lint ==="
+make lint-go
+
+echo "=== Pre-commit: Frontend lint ==="
+cd web && npm run lint
+
+echo "=== Pre-commit: All checks passed ==="

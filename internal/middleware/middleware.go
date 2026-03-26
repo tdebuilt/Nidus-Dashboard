@@ -1,0 +1,145 @@
+package middleware
+
+import (
+	"context"
+	"encoding/hex"
+	"net/http"
+	"strings"
+
+	"github.com/golang-jwt/jwt/v5"
+
+	"github.com/tdebuilt/nidus/internal/database"
+)
+
+type contextKey string
+
+const UserIDKey contextKey = "user_id"
+const UserRoleKey contextKey = "user_role"
+
+// Auth returns a middleware that validates JWT tokens from cookies or Bearer header.
+// On success, it injects the user_id into the request context.
+func Auth(db *database.DB) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			tokenString := extractToken(r)
+			if tokenString == "" {
+				http.Error(w, `{"error":"authentication required"}`, http.StatusUnauthorized)
+				return
+			}
+
+			jwtSecretHex, err := db.GetSystemSetting("jwt_secret")
+			if err != nil || jwtSecretHex == "" {
+				http.Error(w, `{"error":"JWT secret not configured"}`, http.StatusInternalServerError)
+				return
+			}
+
+			jwtSecret, err := hex.DecodeString(jwtSecretHex)
+			if err != nil {
+				http.Error(w, `{"error":"invalid JWT secret"}`, http.StatusInternalServerError)
+				return
+			}
+
+			token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
+				if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+					return nil, jwt.ErrSignatureInvalid
+				}
+				return jwtSecret, nil
+			})
+			if err != nil || !token.Valid {
+				http.Error(w, `{"error":"invalid or expired token"}`, http.StatusUnauthorized)
+				return
+			}
+
+			claims, ok := token.Claims.(jwt.MapClaims)
+			if !ok {
+				http.Error(w, `{"error":"invalid token claims"}`, http.StatusUnauthorized)
+				return
+			}
+
+			userIDFloat, ok := claims["sub"].(float64)
+			if !ok {
+				http.Error(w, `{"error":"invalid token claims"}`, http.StatusUnauthorized)
+				return
+			}
+
+			userID := int64(userIDFloat)
+
+			// Verify user still exists
+			user, err := db.GetUserByID(userID)
+			if err != nil || user == nil {
+				http.Error(w, `{"error":"user not found"}`, http.StatusUnauthorized)
+				return
+			}
+
+			// Validate token version (invalidated on password/role change)
+			if tvClaim, ok := claims["tv"].(float64); ok {
+				if int64(tvClaim) != user.TokenVersion {
+					http.Error(w, `{"error":"token revoked"}`, http.StatusUnauthorized)
+					return
+				}
+			}
+
+			ctx := context.WithValue(r.Context(), UserIDKey, userID)
+			ctx = context.WithValue(ctx, UserRoleKey, user.Role)
+			next.ServeHTTP(w, r.WithContext(ctx))
+		})
+	}
+}
+
+// extractToken gets the JWT token from cookie or Authorization Bearer header.
+func extractToken(r *http.Request) string {
+	// Try cookie first
+	if cookie, err := r.Cookie("nidus_token"); err == nil {
+		return cookie.Value
+	}
+
+	// Try Authorization header
+	authHeader := r.Header.Get("Authorization")
+	if strings.HasPrefix(authHeader, "Bearer ") {
+		return strings.TrimPrefix(authHeader, "Bearer ")
+	}
+
+	return ""
+}
+
+// GetUserID extracts the user ID from the request context.
+func GetUserID(ctx context.Context) (int64, bool) {
+	userID, ok := ctx.Value(UserIDKey).(int64)
+	return userID, ok
+}
+
+// GetUserRole extracts the user role from the request context.
+func GetUserRole(ctx context.Context) string {
+	role, _ := ctx.Value(UserRoleKey).(string)
+	return role
+}
+
+// roleLevel returns the permission level for a role (higher = more permissions).
+func roleLevel(role string) int {
+	switch role {
+	case "admin":
+		return 3
+	case "editor":
+		return 2
+	case "viewer":
+		return 1
+	default:
+		return 0
+	}
+}
+
+// RequireRole returns a middleware that only allows users with the given role or higher.
+// Role hierarchy: admin > editor > viewer.
+func RequireRole(minRole string) func(http.Handler) http.Handler {
+	minLevel := roleLevel(minRole)
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			role := GetUserRole(r.Context())
+			if roleLevel(role) < minLevel {
+				http.Error(w, `{"error":"insufficient permissions"}`, http.StatusForbidden)
+				return
+			}
+			next.ServeHTTP(w, r)
+		})
+	}
+}

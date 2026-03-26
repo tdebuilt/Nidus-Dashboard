@@ -1,0 +1,7 @@
+data/
+web/node_modules/
+web/static/
+.git/
+.env
+nidus
+*.md

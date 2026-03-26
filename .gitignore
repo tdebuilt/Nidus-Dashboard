@@ -1,0 +1,42 @@
+# Binary
+/nidus
+/cmd/nidus/nidus
+
+# Data volume
+data/
+*.db
+
+# Environment
+.env
+.env.*
+
+# Go
+*.exe
+*.dll
+*.so
+*.dylib
+
+# Node / Svelte
+web/node_modules/
+web/.svelte-kit/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Tauri desktop
+desktop/src-tauri/target/
+desktop/src-tauri/binaries/nidus-*
+
+# Playwright
+web/e2e/.auth/
+web/test-results/
+web/playwright-report/
+
+# OS
+.DS_Store
+Thumbs.db
+node_modules/

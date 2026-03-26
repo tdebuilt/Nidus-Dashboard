@@ -1,0 +1,21 @@
+# Exclude files not needed in release archives (git archive / GitHub tarball)
+
+# Documentation & project management
+CLAUDE.md       export-ignore
+PLAN.md         export-ignore
+SPEC.md         export-ignore
+README.md       export-ignore
+
+# CI/CD & tooling config
+.gitignore      export-ignore
+.gitattributes  export-ignore
+.github/        export-ignore
+.editorconfig   export-ignore
+
+# Test files
+*_test.go       export-ignore
+
+# Development configs
+.env.example    export-ignore
+.vscode/        export-ignore
+.idea/          export-ignore

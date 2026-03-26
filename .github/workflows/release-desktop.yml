@@ -1,0 +1,188 @@
+name: Release Desktop
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Release tag (e.g. v0.5.1)'
+        required: true
+
+permissions:
+  contents: write
+  packages: write
+
+env:
+  REGISTRY_IMAGE: ghcr.io/${{ github.repository_owner }}/nidus-dashboard
+  GO2RTC_VERSION: '1.9.9'
+
+jobs:
+  build-frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ inputs.tag }}
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          cache: 'npm'
+          cache-dependency-path: 'web/package-lock.json'
+
+      - name: Build frontend
+        run: cd web && npm ci && npm run build
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: web-static
+          path: web/static/
+
+  build-go:
+    needs: build-frontend
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - goos: linux
+            goarch: amd64
+            triple: x86_64-unknown-linux-gnu
+            go2rtc_asset: go2rtc_linux_amd64
+          - goos: darwin
+            goarch: amd64
+            triple: x86_64-apple-darwin
+            go2rtc_asset: go2rtc_mac_amd64.zip
+          - goos: darwin
+            goarch: arm64
+            triple: aarch64-apple-darwin
+            go2rtc_asset: go2rtc_mac_arm64.zip
+          - goos: windows
+            goarch: amd64
+            triple: x86_64-pc-windows-msvc
+            ext: .exe
+            go2rtc_asset: go2rtc_win64.zip
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ inputs.tag }}
+
+      - uses: actions/setup-go@v6
+        with:
+          go-version: '1.24'
+
+      - name: Download frontend build
+        uses: actions/download-artifact@v7
+        with:
+          name: web-static
+          path: web/static/
+
+      - name: Build Go binary
+        env:
+          APP_VERSION: ${{ inputs.tag }}
+        run: |
+          CGO_ENABLED=0 GOOS=${{ matrix.goos }} GOARCH=${{ matrix.goarch }} \
+            go build -ldflags="-s -w -X main.Version=${APP_VERSION}" -o nidus-${{ matrix.triple }}${{ matrix.ext }} ./cmd/nidus/
+
+      - name: Download go2rtc binary
+        run: |
+          mkdir -p dist
+          GO2RTC_URL="https://github.com/AlexxIT/go2rtc/releases/download/v${{ env.GO2RTC_VERSION }}/${{ matrix.go2rtc_asset }}"
+          if [[ "${{ matrix.go2rtc_asset }}" == *.zip ]]; then
+            wget -q -O go2rtc.zip "$GO2RTC_URL"
+            unzip -o go2rtc.zip -d dist/
+          else
+            wget -q -O dist/go2rtc "$GO2RTC_URL"
+            chmod +x dist/go2rtc
+          fi
+
+      - name: Bundle release archive
+        run: |
+          mkdir -p bundle
+          cp nidus-${{ matrix.triple }}${{ matrix.ext }} bundle/
+          cp dist/go2rtc* bundle/
+          if [[ "${{ matrix.goos }}" == "windows" ]]; then
+            cd bundle && zip ../nidus-${{ matrix.triple }}.zip * && cd ..
+          else
+            tar -czf nidus-${{ matrix.triple }}.tar.gz -C bundle .
+          fi
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: nidus-${{ matrix.triple }}
+          path: |
+            nidus-${{ matrix.triple }}${{ matrix.ext }}
+            nidus-${{ matrix.triple }}.tar.gz
+            nidus-${{ matrix.triple }}.zip
+          if-no-files-found: ignore
+
+  build-tauri:
+    needs: build-go
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: ubuntu-22.04
+            triple: x86_64-unknown-linux-gnu
+          - platform: macos-latest
+            triple: aarch64-apple-darwin
+          - platform: windows-latest
+            triple: x86_64-pc-windows-msvc
+    runs-on: ${{ matrix.platform }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ inputs.tag }}
+
+      - name: Download Go sidecar binary
+        uses: actions/download-artifact@v7
+        with:
+          name: nidus-${{ matrix.triple }}
+          path: desktop/src-tauri/binaries/
+
+      - name: Make sidecar executable
+        if: runner.os != 'Windows'
+        run: chmod +x desktop/src-tauri/binaries/nidus-${{ matrix.triple }}
+
+      - name: Install system dependencies (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: desktop/src-tauri
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+
+      - name: Build Tauri app
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ inputs.tag }}
+        with:
+          projectPath: desktop
+          tagName: ${{ inputs.tag }}
+          releaseName: 'Nidus ${{ inputs.tag }}'
+          releaseBody: 'Download the installer for your platform below, or use Docker: `docker pull ${{ env.REGISTRY_IMAGE }}:${{ inputs.tag }}`'
+          releaseDraft: false
+          prerelease: false
+
+  release-binaries:
+    needs: [build-go, build-tauri]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download all Go artifacts
+        uses: actions/download-artifact@v7
+        with:
+          path: artifacts/
+          pattern: nidus-*
+
+      - name: Attach binaries to release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: artifacts/**/*
+          tag_name: ${{ inputs.tag }}

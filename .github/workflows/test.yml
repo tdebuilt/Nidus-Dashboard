@@ -1,0 +1,116 @@
+name: Test
+
+on:
+  push:
+    branches: ['**']
+    tags-ignore: ['**']
+  pull_request:
+    branches: [main]
+  workflow_call:
+
+concurrency:
+  group: test-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  test-backend:
+    runs-on: self-hosted
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-go@v6
+        with:
+          go-version: '1.24'
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          cache: 'npm'
+          cache-dependency-path: 'web/package-lock.json'
+      - name: Go lint
+        uses: golangci/golangci-lint-action@v7
+        with:
+          version: latest
+      - run: go test ./...
+      - name: Build frontend
+        run: cd web && npm ci && npm run build
+      - name: Build binary
+        run: CGO_ENABLED=0 go build -o nidus ./cmd/nidus/
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v7
+        with:
+          name: nidus-build
+          path: |
+            nidus
+            web/static/
+          retention-days: 1
+
+  test-frontend:
+    runs-on: self-hosted
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          cache: 'npm'
+          cache-dependency-path: 'web/package-lock.json'
+      - run: cd web && npm ci
+      - run: cd web && npm run lint
+      - name: Svelte check
+        run: cd web && npx svelte-check --tsconfig ./tsconfig.app.json || true
+      - run: cd web && npm test -- --run
+
+  test-e2e:
+    runs-on: self-hosted
+    needs: [test-backend]
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          cache: 'npm'
+          cache-dependency-path: 'web/package-lock.json'
+      - name: Download build artifacts
+        uses: actions/download-artifact@v7
+        with:
+          name: nidus-build
+      - run: chmod +x nidus
+      - run: cd web && npm ci
+      - name: Cache Playwright browsers
+        id: playwright-cache
+        uses: actions/cache@v5
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ hashFiles('web/package-lock.json') }}
+      - name: Install Playwright
+        if: steps.playwright-cache.outputs.cache-hit != 'true'
+        run: cd web && npx playwright install --with-deps chromium
+      - name: Install Playwright deps
+        if: steps.playwright-cache.outputs.cache-hit == 'true'
+        run: cd web && npx playwright install-deps chromium
+      - run: mkdir -p data
+      - name: Run E2E tests
+        run: cd web && npx playwright test --project=auth-setup --project=e2e
+      - name: Show server logs
+        if: failure()
+        run: cat /tmp/nidus-e2e.log 2>/dev/null || echo "No server log"
+      - name: Upload report
+        uses: actions/upload-artifact@v7
+        if: failure()
+        with:
+          name: playwright-report
+          path: web/playwright-report/
+          retention-days: 7
+
+  notify:
+    runs-on: self-hosted
+    needs: [test-backend, test-frontend, test-e2e]
+    if: failure()
+    steps:
+      - name: Notify test failure
+        run: |
+          curl -s "https://gotify.tdelab.eu/message?token=${{ secrets.GOTIFY_TOKEN }}" \
+            -F "title=Tests FAILED on ${{ github.ref_name }}" \
+            -F "message=Tests failed on branch ${{ github.ref_name }}. Check: github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}" \
+            -F "priority=8"
