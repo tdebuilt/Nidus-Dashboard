@@ -3,7 +3,7 @@
 **A lightweight, self-hosted dashboard to monitor and manage your containers, VMs, and services from a single interface.**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](./LICENSE)
-[![CI](https://github.com/tdebuilt/Nidus-Dashboard/actions/workflows/release.yml/badge.svg)](https://github.com/tdebuilt/Nidus-Dashboard/actions/workflows/release.yml)
+[![CI](https://github.com/tdebuilt/Nidus-Dashboard/actions/workflows/test.yml/badge.svg)](https://github.com/tdebuilt/Nidus-Dashboard/actions/workflows/test.yml)
 [![Go](https://img.shields.io/badge/Go-1.24+-00ADD8?logo=go&logoColor=white)](https://go.dev)
 [![Svelte](https://img.shields.io/badge/Svelte-5-FF3E00?logo=svelte&logoColor=white)](https://svelte.dev)
 [![Docker](https://img.shields.io/badge/Docker-ghcr.io-2496ED?logo=docker&logoColor=white)](https://github.com/tdebuilt/Nidus-Dashboard/pkgs/container/nidus-dashboard)
@@ -18,7 +18,7 @@ The name comes from Latin — *nidus* means "nest". A central hub where all your
 - **~30-70 MB RAM** — runs on anything, including a Raspberry Pi
 - **Single binary or Docker container** — no external database, includes embedded go2rtc for camera streaming
 - **Real control** — start, stop, restart, update containers and VMs directly
-- **Extensible widget system** — add new integrations through a simple registry
+- **18 widget types** — Docker, Proxmox, Home Assistant, media servers, cameras, and more
 - **Desktop app** — native installers for Linux, macOS, and Windows via Tauri
 
 <p align="center">
@@ -62,26 +62,43 @@ Nidus fills the gap: a **fast, lightweight dashboard** with real container manag
 - **Custom categories** — Organize widgets into tabbed groups (Infrastructure, Media, etc.)
 - **Resizable widgets** — 12-column grid layout with drag-and-drop positioning
 - **Edit mode** — Lock/unlock the dashboard to prevent accidental changes
-- **Dark / light theme** — Dark by default, toggle anytime
-- **Responsive** — Desktop sidebar, mobile-friendly with burger menu
+- **Custom themes** — Dark, light, Nord, Dracula built-in + custom theme editor with accent color picker
+- **Responsive** — Desktop sidebar, tablet, mobile, and TV layouts
 - **PWA** — Installable on mobile, works offline
+- **Kiosk mode** — Auto-rotate categories, full-screen, no UI chrome
+- **Keyboard shortcuts** — Quick navigation (E = edit, 1-9 = categories, / = search, ? = help)
 
 ### Service integrations
 - **Docker via Portainer** — Stacks & containers: start/stop/restart/update, CPU & RAM stats per container
 - **Proxmox** — VMs & LXCs: status, metrics, start/stop
 - **Home Assistant** — Any entity as a widget with real-time actions via WebSocket
 - **AdGuard Home** — DNS query stats, toggle filtering on/off
+- **Pi-hole** — DNS queries, blocked stats, toggle filtering
 - **JDownloader** — Add links, manage download queue, cleanup finished downloads
 - **Transmission** — Add torrents, pause/resume, monitor progress
+- **Plex / Jellyfin** — Active sessions, now playing, progress tracking
+- **Sonarr / Radarr / Lidarr / Prowlarr** — Calendar, download queue, status
+- **Uptime Kuma** — Monitor status, uptime percentage, latency
 - **Reolink cameras** — Live RTSP streams via embedded go2rtc (WebRTC)
-- **App Links** — Custom bookmarks with automatic health checks
+- **App Links** — Custom bookmarks with automatic health checks and favicons
+
+### Additional widgets
+- **Weather** — Current conditions and 5-day forecast (OpenWeatherMap)
+- **Calendar** — iCalendar/ICS feed with upcoming events
+- **RSS** — Aggregate multiple feeds into a single widget
+- **System stats** — Host CPU, RAM, disk usage, uptime
+- **Finance** — Stock ticker and market data
 
 ### Platform
 - **Widget registry** — Extensible system to add new widgets with minimal code
-- **i18n** — French & English built-in, extensible to other languages
+- **i18n** — 11 languages: English, French, Spanish, German, Portuguese, Italian, Dutch, Russian, Chinese, Japanese, Arabic (with RTL)
+- **Multi-user with roles** — Admin, editor, and viewer roles with invitation system
 - **Auth** — User/password with optional TOTP 2FA
 - **Setup wizard** — Guided first-launch configuration
-- **Config export/import** — Encrypted backup and restore (AES-256-GCM)
+- **Config export/import** — Encrypted backup and restore (AES-256-GCM), YAML or JSON
+- **Notifications** — Push alerts via Gotify, ntfy, or Apprise (container down, service unreachable)
+- **Webhooks** — Incoming webhook endpoints with HMAC validation
+- **API documentation** — OpenAPI/Swagger UI at `/api/docs/` (enable with `NIDUS_ENABLE_DOCS=true`)
 - **Tiny footprint** — ~30-70 MB RAM, single Docker container or standalone binary
 
 ## Architecture
@@ -96,7 +113,9 @@ Nidus fills the gap: a **fast, lightweight dashboard** with real container manag
      │          │       │           │          │
  Portainer   Proxmox  Services   Reolink    go2rtc
   API         API    (HA, AdGuard, cameras   (RTSP →
- (CE/EE)              JDL, Trans.)           WebRTC)
+ (CE/EE)              Pi-hole,              WebRTC)
+                       *arr, Plex,
+                       Jellyfin, etc.)
 ```
 
 - **No agent** — connects to existing APIs only
@@ -110,7 +129,7 @@ Nidus fills the gap: a **fast, lightweight dashboard** with real container manag
 | Component | Technology | RAM |
 |---|---|---|
 | Backend | Go (Chi router) | ~20-30 MB |
-| Frontend | Svelte (compiled → static, embedded in binary) | 0 MB server-side |
+| Frontend | Svelte 5 (compiled → static, embedded in binary) | 0 MB server-side |
 | Streaming | go2rtc (embedded) | ~30-40 MB |
 | Database | SQLite | Included |
 | Deployment | Docker Compose | Single container |
@@ -185,6 +204,7 @@ The desktop app embeds the full Nidus stack (Go backend + Svelte frontend) via T
 | `NIDUS_PORT` | `3777` | HTTP server port |
 | `NIDUS_BASE_URL` | `http://localhost:3777` | External URL (for reverse proxy setups) |
 | `NIDUS_DB_PATH` | `./data/nidus.db` | Path to the SQLite database file |
+| `NIDUS_ENABLE_DOCS` | `false` | Enable Swagger UI at `/api/docs/` |
 
 Configuration can also be set via a `config.yaml` file. See [docs/DEPLOYMENT.md](./docs/DEPLOYMENT.md) for details.
 
@@ -192,10 +212,8 @@ Configuration can also be set via a `config.yaml` file. See [docs/DEPLOYMENT.md]
 
 | Port | Description |
 |---|---|
-| `3777` | HTTP server (web UI + API) |
-| `1984` | go2rtc API (internal, camera streaming) |
-| `8554` | RTSP server (go2rtc) |
-| `8555` | WebRTC (go2rtc) |
+| `3777` | HTTP server (web UI + API + Swagger) |
+| `1984` | go2rtc API (camera streaming, managed internally) |
 
 | Volume | Description |
 |---|---|
@@ -205,45 +223,79 @@ Configuration can also be set via a `config.yaml` file. See [docs/DEPLOYMENT.md]
 
 | Module | Connection | Features |
 |---|---|---|
-| **Docker** | Portainer API (CE + EE) | Stacks & containers: start/stop/restart/update |
-| **Proxmox** | Proxmox API (token auth) | VMs/LXCs: status, metrics, start/stop, updates |
-| **Home Assistant** | HA REST + WebSocket API | Any entity as widget with actions |
+| **Docker** | Portainer API (CE + EE) | Stacks & containers: start/stop/restart/update, CPU & RAM stats |
+| **Proxmox** | Proxmox API (token auth) | VMs/LXCs: status, metrics, start/stop |
+| **Home Assistant** | HA REST + WebSocket API | Any entity as widget with real-time actions |
 | **AdGuard** | AdGuard Home API | Query stats, toggle filtering |
+| **Pi-hole** | Pi-hole API | DNS stats, blocked queries, toggle filtering |
 | **JDownloader** | MyJDownloader API | Add links, manage queue |
 | **Transmission** | Transmission RPC API | Add torrents, pause/resume |
+| **Plex** | Plex API | Active sessions, now playing |
+| **Jellyfin** | Jellyfin API | Active sessions, now playing |
+| **Sonarr / Radarr** | *arr API | Calendar, download queue, status |
+| **Lidarr / Prowlarr** | *arr API | Music library, indexer status |
+| **Uptime Kuma** | Uptime Kuma API | Monitor status, uptime %, latency |
 | **Reolink** | RTSP via embedded go2rtc | Live camera streams (WebRTC) |
+| **Weather** | OpenWeatherMap API | Current + 5-day forecast |
+| **Calendar** | iCalendar (ICS) | Upcoming events from any ICS URL |
+| **RSS** | RSS/Atom feeds | Aggregated article list |
+| **System** | Linux /proc | Host CPU, RAM, disk, uptime |
+| **Finance** | Market data API | Stock ticker, price tracking |
 
 All modules are configured via the UI during setup or in settings.
 
 ## Roadmap
 
-See [ROADMAP.md](./ROADMAP.md) for a high-level overview and [ROADMAP_TASKS.md](./ROADMAP_TASKS.md) for the full detailed task breakdown.
+See [ROADMAP_TASKS.md](./planning/ROADMAP_TASKS.md) for the full detailed task breakdown.
 
-**Completed:**
+**Completed (256/262 tasks):**
 - [x] Go backend (Chi, SQLite, config, JWT auth, TOTP 2FA)
-- [x] Svelte frontend (sidebar, 12-col grid, dark/light theme)
+- [x] Svelte frontend (sidebar, 12-col grid, custom themes)
 - [x] Categories & widget layout (drag-and-drop, resize, edit mode)
-- [x] i18n (FR + EN)
+- [x] i18n (11 languages including RTL)
 - [x] Docker/Portainer integration with CPU/RAM stats
 - [x] Proxmox integration (VMs/LXCs)
-- [x] Home Assistant, AdGuard, JDownloader, Transmission modules
-- [x] App links with health checks
-- [x] Config export/import (encrypted)
+- [x] Home Assistant, AdGuard, Pi-hole, JDownloader, Transmission modules
+- [x] Plex/Jellyfin, Sonarr/Radarr/Lidarr/Prowlarr, Uptime Kuma modules
+- [x] Weather, Calendar, RSS, System stats, Finance widgets
+- [x] Reolink cameras with embedded go2rtc streaming
+- [x] App links with health checks and favicons
+- [x] Multi-user with roles (admin/editor/viewer) and invitation system
+- [x] Custom themes, accent colors, and custom CSS
+- [x] Notifications (Gotify, ntfy, Apprise) and webhooks
+- [x] Kiosk mode and keyboard shortcuts
+- [x] Config export/import (encrypted YAML/JSON)
+- [x] API documentation (OpenAPI/Swagger)
 - [x] CI/CD: Docker image on GHCR, multi-platform binaries, Tauri desktop apps
+- [x] E2E testing with Playwright
 
 **Coming next:**
-- [ ] Additional languages (community translations)
-- [ ] Custom themes and accent colors
-- [ ] New widgets: Uptime Kuma, Plex/Jellyfin, *arr stack, weather, RSS, system stats
-- [ ] Multi-user with roles (admin/editor/viewer)
-- [ ] Public API documentation (OpenAPI/Swagger)
+- [ ] Plugin system — load third-party widgets from a `plugins/` directory
+
+## Development
+
+```bash
+make dev                # Run Go backend + Svelte dev server (hot reload)
+make test               # Run all tests (backend + frontend)
+make test-backend       # Go tests only
+make test-frontend      # Vitest only
+make test-e2e           # Playwright E2E tests (builds app first)
+make test-e2e-headed    # E2E tests with visible browser
+make lint               # Run all linters (Go + frontend)
+make build              # Production build (Svelte → embed → Go binary)
+make docker             # Build and run via Docker Compose
+make desktop-dev        # Run Tauri desktop app in dev mode
+make setup              # Configure git hooks
+```
 
 ## Documentation
 
 - [Deployment Guide](./docs/DEPLOYMENT.md) — Docker, standalone, desktop, and CI/CD setup
-- [Full Specification](./SPEC.md) — Detailed technical spec with all module definitions, UI design, and API details
-- [Roadmap](./ROADMAP.md) — High-level project roadmap
-- [Detailed Tasks](./ROADMAP_TASKS.md) — Full task breakdown (243 tasks across 6 phases)
+- [Configuration Reference](./docs/CONFIG_YAML.md) — YAML config format and options
+- [API Examples](./docs/EXAMPLES.md) — curl examples for common API calls
+- [Translation Guide](./docs/TRANSLATING.md) — How to add a new language
+- [Full Specification](./planning/SPEC.md) — Detailed technical spec with all module definitions
+- [Detailed Tasks](./planning/ROADMAP_TASKS.md) — Full task breakdown (262 tasks across 6 phases)
 
 ## License
 

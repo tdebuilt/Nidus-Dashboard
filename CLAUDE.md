@@ -6,15 +6,15 @@ Nidus est un dashboard self-hosted pour gérer Docker (via Portainer), Proxmox, 
 
 ## Fichiers clés
 
-- `planning/SPEC.md` — Spécification complète du projet
-- `planning/PLAN.md` — Plan d'implémentation (phases 1-4)
-- `planning/ROADMAP_TASKS.md` — Roadmap détaillée (phases 2-6) avec suivi
+- `SPEC.md` — Spécification complète du projet
+- `ROADMAP.md` — Roadmap (planned, ideas, completed)
+- `CHANGELOG.md` — Changelog par version
 - `planning/TESTING.md` — Checklist de tests manuels
 - `README.md` — Description du projet
 
 ## Avancement
 
-Suivi dans `planning/ROADMAP_TASKS.md`. Utiliser `/next-task` pour implémenter la prochaine tâche pending.
+Suivi dans `ROADMAP.md`. Utiliser `/next-task` pour implémenter la prochaine tâche pending.
 
 ## Conventions
 
