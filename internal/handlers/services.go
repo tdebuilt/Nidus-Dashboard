@@ -41,6 +41,7 @@ var ServiceRegistry = map[string]ServiceDefinition{
 	"radarr":        {CachePrefix: "arr:", TestPath: "/api/v3/system/status", DisplayName: "Radarr", AuthType: "apikey", NeedsURL: true},
 	"lidarr":        {CachePrefix: "arr:", TestPath: "/api/v1/system/status", DisplayName: "Lidarr", AuthType: "apikey", NeedsURL: true},
 	"prowlarr":      {CachePrefix: "arr:", TestPath: "/api/v1/system/status", DisplayName: "Prowlarr", AuthType: "apikey", NeedsURL: true},
+	"grafana":       {CachePrefix: "grafana:", TestPath: "/api/health", DisplayName: "Grafana", AuthType: "token", NeedsURL: true},
 	"reolink":       {CachePrefix: "reolink:", TestPath: "", DisplayName: "Reolink Cameras", AuthType: "none", NeedsURL: false},
 }
 
@@ -355,5 +356,8 @@ func (h *ServicesHandler) invalidateServiceCache(serviceType string) {
 	}
 	if def, ok := ServiceRegistry[serviceType]; ok && def.CachePrefix != "" {
 		h.Cache.InvalidatePrefix(def.CachePrefix)
+	}
+	if serviceType == "grafana" {
+		h.Cache.Invalidate("csp:frame-src")
 	}
 }

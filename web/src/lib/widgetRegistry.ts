@@ -1,6 +1,6 @@
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type AnyComponent = any
-import { Container, Monitor, Activity, Shield, Download, Radio, Link, HeartPulse, MonitorPlay, CloudSun, CalendarDays, Rss, Server, ShieldCheck, Film, Camera, TrendingUp } from 'lucide-svelte'
+import { Container, Monitor, Activity, Shield, Download, Radio, Link, HeartPulse, MonitorPlay, CloudSun, CalendarDays, Rss, Server, ShieldCheck, Film, Camera, TrendingUp, LayoutDashboard } from 'lucide-svelte'
 
 import DockerWidget from './components/docker/DockerWidget.svelte'
 import ProxmoxWidget from './components/proxmox/ProxmoxWidget.svelte'
@@ -19,6 +19,7 @@ import PiholeWidget from './components/pihole/PiholeWidget.svelte'
 import ArrWidget from './components/arr/ArrWidget.svelte'
 import ReolinkWidget from './components/reolink/ReolinkWidget.svelte'
 import FinanceWidget from './components/finance/FinanceWidget.svelte'
+import GrafanaWidget from './components/grafana/GrafanaWidget.svelte'
 
 import DockerConfig from './components/config/DockerConfig.svelte'
 import HomeAssistantConfig from './components/config/HomeAssistantConfig.svelte'
@@ -29,6 +30,7 @@ import RSSConfig from './components/config/RSSConfig.svelte'
 import AppLinkConfig from './components/config/AppLinkConfig.svelte'
 import ReolinkConfig from './components/config/ReolinkConfig.svelte'
 import FinanceConfig from './components/config/FinanceConfig.svelte'
+import GrafanaConfig from './components/config/GrafanaConfig.svelte'
 
 export interface WidgetDefinition {
   type: string
@@ -188,6 +190,15 @@ register({
   component: ReolinkWidget,
   configComponent: ReolinkConfig,
   serviceType: 'reolink',
+})
+
+register({
+  type: 'grafana',
+  label: 'Grafana',
+  icon: LayoutDashboard,
+  component: GrafanaWidget,
+  configComponent: GrafanaConfig,
+  serviceType: 'grafana',
 })
 
 // --- Public API ---

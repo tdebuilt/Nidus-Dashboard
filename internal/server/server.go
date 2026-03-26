@@ -72,7 +72,14 @@ func New(cfg config.Config, db *database.DB) *chi.Mux {
 			w.Header().Set("X-Frame-Options", "DENY")
 			w.Header().Set("Referrer-Policy", "strict-origin-when-cross-origin")
 			w.Header().Set("X-XSS-Protection", "0")
-			w.Header().Set("Content-Security-Policy", "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self' ws: wss:; media-src 'self' blob:; font-src 'self'")
+			csp := "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self' ws: wss:; media-src 'self' blob:; font-src 'self'"
+			if frameSrc, ok := ServiceCache.Get("csp:frame-src"); ok {
+				csp += "; frame-src 'self' " + frameSrc.(string)
+			} else if svc, _ := db.GetServiceByType("grafana"); svc != nil && svc.URL != "" {
+				ServiceCache.Set("csp:frame-src", svc.URL)
+				csp += "; frame-src 'self' " + svc.URL
+			}
+			w.Header().Set("Content-Security-Policy", csp)
 			if r.TLS != nil || r.Header.Get("X-Forwarded-Proto") == "https" {
 				w.Header().Set("Strict-Transport-Security", "max-age=63072000; includeSubDomains")
 			}
@@ -174,6 +181,11 @@ func New(cfg config.Config, db *database.DB) *chi.Mux {
 
 				adguardHandler := &handlers.AdGuardHandler{DB: db, Cache: ServiceCache}
 				r.Get("/adguard/stats", adguardHandler.GetStats)
+
+				grafanaHandler := &handlers.GrafanaHandler{DB: db, Cache: ServiceCache}
+				r.Get("/grafana/dashboards", grafanaHandler.ListDashboards)
+				r.Get("/grafana/dashboards/{uid}/panels", grafanaHandler.GetDashboardPanels)
+				r.Get("/grafana/embed-url", grafanaHandler.GetEmbedURL)
 
 				jdHandler := &handlers.JDownloaderHandler{DB: db, Cache: ServiceCache}
 				r.Get("/jdownloader/queue", jdHandler.GetQueue)

@@ -1089,6 +1089,23 @@
     "hint": "When go2rtc is active, Reolink cameras support live streaming. Otherwise, they use snapshot-only mode.",
     "actionError": "go2rtc action failed"
   },
+  "grafana": {
+    "loading": "Carregando Grafana...",
+    "notConfigured": "Grafana não configurado",
+    "configureHint": "Configure a URL e o token do Grafana nas Configurações.",
+    "fetchError": "Erro ao carregar dados do Grafana",
+    "noDashboards": "Nenhum dashboard encontrado",
+    "selectDashboard": "Selecionar um dashboard",
+    "selectPanel": "Selecionar um painel",
+    "noPanels": "Nenhum painel neste dashboard",
+    "theme": "Tema",
+    "themeDark": "Escuro",
+    "themeLight": "Claro",
+    "embedHint": "Os painéis devem ser acessíveis anonimamente ou via dashboards públicos para incorporação.",
+    "addPanel": "Adicionar painel",
+    "panels": "Painéis",
+    "noPanel": "Nenhum painel configurado"
+  },
   "iconPicker": {
     "search": "Procurar um ícone...",
     "favorites": "Populares",

@@ -1089,6 +1089,23 @@
     "hint": "When go2rtc is active, Reolink cameras support live streaming. Otherwise, they use snapshot-only mode.",
     "actionError": "go2rtc action failed"
   },
+  "grafana": {
+    "loading": "正在加载 Grafana...",
+    "notConfigured": "Grafana 未配置",
+    "configureHint": "请在设置中配置 Grafana URL 和令牌。",
+    "fetchError": "加载 Grafana 数据时出错",
+    "noDashboards": "未找到仪表板",
+    "selectDashboard": "选择仪表板",
+    "selectPanel": "选择面板",
+    "noPanels": "此仪表板中没有面板",
+    "theme": "主题",
+    "themeDark": "深色",
+    "themeLight": "浅色",
+    "embedHint": "面板必须可匿名访问或通过公共仪表板访问才能嵌入。",
+    "addPanel": "添加面板",
+    "panels": "面板",
+    "noPanel": "未配置面板"
+  },
   "iconPicker": {
     "search": "搜索图标...",
     "favorites": "常用",
