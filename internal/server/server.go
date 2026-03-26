@@ -75,9 +75,11 @@ func New(cfg config.Config, db *database.DB) *chi.Mux {
 			csp := "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self' ws: wss:; media-src 'self' blob:; font-src 'self'"
 			if frameSrc, ok := ServiceCache.Get("csp:frame-src"); ok {
 				csp += "; frame-src 'self' " + frameSrc.(string)
-			} else if svc, _ := db.GetServiceByType("grafana"); svc != nil && svc.URL != "" {
-				ServiceCache.Set("csp:frame-src", svc.URL)
-				csp += "; frame-src 'self' " + svc.URL
+			} else if db != nil {
+				if svc, _ := db.GetServiceByType("grafana"); svc != nil && svc.URL != "" {
+					ServiceCache.Set("csp:frame-src", svc.URL)
+					csp += "; frame-src 'self' " + svc.URL
+				}
 			}
 			w.Header().Set("Content-Security-Policy", csp)
 			if r.TLS != nil || r.Header.Get("X-Forwarded-Proto") == "https" {

@@ -98,7 +98,7 @@ describe('SettingsPage', () => {
     render(SettingsPage)
     await fireEvent.click(screen.getByTestId('settings-pill-services'))
     expect(screen.getByTestId('services-empty')).toBeTruthy()
-    expect(screen.getByTestId('service-add-btn')).toBeTruthy()
+    expect(screen.getByTestId('service-add-empty-btn')).toBeTruthy()
   })
 
   it('has 2FA section in account tab', async () => {
