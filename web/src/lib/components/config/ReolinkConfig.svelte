@@ -4,6 +4,7 @@
   import { toasts } from '../../stores/toast'
   import { t, translate } from '../../i18n'
   import { isDocker } from '../../stores/version'
+  import ResponsiveColumnsConfig from './ResponsiveColumnsConfig.svelte'
 
   interface CameraEntry {
     name: string
@@ -30,6 +31,8 @@
 
   let cameras = $state<CameraEntry[]>([])
   let columns = $state(2)
+  let columnsTablet = $state(0)
+  let columnsMobile = $state(0)
   let discovering = $state(false)
   let discovered = $state<DiscoveredCamera[]>([])
 
@@ -47,12 +50,16 @@
         cameras = parsed.cameras
       }
       if (parsed.columns) columns = parsed.columns
+      if (typeof parsed.columnsTablet === 'number') columnsTablet = parsed.columnsTablet
+      if (typeof parsed.columnsMobile === 'number') columnsMobile = parsed.columnsMobile
     } catch { /* ignored */ }
   })
 
   function emitChange() {
     const config: Record<string, unknown> = { cameras }
     if (columns !== 2) config.columns = columns
+    if (columnsTablet > 0) config.columnsTablet = columnsTablet
+    if (columnsMobile > 0) config.columnsMobile = columnsMobile
     onchange?.(JSON.stringify(config))
   }
 
@@ -177,19 +184,12 @@
 
 <div class="space-y-3">
   <!-- Columns -->
-  <div class="flex items-center gap-2">
-    <span class="text-sm text-[var(--color-text-secondary)]">{$t('reolink.columns')}</span>
-    {#each [1, 2, 3, 4] as n (n)}
-      <button
-        onclick={() => { columns = n; emitChange() }}
-        class="rounded-lg px-3 py-1 text-sm transition-colors"
-        class:bg-[var(--color-primary)]={columns === n}
-        class:text-white={columns === n}
-        class:bg-[var(--color-bg-tertiary)]={columns !== n}
-        class:text-[var(--color-text-secondary)]={columns !== n}
-      >{n}</button>
-    {/each}
-  </div>
+  <ResponsiveColumnsConfig
+    {columns}
+    columnsTablet={columnsTablet || Math.min(columns, 2)}
+    columnsMobile={columnsMobile || 1}
+    onchange={(d, t, m) => { columns = d; columnsTablet = t; columnsMobile = m; emitChange() }}
+  />
 
   <!-- Camera list -->
   <div>

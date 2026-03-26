@@ -20,7 +20,11 @@
     "disabled": "Disattivato",
     "optional": "Facoltativo",
     "export": "Esporta",
-    "import": "Importa"
+    "import": "Importa",
+    "columns": "Colonne",
+    "desktop": "Desktop",
+    "tablet": "Tablet",
+    "mobile": "Mobile"
   },
   "theme": {
     "switchToLight": "Passa alla modalità chiara",

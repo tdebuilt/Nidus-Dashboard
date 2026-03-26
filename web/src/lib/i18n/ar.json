@@ -20,7 +20,11 @@
     "disabled": "معطّل",
     "optional": "اختياري",
     "export": "تصدير",
-    "import": "استيراد"
+    "import": "استيراد",
+    "columns": "الأعمدة",
+    "desktop": "سطح المكتب",
+    "tablet": "جهاز لوحي",
+    "mobile": "جوال"
   },
   "theme": {
     "switchToLight": "التبديل إلى الوضع الفاتح",

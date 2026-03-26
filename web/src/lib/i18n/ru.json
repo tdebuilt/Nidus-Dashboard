@@ -20,7 +20,11 @@
     "disabled": "Отключено",
     "optional": "Необязательно",
     "export": "Экспорт",
-    "import": "Импорт"
+    "import": "Импорт",
+    "columns": "Столбцы",
+    "desktop": "ПК",
+    "tablet": "Планшет",
+    "mobile": "Мобильный"
   },
   "theme": {
     "switchToLight": "Переключить на светлую тему",

@@ -20,7 +20,11 @@
     "disabled": "Disabled",
     "optional": "Optional",
     "export": "Export",
-    "import": "Import"
+    "import": "Import",
+    "columns": "Columns",
+    "desktop": "Desktop",
+    "tablet": "Tablet",
+    "mobile": "Mobile"
   },
   "theme": {
     "switchToLight": "Switch to light mode",

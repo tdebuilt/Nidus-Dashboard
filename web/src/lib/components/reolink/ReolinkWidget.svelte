@@ -1,6 +1,8 @@
 <script lang="ts">
   import { Settings } from 'lucide-svelte'
   import { t } from '../../i18n'
+  import { breakpoint } from '../../stores/breakpoint'
+  import { getResponsiveColumns } from '../../utils/responsiveColumns'
   import CameraCard from './CameraCard.svelte'
 
   interface CameraEntry {
@@ -25,7 +27,7 @@
   })())
 
   const configCameras = $derived<CameraEntry[]>(parsedConfig.cameras ?? [])
-  const columns = $derived<number>(parsedConfig.columns ?? 2)
+  const columns = $derived(getResponsiveColumns(parsedConfig, $breakpoint, 2))
 
   // Generate stable camera ID matching backend logic (sha256 of ip:channel, first 8 bytes hex)
   async function generateCameraId(ip: string, channel: number): Promise<string> {

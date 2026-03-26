@@ -3,6 +3,8 @@
   import { SvelteMap } from 'svelte/reactivity'
   import { api } from '../../api/client'
   import { t } from '../../i18n'
+  import { breakpoint } from '../../stores/breakpoint'
+  import { getResponsiveColumns } from '../../utils/responsiveColumns'
   import { usePolling } from '../../utils/usePolling'
   import LinkCard from './LinkCard.svelte'
 
@@ -28,7 +30,7 @@
   })())
 
   const links = $derived<LinkConfig[]>(parsedConfig.links ?? [])
-  const columns = $derived<number>(parsedConfig.columns ?? 1)
+  const columns = $derived(getResponsiveColumns(parsedConfig, $breakpoint, 1))
   const sortBy = $derived<string>(parsedConfig.sortBy ?? 'manual')
 
   function sortLinks(items: LinkConfig[]): LinkConfig[] {

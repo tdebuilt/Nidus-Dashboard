@@ -20,7 +20,11 @@
     "disabled": "Deaktiviert",
     "optional": "Optional",
     "export": "Exportieren",
-    "import": "Importieren"
+    "import": "Importieren",
+    "columns": "Spalten",
+    "desktop": "Desktop",
+    "tablet": "Tablet",
+    "mobile": "Mobil"
   },
   "theme": {
     "switchToLight": "Zum hellen Modus wechseln",

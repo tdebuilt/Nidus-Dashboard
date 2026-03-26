@@ -3,6 +3,7 @@
   import { Loader2, X, GripVertical } from 'lucide-svelte'
   import { api } from '../../api/client'
   import { t } from '../../i18n'
+  import ResponsiveColumnsConfig from './ResponsiveColumnsConfig.svelte'
 
   interface EntityInfo {
     entity_id: string
@@ -25,6 +26,8 @@
   let entitySearch = $state('')
   let entitySize = $state<'sm' | 'md' | 'lg'>('md')
   let columns = $state(1)
+  let columnsTablet = $state(0)
+  let columnsMobile = $state(0)
 
   $effect(() => {
     try {
@@ -42,6 +45,8 @@
       if (typeof parsed.columns === 'number') {
         columns = parsed.columns
       }
+      if (typeof parsed.columnsTablet === 'number') columnsTablet = parsed.columnsTablet
+      if (typeof parsed.columnsMobile === 'number') columnsMobile = parsed.columnsMobile
     } catch {
       // ignore
     }
@@ -81,6 +86,8 @@
     if (columns > 1) {
       config.columns = columns
     }
+    if (columnsTablet > 0) config.columnsTablet = columnsTablet
+    if (columnsMobile > 0) config.columnsMobile = columnsMobile
     onchange?.(Object.keys(config).length > 0 ? JSON.stringify(config) : '{}')
   }
 
@@ -181,19 +188,12 @@
       >{$t('config.byDomain')}</button>
     </div>
 
-    <div class="flex items-center gap-2">
-      <span class="text-sm text-[var(--color-text-secondary)]">{$t('applink.columns')}</span>
-      {#each [1, 2, 3, 4] as n (n)}
-        <button
-          onclick={() => { columns = n; emitChange() }}
-          class="rounded-lg px-3 py-1 text-sm transition-colors"
-          class:bg-[var(--color-primary)]={columns === n}
-          class:text-white={columns === n}
-          class:bg-[var(--color-bg-tertiary)]={columns !== n}
-          class:text-[var(--color-text-secondary)]={columns !== n}
-        >{n}</button>
-      {/each}
-    </div>
+    <ResponsiveColumnsConfig
+      {columns}
+      columnsTablet={columnsTablet || Math.min(columns, 2)}
+      columnsMobile={columnsMobile || 1}
+      onchange={(d, t, m) => { columns = d; columnsTablet = t; columnsMobile = m; emitChange() }}
+    />
 
     <div class="flex items-center gap-2">
       <span class="text-sm text-[var(--color-text-secondary)]">{$t('config.entitySize')}</span>

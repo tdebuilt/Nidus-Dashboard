@@ -4,6 +4,7 @@
   import { toasts } from '../stores/toast'
   import { confirm } from '../stores/confirm'
   import { editMode } from '../stores/editMode'
+  import { breakpoint } from '../stores/breakpoint'
   import { t, translate } from '../i18n'
   import AddWidgetDialog from './AddWidgetDialog.svelte'
   import EditWidgetDialog from './EditWidgetDialog.svelte'
@@ -129,25 +130,11 @@
   const DRAG_THRESHOLD = 5
 
   // Responsive column count
-  let effectiveCols = $state(GRID_COLS)
-
-  $effect(() => {
-    if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return
-    const mqMobile = window.matchMedia('(max-width: 767px)')
-    const mqTablet = window.matchMedia('(min-width: 768px) and (max-width: 1023px)')
-    function update() {
-      if (mqMobile.matches) effectiveCols = 1
-      else if (mqTablet.matches) effectiveCols = Math.floor(GRID_COLS / 2)
-      else effectiveCols = GRID_COLS
-    }
-    update()
-    mqMobile.addEventListener('change', update)
-    mqTablet.addEventListener('change', update)
-    return () => {
-      mqMobile.removeEventListener('change', update)
-      mqTablet.removeEventListener('change', update)
-    }
-  })
+  const effectiveCols = $derived(
+    $breakpoint === 'mobile' ? 1
+    : $breakpoint === 'tablet' ? Math.floor(GRID_COLS / 2)
+    : GRID_COLS
+  )
 
   // Grid metrics
   function getColPitch() {

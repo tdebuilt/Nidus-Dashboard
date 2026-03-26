@@ -1,6 +1,7 @@
 <script lang="ts">
   import { Plus, Trash2, GripVertical } from 'lucide-svelte'
   import { t } from '../../i18n'
+  import ResponsiveColumnsConfig from './ResponsiveColumnsConfig.svelte'
 
   interface LinkEntry {
     name: string
@@ -17,6 +18,8 @@
 
   let links = $state<LinkEntry[]>([])
   let columns = $state(1)
+  let columnsTablet = $state(0)
+  let columnsMobile = $state(0)
   let sortBy = $state('manual')
   let dragIndex = $state<number | null>(null)
   let dragOverIndex = $state<number | null>(null)
@@ -28,6 +31,8 @@
     try {
       const parsed = JSON.parse(value)
       if (parsed.columns) columns = parsed.columns
+      if (typeof parsed.columnsTablet === 'number') columnsTablet = parsed.columnsTablet
+      if (typeof parsed.columnsMobile === 'number') columnsMobile = parsed.columnsMobile
       if (parsed.sortBy) sortBy = parsed.sortBy
       if (parsed.links && Array.isArray(parsed.links)) {
         links = parsed.links.map((l: Record<string, string>) => ({
@@ -49,7 +54,10 @@
         if (l.group.trim()) entry.group = l.group.trim()
         return entry
       })
-    onchange?.(JSON.stringify({ links: validLinks, columns, sortBy }))
+    const config: Record<string, unknown> = { links: validLinks, columns, sortBy }
+    if (columnsTablet > 0) config.columnsTablet = columnsTablet
+    if (columnsMobile > 0) config.columnsMobile = columnsMobile
+    onchange?.(JSON.stringify(config))
   }
 
   function addLink() {
@@ -101,20 +109,13 @@
 
 <div class="space-y-3">
   <!-- Display options -->
-  <div class="flex flex-wrap items-center gap-4">
-    <div class="flex items-center gap-2">
-      <span class="shrink-0 text-sm text-[var(--color-text-secondary)]">{$t('applink.columns')}</span>
-      {#each [1, 2, 3, 4] as n (n)}
-        <button
-          onclick={() => { columns = n; emitChange() }}
-          class="rounded-lg px-3 py-1 text-sm transition-colors"
-          class:bg-[var(--color-primary)]={columns === n}
-          class:text-white={columns === n}
-          class:bg-[var(--color-bg-tertiary)]={columns !== n}
-          class:text-[var(--color-text-secondary)]={columns !== n}
-        >{n}</button>
-      {/each}
-    </div>
+  <div class="space-y-3">
+    <ResponsiveColumnsConfig
+      {columns}
+      columnsTablet={columnsTablet || Math.min(columns, 2)}
+      columnsMobile={columnsMobile || 1}
+      onchange={(d, t, m) => { columns = d; columnsTablet = t; columnsMobile = m; emitChange() }}
+    />
     <div class="flex items-center gap-2">
       <label for="applink-sort-select" class="shrink-0 text-sm text-[var(--color-text-secondary)]">{$t('applink.sortBy')}</label>
       <select

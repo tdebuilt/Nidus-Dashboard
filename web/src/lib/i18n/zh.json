@@ -20,7 +20,11 @@
     "disabled": "已禁用",
     "optional": "可选",
     "export": "导出",
-    "import": "导入"
+    "import": "导入",
+    "columns": "列数",
+    "desktop": "桌面",
+    "tablet": "平板",
+    "mobile": "手机"
   },
   "theme": {
     "switchToLight": "切换到浅色模式",

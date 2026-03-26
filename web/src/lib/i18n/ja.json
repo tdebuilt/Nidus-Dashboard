@@ -20,7 +20,11 @@
     "disabled": "無効",
     "optional": "任意",
     "export": "エクスポート",
-    "import": "インポート"
+    "import": "インポート",
+    "columns": "列数",
+    "desktop": "デスクトップ",
+    "tablet": "タブレット",
+    "mobile": "モバイル"
   },
   "theme": {
     "switchToLight": "ライトモードに切り替え",

@@ -4,8 +4,10 @@
   import { api } from '../../api/client'
   import { toasts } from '../../stores/toast'
   import { pollingInterval } from '../../stores/polling'
+  import { breakpoint } from '../../stores/breakpoint'
   import { ws } from '../../stores/websocket'
   import { t, translate } from '../../i18n'
+  import { getResponsiveColumns } from '../../utils/responsiveColumns'
   import { usePolling } from '../../utils/usePolling'
   import EntityCard from './EntityCard.svelte'
 
@@ -42,10 +44,7 @@
   const entitySize = $derived<'sm' | 'md' | 'lg'>(
     parsedConfig.entitySize === 'sm' ? 'sm' : parsedConfig.entitySize === 'lg' ? 'lg' : 'md'
   )
-  const columns = $derived<number>(
-    typeof parsedConfig.columns === 'number' && parsedConfig.columns > 0
-      ? parsedConfig.columns : 1
-  )
+  const columns = $derived(getResponsiveColumns(parsedConfig, $breakpoint, 1))
   let cameraSizes = $derived<Record<string, number>>(parsedConfig.cameraSizes ?? {})
 
   async function handleCameraResize(entityId: string, width: number) {

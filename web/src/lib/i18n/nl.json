@@ -20,7 +20,11 @@
     "disabled": "Uitgeschakeld",
     "optional": "Optioneel",
     "export": "Exporteren",
-    "import": "Importeren"
+    "import": "Importeren",
+    "columns": "Kolommen",
+    "desktop": "Desktop",
+    "tablet": "Tablet",
+    "mobile": "Mobiel"
   },
   "theme": {
     "switchToLight": "Overschakelen naar lichte modus",
