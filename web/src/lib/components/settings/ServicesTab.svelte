@@ -1,12 +1,11 @@
 <script lang="ts">
-  import { Server, Plus, Video, Play, Square, RotateCw, Loader2 } from 'lucide-svelte'
+  import { Server, Plus, ArrowDownAZ, ArrowUpZA, Video, Play, Square, RotateCw, Loader2 } from 'lucide-svelte'
   import { api, ApiError } from '../../api/client'
   import { toasts } from '../../stores/toast'
   import { confirm } from '../../stores/confirm'
   import { t, translate } from '../../i18n'
   import { onMount, onDestroy } from 'svelte'
   import ServiceCard from './ServiceCard.svelte'
-  import { getServiceGroup, groupOrder } from './serviceIcons'
   import { serviceStatuses, startServiceStatusPolling, stopServiceStatusPolling } from '../../stores/serviceStatus'
   import AddServiceDialog from './AddServiceDialog.svelte'
 
@@ -23,6 +22,7 @@
   let serviceTypeDefs = $state<ServiceTypeDef[]>([])
 
   let showAddDialog = $state(false)
+  let sortAsc = $state(true)
   let editingService = $state<string | null>(null)
   let serviceUrl = $state('')
   let serviceToken = $state('')
@@ -50,18 +50,12 @@
   const configuredServices = $derived(serviceTypes.filter(type => services.some(s => s.type === type)))
   const availableToAdd = $derived(serviceTypes.filter(type => !services.some(s => s.type === type)))
 
-  const groupedServices = $derived((() => {
-    const groups: Record<string, string[]> = {}
-    for (const type of configuredServices) {
-      const group = getServiceGroup(type)
-      if (!groups[group]) groups[group] = []
-      groups[group].push(type)
-    }
-    const distinctGroups = Object.keys(groups).length
-    return groupOrder
-      .filter(g => groups[g])
-      .map(g => ({ name: g, services: groups[g], showHeader: distinctGroups >= 2 }))
-  })())
+  const sortedConfigured = $derived(
+    [...configuredServices].sort((a, b) => {
+      const cmp = serviceDisplayName(a).localeCompare(serviceDisplayName(b))
+      return sortAsc ? cmp : -cmp
+    })
+  )
 
   onMount(() => {
     loadServiceTypes()
@@ -367,14 +361,28 @@
           {$t('settings.servicesSection')}
         {/if}
       </h3>
-      {#if availableToAdd.length > 0}
-        <button onclick={() => showAddDialog = true}
-          class="ml-auto flex items-center justify-center rounded-lg border border-[var(--color-border)] p-1.5 text-[var(--color-text-secondary)] transition-colors hover:border-[var(--color-primary)] hover:text-[var(--color-primary)]"
-          title={$t('settings.addService')}
-          data-testid="service-add-btn">
-          <Plus size={16} />
-        </button>
-      {/if}
+      <div class="ml-auto flex items-center gap-1">
+        {#if configuredServices.length > 1}
+          <button onclick={() => sortAsc = !sortAsc}
+            class="flex items-center justify-center rounded-lg p-1.5 text-[var(--color-text-muted)] transition-colors hover:text-[var(--color-text)]"
+            title={sortAsc ? 'Z → A' : 'A → Z'}
+            data-testid="service-sort-toggle">
+            {#if sortAsc}
+              <ArrowDownAZ size={16} />
+            {:else}
+              <ArrowUpZA size={16} />
+            {/if}
+          </button>
+        {/if}
+        {#if availableToAdd.length > 0}
+          <button onclick={() => showAddDialog = true}
+            class="flex items-center justify-center rounded-lg border border-[var(--color-border)] p-1.5 text-[var(--color-text-secondary)] transition-colors hover:border-[var(--color-primary)] hover:text-[var(--color-primary)]"
+            title={$t('settings.addService')}
+            data-testid="service-add-btn">
+            <Plus size={16} />
+          </button>
+        {/if}
+      </div>
     </div>
 
     {#if configuredServices.length === 0}
@@ -388,66 +396,54 @@
         </button>
       </div>
     {:else}
-      <div class="space-y-4">
-        {#each groupedServices as group (group.name)}
-          <div>
-            {#if group.showHeader}
-              <div class="mb-2 text-xs font-semibold uppercase tracking-wider text-[var(--color-text-muted)]">
-                {$t(`settings.serviceGroup.${group.name}`)}
-              </div>
-            {/if}
-            <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              {#each group.services as type (type)}
-                {@const svc = services.find((s) => s.type === type)}
-                {#if editingService === type}
-                  <div class="col-span-full">
-                    <ServiceCard
-                      {type}
-                      displayName={serviceDisplayName(type)}
-                      url={svc?.url || ''}
-                      status={$serviceStatuses[type]}
-                      isEditing={true}
-                      onEdit={() => startEditService(type)}
-                      onTest={() => testService(type)}
-                      onDelete={() => deleteService(type)}
-                    />
-                    <div class="space-y-3 rounded-b-lg border border-t-0 border-[var(--color-border)] px-4 py-4" data-testid="service-form-{type}">
-                      {#if needsURL(type)}
-                        <div>
-                          <label for="svc-url-{type}" class="mb-1 block text-xs text-[var(--color-text-secondary)]">{$t('settings.url')}</label>
-                          <input id="svc-url-{type}" type="url" bind:value={serviceUrl} placeholder="https://..."
-                            class="w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-2 text-sm text-[var(--color-text)] outline-none focus:border-[var(--color-primary)]"
-                            data-testid="service-url-input" />
-                        </div>
-                      {/if}
-                      {@render authFields(type)}
-                      <div class="flex justify-end gap-2 pt-1">
-                        <button onclick={() => editingService = null}
-                          class="rounded-lg border border-[var(--color-border)] px-4 py-1.5 text-sm text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-tertiary)]"
-                          data-testid="service-cancel">{$t('common.cancel')}</button>
-                        <button onclick={saveService}
-                          class="rounded-lg bg-[var(--color-primary)] px-4 py-1.5 text-sm text-white hover:bg-[var(--color-primary-hover)]"
-                          data-testid="service-save">{$t('common.save')}</button>
-                      </div>
-                    </div>
+      <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        {#each sortedConfigured as type (type)}
+          {@const svc = services.find((s) => s.type === type)}
+          {#if editingService === type}
+            <div class="col-span-full">
+              <ServiceCard
+                {type}
+                displayName={serviceDisplayName(type)}
+                url={svc?.url || ''}
+                status={$serviceStatuses[type]}
+                isEditing={true}
+                onEdit={() => startEditService(type)}
+                onTest={() => testService(type)}
+                onDelete={() => deleteService(type)}
+              />
+              <div class="space-y-3 rounded-b-lg border border-t-0 border-[var(--color-border)] px-4 py-4" data-testid="service-form-{type}">
+                {#if needsURL(type)}
+                  <div>
+                    <label for="svc-url-{type}" class="mb-1 block text-xs text-[var(--color-text-secondary)]">{$t('settings.url')}</label>
+                    <input id="svc-url-{type}" type="url" bind:value={serviceUrl} placeholder="https://..."
+                      class="w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-2 text-sm text-[var(--color-text)] outline-none focus:border-[var(--color-primary)]"
+                      data-testid="service-url-input" />
                   </div>
-                {:else}
-                  <ServiceCard
-                    {type}
-                    displayName={serviceDisplayName(type)}
-                    url={svc?.url || ''}
-                    status={$serviceStatuses[type]}
-                    isEditing={false}
-                    onEdit={() => startEditService(type)}
-                    onTest={() => testService(type)}
-                    onDelete={() => deleteService(type)}
-                  />
                 {/if}
-              {/each}
+                {@render authFields(type)}
+                <div class="flex justify-end gap-2 pt-1">
+                  <button onclick={() => editingService = null}
+                    class="rounded-lg border border-[var(--color-border)] px-4 py-1.5 text-sm text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-tertiary)]"
+                    data-testid="service-cancel">{$t('common.cancel')}</button>
+                  <button onclick={saveService}
+                    class="rounded-lg bg-[var(--color-primary)] px-4 py-1.5 text-sm text-white hover:bg-[var(--color-primary-hover)]"
+                    data-testid="service-save">{$t('common.save')}</button>
+                </div>
+              </div>
             </div>
-          </div>
+          {:else}
+            <ServiceCard
+              {type}
+              displayName={serviceDisplayName(type)}
+              url={svc?.url || ''}
+              status={$serviceStatuses[type]}
+              isEditing={false}
+              onEdit={() => startEditService(type)}
+              onTest={() => testService(type)}
+              onDelete={() => deleteService(type)}
+            />
+          {/if}
         {/each}
-
       </div>
     {/if}
 

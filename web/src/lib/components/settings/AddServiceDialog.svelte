@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { X } from 'lucide-svelte'
+  import { X, ArrowDownAZ, ArrowUpZA } from 'lucide-svelte'
   import { api } from '../../api/client'
   import { toasts } from '../../stores/toast'
   import { t, translate } from '../../i18n'
@@ -23,6 +23,7 @@
 
   const { open = false, serviceTypeDefs, availableToAdd, onClose, onCreated }: Props = $props()
 
+  let sortAsc = $state(true)
   let selectedType = $state('')
   let serviceUrl = $state('')
   let serviceToken = $state('')
@@ -58,6 +59,13 @@
   function hasPasswordOnly(type: string): boolean { return getAuthType(type) === 'password' }
   function hasJDAuth(type: string): boolean { return getAuthType(type) === 'jdownloader' }
   function hasNoAuth(type: string): boolean { return getAuthType(type) === 'none' }
+
+  const sortedServices = $derived(
+    [...availableToAdd].sort((a, b) => {
+      const cmp = serviceDisplayName(a).localeCompare(serviceDisplayName(b))
+      return sortAsc ? cmp : -cmp
+    })
+  )
 
   function resetForm() {
     selectedType = ''
@@ -156,14 +164,28 @@
       </div>
 
       {#if !selectedType}
-        <p class="mb-3 text-sm text-[var(--color-text-secondary)]">{$t('settings.chooseService')}</p>
+        <div class="mb-3 flex items-center justify-between">
+          <p class="text-sm text-[var(--color-text-secondary)]">{$t('settings.chooseService')}</p>
+          {#if availableToAdd.length > 1}
+            <button onclick={() => sortAsc = !sortAsc}
+              class="rounded p-1.5 text-[var(--color-text-muted)] transition-colors hover:text-[var(--color-text)]"
+              title={sortAsc ? 'Z → A' : 'A → Z'}
+              data-testid="service-sort-toggle">
+              {#if sortAsc}
+                <ArrowDownAZ size={16} />
+              {:else}
+                <ArrowUpZA size={16} />
+              {/if}
+            </button>
+          {/if}
+        </div>
         {#if availableToAdd.length === 0}
           <div class="py-8 text-center text-sm text-[var(--color-text-muted)]">
             <p>{$t('settings.allServicesConfigured')}</p>
           </div>
         {:else}
           <div class="grid grid-cols-2 gap-2" data-testid="service-type-grid">
-            {#each availableToAdd as type (type)}
+            {#each sortedServices as type (type)}
               <button onclick={() => handleSelectType(type)}
                 class="flex items-center gap-3 rounded-lg border border-[var(--color-border)] px-3 py-3 text-start text-sm transition-colors hover:border-[var(--color-primary)] hover:bg-[var(--color-bg-tertiary)]"
                 data-testid="service-type-{type}">
