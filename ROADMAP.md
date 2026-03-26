@@ -3,12 +3,12 @@
 ## Planned
 
 ### Third-party Plugin System
-- Define plugin format (manifest.json, Svelte component, optional Go handler)
-- Plugin loader from a `plugins/` directory
-- Auto-register plugins with the widget registry
-- Security sandbox (iframe or Web Components)
-- Developer documentation for creating plugins
-- Starter plugin template
+- [ ] Define plugin format (manifest.json, Svelte component, optional Go handler)
+- [ ] Plugin loader from a `plugins/` directory
+- [ ] Auto-register plugins with the widget registry
+- [ ] Security sandbox (iframe or Web Components)
+- [ ] Developer documentation for creating plugins
+- [ ] Starter plugin template
 
 ## Ideas (Not Yet Planned)
 
