@@ -63,13 +63,6 @@ data/           # Docker volume (nidus.db, config.yaml)
 - Svelte tests are in `web/src/**/*.test.ts`
 - E2E tests are in `web/e2e/**/*.spec.ts`
 
-## Git
-
-- **Never mention "Claude"** in commit messages, branch names, or git metadata
-- **Never add as co-author** (no `Co-authored-by`)
-- Commits must look like they were written by a human developer
-- All commits must be authored by `tdelix <24230775+tdelix@users.noreply.github.com>`
-
 ## Commands
 
 - `docker compose up --build -d` — **Build and run the app via Docker** (primary method)
