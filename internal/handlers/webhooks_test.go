@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"bytes"
+	"context"
 	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/hex"
@@ -34,6 +35,7 @@ func signPayload(body []byte, secret string) string {
 
 
 func TestCreateWebhook(t *testing.T) {
+	t.Parallel()
 	h := setupWebhookHandler(t)
 
 	body, _ := json.Marshal(models.CreateWebhookRequest{Name: "Test Webhook"})
@@ -61,10 +63,11 @@ func TestCreateWebhook(t *testing.T) {
 }
 
 func TestListWebhooks(t *testing.T) {
+	t.Parallel()
 	h := setupWebhookHandler(t)
 
 	// Create a webhook first
-	h.DB.CreateWebhook("Test", "secret123")
+	h.DB.CreateWebhook(context.Background(),"Test", "secret123")
 
 	req := httptest.NewRequest(http.MethodGet, "/api/webhooks", nil)
 	w := httptest.NewRecorder()
@@ -90,10 +93,11 @@ func TestListWebhooks(t *testing.T) {
 }
 
 func TestReceiveWebhookValid(t *testing.T) {
+	t.Parallel()
 	h := setupWebhookHandler(t)
 
 	// Create webhook
-	wh, err := h.DB.CreateWebhook("Test", "mysecret")
+	wh, err := h.DB.CreateWebhook(context.Background(),"Test", "mysecret")
 	if err != nil {
 		t.Fatalf("failed to create webhook: %v", err)
 	}
@@ -115,9 +119,10 @@ func TestReceiveWebhookValid(t *testing.T) {
 }
 
 func TestReceiveInvalidSignature(t *testing.T) {
+	t.Parallel()
 	h := setupWebhookHandler(t)
 
-	wh, _ := h.DB.CreateWebhook("Test", "mysecret")
+	wh, _ := h.DB.CreateWebhook(context.Background(),"Test", "mysecret")
 
 	payload := []byte(`{"event":"deploy"}`)
 
@@ -135,11 +140,12 @@ func TestReceiveInvalidSignature(t *testing.T) {
 }
 
 func TestReceiveDisabledWebhook(t *testing.T) {
+	t.Parallel()
 	h := setupWebhookHandler(t)
 
-	wh, _ := h.DB.CreateWebhook("Test", "mysecret")
+	wh, _ := h.DB.CreateWebhook(context.Background(),"Test", "mysecret")
 	enabled := false
-	h.DB.UpdateWebhook(wh.ID, models.UpdateWebhookRequest{Enabled: &enabled})
+	h.DB.UpdateWebhook(context.Background(),wh.ID, models.UpdateWebhookRequest{Enabled: &enabled})
 
 	payload := []byte(`{"event":"deploy"}`)
 	signature := signPayload(payload, "mysecret")
@@ -158,12 +164,13 @@ func TestReceiveDisabledWebhook(t *testing.T) {
 }
 
 func TestWebhookActions(t *testing.T) {
+	t.Parallel()
 	h := setupWebhookHandler(t)
 
-	wh, _ := h.DB.CreateWebhook("Test", "secret")
+	wh, _ := h.DB.CreateWebhook(context.Background(),"Test", "secret")
 
 	// Create action
-	action, err := h.DB.CreateWebhookAction(wh.ID, "invalidate_cache", `{"prefix":"docker:"}`)
+	action, err := h.DB.CreateWebhookAction(context.Background(),wh.ID, "invalidate_cache", `{"prefix":"docker:"}`)
 	if err != nil {
 		t.Fatalf("failed to create action: %v", err)
 	}
@@ -172,7 +179,7 @@ func TestWebhookActions(t *testing.T) {
 	}
 
 	// List actions
-	actions, err := h.DB.ListWebhookActions(wh.ID)
+	actions, err := h.DB.ListWebhookActions(context.Background(),wh.ID)
 	if err != nil {
 		t.Fatalf("failed to list actions: %v", err)
 	}
@@ -181,29 +188,30 @@ func TestWebhookActions(t *testing.T) {
 	}
 
 	// Delete action
-	if err := h.DB.DeleteWebhookAction(action.ID); err != nil {
+	if err := h.DB.DeleteWebhookAction(context.Background(),action.ID); err != nil {
 		t.Fatalf("failed to delete action: %v", err)
 	}
 
-	actions, _ = h.DB.ListWebhookActions(wh.ID)
+	actions, _ = h.DB.ListWebhookActions(context.Background(),wh.ID)
 	if len(actions) != 0 {
 		t.Fatalf("expected 0 actions, got %d", len(actions))
 	}
 }
 
 func TestDeleteWebhookCascade(t *testing.T) {
+	t.Parallel()
 	h := setupWebhookHandler(t)
 
-	wh, _ := h.DB.CreateWebhook("Test", "secret")
-	h.DB.CreateWebhookAction(wh.ID, "notify", `{"provider_id":1}`)
-	h.DB.CreateWebhookAction(wh.ID, "invalidate_cache", `{"prefix":"all:"}`)
+	wh, _ := h.DB.CreateWebhook(context.Background(),"Test", "secret")
+	h.DB.CreateWebhookAction(context.Background(),wh.ID, "notify", `{"provider_id":1}`)
+	h.DB.CreateWebhookAction(context.Background(),wh.ID, "invalidate_cache", `{"prefix":"all:"}`)
 
 	// Delete webhook — should cascade to actions
-	if err := h.DB.DeleteWebhook(wh.ID); err != nil {
+	if err := h.DB.DeleteWebhook(context.Background(),wh.ID); err != nil {
 		t.Fatalf("failed to delete webhook: %v", err)
 	}
 
-	actions, _ := h.DB.ListWebhookActions(wh.ID)
+	actions, _ := h.DB.ListWebhookActions(context.Background(),wh.ID)
 	if len(actions) != 0 {
 		t.Fatalf("expected cascade delete of actions, got %d", len(actions))
 	}

@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -20,8 +21,8 @@ type GrafanaHandler struct {
 	Cache *cache.Cache
 }
 
-func (h *GrafanaHandler) getGrafanaClient() (*grafana.Client, error) {
-	svc, err := h.DB.GetServiceByType("grafana")
+func (h *GrafanaHandler) getGrafanaClient(ctx context.Context) (*grafana.Client, error) {
+	svc, err := h.DB.GetServiceByType(ctx, "grafana")
 	if err != nil {
 		return nil, err
 	}
@@ -32,7 +33,7 @@ func (h *GrafanaHandler) getGrafanaClient() (*grafana.Client, error) {
 	client := grafana.NewClient(svc.URL, nil)
 
 	if svc.Credentials != "" {
-		encKey, err := h.DB.GetSystemSetting("encryption_key")
+		encKey, err := h.DB.GetSystemSetting(ctx, "encryption_key")
 		if err != nil || encKey == "" {
 			return nil, err
 		}
@@ -70,7 +71,7 @@ func (h *GrafanaHandler) ListDashboards(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	client, err := h.getGrafanaClient()
+	client, err := h.getGrafanaClient(r.Context())
 	if err != nil {
 		writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "failed to connect to Grafana"})
 		return
@@ -80,7 +81,7 @@ func (h *GrafanaHandler) ListDashboards(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	dashboards, err := client.SearchDashboards()
+	dashboards, err := client.SearchDashboards(r.Context())
 	if err != nil {
 		writeJSON(w, http.StatusBadGateway, models.ErrorResponse{Error: "failed to fetch dashboards"})
 		return
@@ -109,47 +110,21 @@ func (h *GrafanaHandler) GetDashboardPanels(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	client, err := h.getGrafanaClient()
+	client, err := h.getGrafanaClient(r.Context())
 	if err != nil || client == nil {
 		writeJSON(w, http.StatusNotFound, models.ErrorResponse{Error: "Grafana not configured"})
 		return
 	}
 
-	detail, err := client.GetDashboard(uid)
+	detail, err := client.GetDashboard(r.Context(), uid)
 	if err != nil {
 		writeJSON(w, http.StatusBadGateway, models.ErrorResponse{Error: "failed to fetch dashboard"})
 		return
 	}
 
-	info := buildDashboardInfo(detail)
+	info := grafana.BuildDashboardInfo(detail)
 	h.Cache.Set(cacheKey, info)
 	writeJSON(w, http.StatusOK, info)
-}
-
-func buildDashboardInfo(detail *grafana.DashboardDetail) grafana.DashboardInfo {
-	panels := flattenPanels(detail.Dashboard.Panels)
-	return grafana.DashboardInfo{
-		UID:    detail.Dashboard.UID,
-		Title:  detail.Dashboard.Title,
-		Slug:   detail.Meta.Slug,
-		Panels: panels,
-	}
-}
-
-func flattenPanels(panels []grafana.Panel) []grafana.PanelInfo {
-	var result []grafana.PanelInfo
-	for _, p := range panels {
-		if p.Type == "row" {
-			result = append(result, flattenPanels(p.Panels)...)
-			continue
-		}
-		result = append(result, grafana.PanelInfo{
-			ID:    p.ID,
-			Title: p.Title,
-			Type:  p.Type,
-		})
-	}
-	return result
 }
 
 // GetEmbedURL godoc
@@ -184,7 +159,7 @@ func (h *GrafanaHandler) GetEmbedURL(w http.ResponseWriter, r *http.Request) {
 		theme = "dark"
 	}
 
-	svc, err := h.DB.GetServiceByType("grafana")
+	svc, err := h.DB.GetServiceByType(r.Context(), "grafana")
 	if err != nil || svc == nil {
 		writeJSON(w, http.StatusNotFound, models.ErrorResponse{Error: "Grafana not configured"})
 		return

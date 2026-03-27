@@ -1,6 +1,7 @@
 package pihole
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -94,6 +95,7 @@ func mockPiholeServer(t *testing.T) (*httptest.Server, *atomic.Int32) {
 }
 
 func TestNewClient(t *testing.T) {
+	t.Parallel()
 	client := NewClient("http://pihole.local", "secret", nil)
 	if client == nil {
 		t.Fatal("expected non-nil client")
@@ -110,6 +112,7 @@ func TestNewClient(t *testing.T) {
 }
 
 func TestNewClientTrailingSlash(t *testing.T) {
+	t.Parallel()
 	client := NewClient("http://pihole.local/", "secret", nil)
 	if client.baseURL != "http://pihole.local" {
 		t.Fatalf("expected trailing slash stripped, got '%s'", client.baseURL)
@@ -117,13 +120,14 @@ func TestNewClientTrailingSlash(t *testing.T) {
 }
 
 func TestAuthenticate(t *testing.T) {
+	t.Parallel()
 	srv, authCount := mockPiholeServer(t)
 	defer srv.Close()
 
 	client := NewClient(srv.URL, testPassword, srv.Client())
 
 	client.mu.Lock()
-	err := client.authenticate()
+	err := client.authenticate(context.Background())
 	client.mu.Unlock()
 
 	if err != nil {
@@ -141,12 +145,13 @@ func TestAuthenticate(t *testing.T) {
 }
 
 func TestGetStats(t *testing.T) {
+	t.Parallel()
 	srv, _ := mockPiholeServer(t)
 	defer srv.Close()
 
 	client := NewClient(srv.URL, testPassword, srv.Client())
 
-	stats, err := client.GetStats()
+	stats, err := client.GetStats(context.Background())
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -174,27 +179,29 @@ func TestGetStats(t *testing.T) {
 }
 
 func TestSetBlocking(t *testing.T) {
+	t.Parallel()
 	srv, _ := mockPiholeServer(t)
 	defer srv.Close()
 
 	client := NewClient(srv.URL, testPassword, srv.Client())
 
-	if err := client.SetBlocking(false); err != nil {
+	if err := client.SetBlocking(context.Background(), false); err != nil {
 		t.Fatalf("unexpected error disabling blocking: %v", err)
 	}
 
-	if err := client.SetBlocking(true); err != nil {
+	if err := client.SetBlocking(context.Background(), true); err != nil {
 		t.Fatalf("unexpected error enabling blocking: %v", err)
 	}
 }
 
 func TestUnauthorized(t *testing.T) {
+	t.Parallel()
 	srv, _ := mockPiholeServer(t)
 	defer srv.Close()
 
 	client := NewClient(srv.URL, "wrong-password", srv.Client())
 
-	_, err := client.GetStats()
+	_, err := client.GetStats(context.Background())
 	if err == nil {
 		t.Fatal("expected error for wrong password")
 	}
@@ -204,19 +211,20 @@ func TestUnauthorized(t *testing.T) {
 }
 
 func TestSessionReuse(t *testing.T) {
+	t.Parallel()
 	srv, authCount := mockPiholeServer(t)
 	defer srv.Close()
 
 	client := NewClient(srv.URL, testPassword, srv.Client())
 
 	// First call triggers authentication
-	_, err := client.GetStats()
+	_, err := client.GetStats(context.Background())
 	if err != nil {
 		t.Fatalf("unexpected error on first call: %v", err)
 	}
 
 	// Second call should reuse the session
-	_, err = client.GetStats()
+	_, err = client.GetStats(context.Background())
 	if err != nil {
 		t.Fatalf("unexpected error on second call: %v", err)
 	}
@@ -227,9 +235,10 @@ func TestSessionReuse(t *testing.T) {
 }
 
 func TestNetworkError(t *testing.T) {
+	t.Parallel()
 	client := NewClient("http://localhost:1", "secret", nil)
 
-	_, err := client.GetStats()
+	_, err := client.GetStats(context.Background())
 	if err == nil {
 		t.Fatal("expected network error")
 	}

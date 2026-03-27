@@ -42,7 +42,7 @@
     name: string
   }
 
-  let cameras = $state<CameraWithId[]>([])
+  let cameras = $state.raw<CameraWithId[]>([])
 
   $effect(() => {
     const entries = configCameras

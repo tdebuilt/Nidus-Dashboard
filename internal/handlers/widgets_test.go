@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -15,8 +16,9 @@ import (
 
 func widgetsHandler(t *testing.T) (*WidgetsHandler, *models.Category) {
 	t.Helper()
+	ctx := context.Background()
 	db := setupTestDB(t)
-	cat, err := db.CreateCategory("Test", "folder")
+	cat, err := db.CreateCategory(ctx, "Test", "folder")
 	if err != nil {
 		t.Fatalf("failed to create category: %v", err)
 	}
@@ -34,6 +36,7 @@ func widgetRouter(h *WidgetsHandler) *chi.Mux {
 }
 
 func TestWidgetListEmpty(t *testing.T) {
+	t.Parallel()
 	h, cat := widgetsHandler(t)
 	r := widgetRouter(h)
 
@@ -53,6 +56,7 @@ func TestWidgetListEmpty(t *testing.T) {
 }
 
 func TestWidgetListCategoryNotFound(t *testing.T) {
+	t.Parallel()
 	h, _ := widgetsHandler(t)
 	r := widgetRouter(h)
 
@@ -66,6 +70,7 @@ func TestWidgetListCategoryNotFound(t *testing.T) {
 }
 
 func TestWidgetCreate(t *testing.T) {
+	t.Parallel()
 	h, cat := widgetsHandler(t)
 	r := widgetRouter(h)
 
@@ -106,6 +111,7 @@ func TestWidgetCreate(t *testing.T) {
 }
 
 func TestWidgetCreateMissingType(t *testing.T) {
+	t.Parallel()
 	h, cat := widgetsHandler(t)
 	r := widgetRouter(h)
 
@@ -123,6 +129,7 @@ func TestWidgetCreateMissingType(t *testing.T) {
 }
 
 func TestWidgetCreateMissingTitle(t *testing.T) {
+	t.Parallel()
 	h, cat := widgetsHandler(t)
 	r := widgetRouter(h)
 
@@ -140,6 +147,7 @@ func TestWidgetCreateMissingTitle(t *testing.T) {
 }
 
 func TestWidgetCreateCategoryNotFound(t *testing.T) {
+	t.Parallel()
 	h, _ := widgetsHandler(t)
 	r := widgetRouter(h)
 
@@ -157,6 +165,7 @@ func TestWidgetCreateCategoryNotFound(t *testing.T) {
 }
 
 func TestWidgetCreateInvalidJSON(t *testing.T) {
+	t.Parallel()
 	h, cat := widgetsHandler(t)
 	r := widgetRouter(h)
 
@@ -170,9 +179,11 @@ func TestWidgetCreateInvalidJSON(t *testing.T) {
 }
 
 func TestWidgetCreateDefaultConfig(t *testing.T) {
+	t.Parallel()
 	h, cat := widgetsHandler(t)
+	ctx := context.Background()
 
-	widget, err := h.DB.CreateWidget(cat.ID, "test", "Test", "", 0, 0, 0, 0)
+	widget, err := h.DB.CreateWidget(ctx, cat.ID, "test", "Test", "", 0, 0, 0, 0)
 	if err != nil {
 		t.Fatalf("failed to create widget: %v", err)
 	}
@@ -188,10 +199,12 @@ func TestWidgetCreateDefaultConfig(t *testing.T) {
 }
 
 func TestWidgetUpdate(t *testing.T) {
+	t.Parallel()
 	h, cat := widgetsHandler(t)
 	r := widgetRouter(h)
+	ctx := context.Background()
 
-	widget, _ := h.DB.CreateWidget(cat.ID, "old_type", "Old Title", `{"old": true}`, 0, 0, 1, 1)
+	widget, _ := h.DB.CreateWidget(ctx, cat.ID, "old_type", "Old Title", `{"old": true}`, 0, 0, 1, 1)
 
 	body, _ := json.Marshal(models.UpdateWidgetRequest{
 		Type:   "new_type",
@@ -220,6 +233,7 @@ func TestWidgetUpdate(t *testing.T) {
 }
 
 func TestWidgetUpdateNotFound(t *testing.T) {
+	t.Parallel()
 	h, _ := widgetsHandler(t)
 	r := widgetRouter(h)
 
@@ -237,10 +251,12 @@ func TestWidgetUpdateNotFound(t *testing.T) {
 }
 
 func TestWidgetUpdateMissingType(t *testing.T) {
+	t.Parallel()
 	h, cat := widgetsHandler(t)
 	r := widgetRouter(h)
+	ctx := context.Background()
 
-	widget, _ := h.DB.CreateWidget(cat.ID, "test", "Test", "{}", 0, 0, 1, 1)
+	widget, _ := h.DB.CreateWidget(ctx, cat.ID, "test", "Test", "{}", 0, 0, 1, 1)
 
 	body, _ := json.Marshal(models.UpdateWidgetRequest{Type: "", Title: "Test"})
 	req := httptest.NewRequest(http.MethodPut, fmt.Sprintf("/api/widgets/%d", widget.ID), bytes.NewReader(body))
@@ -253,10 +269,12 @@ func TestWidgetUpdateMissingType(t *testing.T) {
 }
 
 func TestWidgetUpdateMissingTitle(t *testing.T) {
+	t.Parallel()
 	h, cat := widgetsHandler(t)
 	r := widgetRouter(h)
+	ctx := context.Background()
 
-	widget, _ := h.DB.CreateWidget(cat.ID, "test", "Test", "{}", 0, 0, 1, 1)
+	widget, _ := h.DB.CreateWidget(ctx, cat.ID, "test", "Test", "{}", 0, 0, 1, 1)
 
 	body, _ := json.Marshal(models.UpdateWidgetRequest{Type: "test", Title: ""})
 	req := httptest.NewRequest(http.MethodPut, fmt.Sprintf("/api/widgets/%d", widget.ID), bytes.NewReader(body))
@@ -269,10 +287,12 @@ func TestWidgetUpdateMissingTitle(t *testing.T) {
 }
 
 func TestWidgetDelete(t *testing.T) {
+	t.Parallel()
 	h, cat := widgetsHandler(t)
 	r := widgetRouter(h)
+	ctx := context.Background()
 
-	widget, _ := h.DB.CreateWidget(cat.ID, "test", "Test", "{}", 0, 0, 1, 1)
+	widget, _ := h.DB.CreateWidget(ctx, cat.ID, "test", "Test", "{}", 0, 0, 1, 1)
 
 	req := httptest.NewRequest(http.MethodDelete, fmt.Sprintf("/api/widgets/%d", widget.ID), nil)
 	w := httptest.NewRecorder()
@@ -283,13 +303,14 @@ func TestWidgetDelete(t *testing.T) {
 	}
 
 	// Verify deleted
-	got, _ := h.DB.GetWidget(widget.ID)
+	got, _ := h.DB.GetWidget(ctx, widget.ID)
 	if got != nil {
 		t.Error("widget should be deleted")
 	}
 }
 
 func TestWidgetDeleteNotFound(t *testing.T) {
+	t.Parallel()
 	h, _ := widgetsHandler(t)
 	r := widgetRouter(h)
 
@@ -303,11 +324,13 @@ func TestWidgetDeleteNotFound(t *testing.T) {
 }
 
 func TestWidgetSaveLayout(t *testing.T) {
+	t.Parallel()
 	h, cat := widgetsHandler(t)
 	r := widgetRouter(h)
+	ctx := context.Background()
 
-	w1, _ := h.DB.CreateWidget(cat.ID, "test", "Widget 1", "{}", 0, 0, 1, 1)
-	w2, _ := h.DB.CreateWidget(cat.ID, "test", "Widget 2", "{}", 1, 0, 1, 1)
+	w1, _ := h.DB.CreateWidget(ctx, cat.ID, "test", "Widget 1", "{}", 0, 0, 1, 1)
+	w2, _ := h.DB.CreateWidget(ctx, cat.ID, "test", "Widget 2", "{}", 1, 0, 1, 1)
 
 	body, _ := json.Marshal(models.SaveLayoutRequest{
 		Widgets: []models.WidgetLayout{
@@ -324,23 +347,25 @@ func TestWidgetSaveLayout(t *testing.T) {
 	}
 
 	// Verify layout was saved
-	got1, _ := h.DB.GetWidget(w1.ID)
+	got1, _ := h.DB.GetWidget(ctx, w1.ID)
 	if got1.PosX != 2 || got1.PosY != 3 || got1.Width != 4 || got1.Height != 2 {
 		t.Errorf("widget 1 layout not saved: pos(%d,%d) size(%d,%d)", got1.PosX, got1.PosY, got1.Width, got1.Height)
 	}
-	got2, _ := h.DB.GetWidget(w2.ID)
+	got2, _ := h.DB.GetWidget(ctx, w2.ID)
 	if got2.PosX != 0 || got2.PosY != 0 || got2.Width != 2 || got2.Height != 1 {
 		t.Errorf("widget 2 layout not saved: pos(%d,%d) size(%d,%d)", got2.PosX, got2.PosY, got2.Width, got2.Height)
 	}
 }
 
 func TestWidgetSaveLayoutReload(t *testing.T) {
+	t.Parallel()
 	h, cat := widgetsHandler(t)
+	ctx := context.Background()
 
-	w1, _ := h.DB.CreateWidget(cat.ID, "test", "Widget 1", "{}", 0, 0, 1, 1)
+	w1, _ := h.DB.CreateWidget(ctx, cat.ID, "test", "Widget 1", "{}", 0, 0, 1, 1)
 
 	// Save layout
-	err := h.DB.SaveWidgetLayout([]models.WidgetLayout{
+	err := h.DB.SaveWidgetLayout(ctx, []models.WidgetLayout{
 		{ID: w1.ID, PosX: 5, PosY: 10, Width: 3, Height: 2},
 	})
 	if err != nil {
@@ -348,13 +373,14 @@ func TestWidgetSaveLayoutReload(t *testing.T) {
 	}
 
 	// Reload from DB
-	got, _ := h.DB.GetWidget(w1.ID)
+	got, _ := h.DB.GetWidget(ctx, w1.ID)
 	if got.PosX != 5 || got.PosY != 10 || got.Width != 3 || got.Height != 2 {
 		t.Errorf("layout not persisted: pos(%d,%d) size(%d,%d)", got.PosX, got.PosY, got.Width, got.Height)
 	}
 }
 
 func TestWidgetSaveLayoutEmpty(t *testing.T) {
+	t.Parallel()
 	h, _ := widgetsHandler(t)
 	r := widgetRouter(h)
 
@@ -369,25 +395,29 @@ func TestWidgetSaveLayoutEmpty(t *testing.T) {
 }
 
 func TestWidgetOrphanImpossible(t *testing.T) {
+	t.Parallel()
 	h, _ := widgetsHandler(t)
+	ctx := context.Background()
 
 	// Try to create widget with non-existent category
-	_, err := h.DB.CreateWidget(999, "test", "Orphan", "{}", 0, 0, 1, 1)
+	_, err := h.DB.CreateWidget(ctx, 999, "test", "Orphan", "{}", 0, 0, 1, 1)
 	if err == nil {
 		t.Error("expected FK violation error, got nil")
 	}
 }
 
 func TestWidgetCascadeDeleteWithCategory(t *testing.T) {
+	t.Parallel()
 	h, cat := widgetsHandler(t)
+	ctx := context.Background()
 
-	widget, _ := h.DB.CreateWidget(cat.ID, "test", "Widget", "{}", 0, 0, 1, 1)
+	widget, _ := h.DB.CreateWidget(ctx, cat.ID, "test", "Widget", "{}", 0, 0, 1, 1)
 
 	// Delete the category
-	h.DB.DeleteCategory(cat.ID)
+	h.DB.DeleteCategory(ctx, cat.ID)
 
 	// Widget should be gone (CASCADE)
-	got, err := h.DB.GetWidget(widget.ID)
+	got, err := h.DB.GetWidget(ctx, widget.ID)
 	if err != nil {
 		t.Fatalf("error querying widget: %v", err)
 	}
@@ -397,15 +427,17 @@ func TestWidgetCascadeDeleteWithCategory(t *testing.T) {
 }
 
 func TestWidgetListByCategory(t *testing.T) {
+	t.Parallel()
 	h, cat := widgetsHandler(t)
 	r := widgetRouter(h)
+	ctx := context.Background()
 
 	// Create a second category
-	cat2, _ := h.DB.CreateCategory("Other", "box")
+	cat2, _ := h.DB.CreateCategory(ctx, "Other", "box")
 
-	h.DB.CreateWidget(cat.ID, "test", "Widget A", "{}", 0, 0, 1, 1)
-	h.DB.CreateWidget(cat.ID, "test", "Widget B", "{}", 1, 0, 1, 1)
-	h.DB.CreateWidget(cat2.ID, "test", "Widget C", "{}", 0, 0, 1, 1)
+	h.DB.CreateWidget(ctx, cat.ID, "test", "Widget A", "{}", 0, 0, 1, 1)
+	h.DB.CreateWidget(ctx, cat.ID, "test", "Widget B", "{}", 1, 0, 1, 1)
+	h.DB.CreateWidget(ctx, cat2.ID, "test", "Widget C", "{}", 0, 0, 1, 1)
 
 	// List widgets for first category
 	req := httptest.NewRequest(http.MethodGet, fmt.Sprintf("/api/categories/%d/widgets", cat.ID), nil)

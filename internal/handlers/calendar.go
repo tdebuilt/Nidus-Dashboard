@@ -64,7 +64,7 @@ func (h *CalendarHandler) GetEvents(w http.ResponseWriter, r *http.Request) {
 	}
 
 	client := calendar.NewClient(nil)
-	data, err := client.FetchEvents(urls, days)
+	data, err := client.FetchEvents(r.Context(), urls, days)
 	if err != nil {
 		writeJSON(w, http.StatusBadGateway, map[string]string{"error": "failed to fetch calendar: " + err.Error()})
 		return

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { darkTheme, lightTheme, nordTheme, draculaTheme, builtinThemes, getBuiltinTheme, getAvailableThemes, parseThemeJSON, themeColorKeys } from './themes'
+import { darkTheme, lightTheme, nordTheme, draculaTheme, builtinThemes, getAvailableThemes, parseThemeJSON, themeColorKeys } from './themes'
 import type { ThemeColors } from './themes'
 
 describe('Theme definitions', () => {
@@ -52,14 +52,6 @@ describe('Theme definitions', () => {
     expect(builtinThemes).toHaveProperty('light')
     expect(builtinThemes).toHaveProperty('nord')
     expect(builtinThemes).toHaveProperty('dracula')
-  })
-
-  it('getBuiltinTheme returns the correct theme', () => {
-    expect(getBuiltinTheme('dark')).toBe(darkTheme)
-    expect(getBuiltinTheme('light')).toBe(lightTheme)
-    expect(getBuiltinTheme('nord')).toBe(nordTheme)
-    expect(getBuiltinTheme('dracula')).toBe(draculaTheme)
-    expect(getBuiltinTheme('nonexistent')).toBeUndefined()
   })
 
   it('getAvailableThemes returns all built-in themes', () => {

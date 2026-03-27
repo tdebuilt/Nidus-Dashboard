@@ -11,6 +11,7 @@ import (
 )
 
 func TestDeriveLoginSecret(t *testing.T) {
+	t.Parallel()
 	secret := deriveLoginSecret("Test@Email.com", "mypassword")
 	if len(secret) != 32 {
 		t.Fatalf("expected 32 bytes, got %d", len(secret))
@@ -29,6 +30,7 @@ func TestDeriveLoginSecret(t *testing.T) {
 }
 
 func TestDeriveDeviceSecret(t *testing.T) {
+	t.Parallel()
 	secret := deriveDeviceSecret("Test@Email.com", "mypassword")
 
 	h := sha256.New()
@@ -43,6 +45,7 @@ func TestDeriveDeviceSecret(t *testing.T) {
 }
 
 func TestDeriveSecretEmailLowercase(t *testing.T) {
+	t.Parallel()
 	s1 := deriveLoginSecret("User@EXAMPLE.COM", "pass")
 	s2 := deriveLoginSecret("user@example.com", "pass")
 	if !bytes.Equal(s1, s2) {
@@ -51,6 +54,7 @@ func TestDeriveSecretEmailLowercase(t *testing.T) {
 }
 
 func TestDeriveSecretDifferentDomains(t *testing.T) {
+	t.Parallel()
 	login := deriveLoginSecret("a@b.com", "pass")
 	device := deriveDeviceSecret("a@b.com", "pass")
 	if bytes.Equal(login, device) {
@@ -59,6 +63,7 @@ func TestDeriveSecretDifferentDomains(t *testing.T) {
 }
 
 func TestUpdateEncryptionToken(t *testing.T) {
+	t.Parallel()
 	oldToken := deriveLoginSecret("test@test.com", "pass")
 	sessionHex := hex.EncodeToString([]byte("fakesessiontoken"))
 
@@ -83,6 +88,7 @@ func TestUpdateEncryptionToken(t *testing.T) {
 }
 
 func TestUpdateEncryptionTokenInvalidHex(t *testing.T) {
+	t.Parallel()
 	oldToken := make([]byte, 32)
 	_, err := updateEncryptionToken(oldToken, "not-valid-hex!")
 	if err == nil {
@@ -91,6 +97,7 @@ func TestUpdateEncryptionTokenInvalidHex(t *testing.T) {
 }
 
 func TestEncryptDecryptRoundtrip(t *testing.T) {
+	t.Parallel()
 	token := deriveLoginSecret("user@test.com", "password123")
 	plaintext := []byte(`{"rid":1,"apiVer":1}`)
 
@@ -114,6 +121,7 @@ func TestEncryptDecryptRoundtrip(t *testing.T) {
 }
 
 func TestEncryptDecryptLargePayload(t *testing.T) {
+	t.Parallel()
 	token := deriveLoginSecret("a@b.com", "p")
 	plaintext := []byte(strings.Repeat("abcdefghij", 100))
 
@@ -133,6 +141,7 @@ func TestEncryptDecryptLargePayload(t *testing.T) {
 }
 
 func TestEncryptInvalidTokenLength(t *testing.T) {
+	t.Parallel()
 	_, err := encrypt([]byte("data"), []byte("short"))
 	if err == nil {
 		t.Fatal("expected error for short token")
@@ -140,6 +149,7 @@ func TestEncryptInvalidTokenLength(t *testing.T) {
 }
 
 func TestDecryptInvalidTokenLength(t *testing.T) {
+	t.Parallel()
 	_, err := decrypt([]byte("0123456789abcdef"), []byte("short"))
 	if err == nil {
 		t.Fatal("expected error for short token")
@@ -147,6 +157,7 @@ func TestDecryptInvalidTokenLength(t *testing.T) {
 }
 
 func TestDecryptInvalidBlockSize(t *testing.T) {
+	t.Parallel()
 	token := make([]byte, 32)
 	_, err := decrypt([]byte("odd-length"), token)
 	if err == nil {
@@ -155,6 +166,7 @@ func TestDecryptInvalidBlockSize(t *testing.T) {
 }
 
 func TestSign(t *testing.T) {
+	t.Parallel()
 	key := []byte("test-secret-key-for-hmac")
 	query := "/my/connect?email=test@test.com&rid=12345"
 
@@ -171,6 +183,7 @@ func TestSign(t *testing.T) {
 }
 
 func TestSignDeterministic(t *testing.T) {
+	t.Parallel()
 	key := []byte("key")
 	query := "/path?param=value"
 	s1 := sign(key, query)
@@ -181,6 +194,7 @@ func TestSignDeterministic(t *testing.T) {
 }
 
 func TestSignDifferentKeys(t *testing.T) {
+	t.Parallel()
 	query := "/path"
 	s1 := sign([]byte("key1"), query)
 	s2 := sign([]byte("key2"), query)
@@ -190,6 +204,7 @@ func TestSignDifferentKeys(t *testing.T) {
 }
 
 func TestPkcs7PadUnpad(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name string
 		data []byte
@@ -203,6 +218,7 @@ func TestPkcs7PadUnpad(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			padded := pkcs7Pad(tt.data, aes.BlockSize)
 			if len(padded)%aes.BlockSize != 0 {
 				t.Fatalf("padded length %d not a multiple of block size", len(padded))
@@ -223,6 +239,7 @@ func TestPkcs7PadUnpad(t *testing.T) {
 }
 
 func TestPkcs7UnpadInvalid(t *testing.T) {
+	t.Parallel()
 	if _, err := pkcs7Unpad([]byte{}); err == nil {
 		t.Fatal("expected error for empty data")
 	}

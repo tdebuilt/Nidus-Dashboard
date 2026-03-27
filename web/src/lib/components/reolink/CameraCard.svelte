@@ -4,6 +4,7 @@
   import { api } from '../../api/client'
   import { t } from '../../i18n'
   import { isViewer } from '../../stores/auth'
+  import { MsePlayer, buildWsUrl } from './msePlayer'
 
   interface Props {
     id: string
@@ -22,35 +23,31 @@
   }
 
   function onKeydown(e: KeyboardEvent) {
-    if (e.key === 'Escape' && fullscreen) {
-      fullscreen = false
-    }
+    if (e.key === 'Escape' && fullscreen) fullscreen = false
   }
+
   let snapshotTs = $state(Date.now())
   const imgSrc = $derived(`/api/reolink/cameras/${id}/snapshot?t=${snapshotTs}`)
   let timer: ReturnType<typeof setTimeout> | null = null
   let destroyed = false
 
-  // MSE streaming state
+  // MSE streaming
   let go2rtcWsUrl = $state<string | null>(null)
   let videoEl: HTMLVideoElement | undefined = $state()
-  let ws: WebSocket | null = null
-  let mediaSource: MediaSource | null = null
-  let sourceBuffer: SourceBuffer | null = null
-  let bufferQueue: ArrayBuffer[] = []
-  let mseObjectUrl: string | null = null
+  let player: MsePlayer | null = null
 
-  // Fetch go2rtc stream URL on mount
   onMount(() => {
-    api.get<{ go2rtc?: string }>(`/api/reolink/cameras/${id}/stream`)
-      .then(info => { go2rtcWsUrl = info.go2rtc || null })
+    api
+      .get<{ go2rtc?: string }>(`/api/reolink/cameras/${id}/stream`)
+      .then((info) => { go2rtcWsUrl = info.go2rtc || null })
       .catch(() => { /* ignored */ })
 
     scheduleRefresh()
     return () => {
       destroyed = true
       stopRefresh()
-      stopMSE()
+      player?.destroy()
+      player = null
     }
   })
 
@@ -59,13 +56,24 @@
   $effect(() => {
     if (!active && wasActive) {
       stopRefresh()
-      stopMSE()
+      player?.stop()
+      player = null
       live = false
+      mseActive = false
       wasActive = false
     } else if (active && !wasActive) {
       wasActive = true
       if (!destroyed) scheduleRefresh()
     }
+  })
+
+  // Reactive: attach video src when element becomes available
+  let mseAttached = false
+  $effect(() => {
+    if (videoEl && mseActive && player && !mseAttached) {
+      mseAttached = true
+    }
+    if (!mseActive) mseAttached = false
   })
 
   // Snapshot polling
@@ -77,20 +85,24 @@
     const delay = live ? 500 : 5000
     timer = setTimeout(() => {
       if (gen !== refreshGeneration || destroyed || mseActive) return
-      const ts = Date.now()
-      const next = `/api/reolink/cameras/${id}/snapshot?t=${ts}`
-      const img = new Image()
-      img.onload = () => {
-        if (gen === refreshGeneration && !destroyed && !mseActive) {
-          snapshotTs = ts
-          scheduleRefresh()
-        }
-      }
-      img.onerror = () => {
-        if (gen === refreshGeneration && !destroyed && !mseActive) scheduleRefresh()
-      }
-      img.src = next
+      preloadSnapshot(gen)
     }, delay)
+  }
+
+  function preloadSnapshot(gen: number) {
+    const ts = Date.now()
+    const next = `/api/reolink/cameras/${id}/snapshot?t=${ts}`
+    const img = new Image()
+    img.onload = () => {
+      if (gen === refreshGeneration && !destroyed && !mseActive) {
+        snapshotTs = ts
+        scheduleRefresh()
+      }
+    }
+    img.onerror = () => {
+      if (gen === refreshGeneration && !destroyed && !mseActive) scheduleRefresh()
+    }
+    img.src = next
   }
 
   function stopRefresh() {
@@ -101,196 +113,38 @@
     }
   }
 
-  // Live toggle
   function toggleLive() {
     live = !live
     if (live && go2rtcWsUrl) {
       stopRefresh()
       startMSE()
     } else if (live) {
-      // No go2rtc — fast snapshot fallback
       stopRefresh()
       scheduleRefresh()
     } else {
-      stopMSE()
+      player?.stop()
+      player = null
+      mseActive = false
       stopRefresh()
       scheduleRefresh()
     }
   }
 
-  // Pending WebSocket URL — set by startMSE, consumed by $effect below
-  let pendingWsUrl = $state<string | null>(null)
-
-  // Reactive: attach MediaSource to <video> when element becomes available after startMSE
-  let mseAttached = false
-  $effect(() => {
-    if (videoEl && mseObjectUrl && mseActive && !mseAttached) {
-      mseAttached = true
-      videoEl.src = mseObjectUrl
-    }
-    if (!mseActive) {
-      mseAttached = false
-    }
-  })
-
-  // MSE streaming via go2rtc WebSocket
   function startMSE() {
     if (!go2rtcWsUrl || destroyed) return
-
-    // Build absolute WebSocket URL from relative or absolute path
-    let wsUrl: string
-    if (go2rtcWsUrl.startsWith('/')) {
-      const proto = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
-      wsUrl = `${proto}//${window.location.host}${go2rtcWsUrl}`
-    } else {
-      wsUrl = go2rtcWsUrl.replace(/^http/, 'ws')
-    }
-
-    mediaSource = new MediaSource()
-    mseObjectUrl = URL.createObjectURL(mediaSource)
-    pendingWsUrl = wsUrl
+    const wsUrl = buildWsUrl(go2rtcWsUrl)
+    player = new MsePlayer(wsUrl, {
+      onActive: (active) => { mseActive = active },
+      onFallback: () => {
+        live = true
+        scheduleRefresh()
+      },
+    })
     mseActive = true
-
-    mediaSource.addEventListener('sourceopen', () => {
-      if (pendingWsUrl) connectWebSocket(pendingWsUrl)
-    }, { once: true })
-  }
-
-  function connectWebSocket(wsUrl: string) {
-    if (destroyed || !mseActive) return
-
-    ws = new WebSocket(wsUrl)
-    ws.binaryType = 'arraybuffer'
-
-    let codecReceived = false
-
-    ws.onopen = () => {
-      // Request MSE stream from go2rtc
-      ws!.send(JSON.stringify({ type: 'mse', value: '' }))
-    }
-
-    ws.onmessage = (event) => {
-      // First message is text with codec info: {"type":"mse","value":"video/mp4; codecs=\"...\""}
-      if (!codecReceived && typeof event.data === 'string') {
-        codecReceived = true
-        try {
-          const msg = JSON.parse(event.data)
-          const mimeCodec = msg.value || 'video/mp4; codecs="avc1.640029"'
-
-          if (!MediaSource.isTypeSupported(mimeCodec)) {
-            console.warn('[MSE] Codec not supported:', mimeCodec, '— falling back to snapshots')
-            stopMSE()
-            live = true
-            scheduleRefresh()
-            return
-          }
-
-          sourceBuffer = mediaSource!.addSourceBuffer(mimeCodec)
-          sourceBuffer.mode = 'segments'
-          sourceBuffer.addEventListener('updateend', flushQueue)
-        } catch (e) {
-          console.error('[MSE] Failed to create SourceBuffer:', e)
-          stopMSE()
-          scheduleRefresh()
-        }
-        return
-      }
-
-      // Binary messages = media segments
-      if (event.data instanceof ArrayBuffer) {
-        appendToBuffer(event.data)
-      }
-    }
-
-    ws.onclose = () => {
-      if (mseActive && !destroyed) {
-        setTimeout(() => {
-          if (mseActive && !destroyed) connectWebSocket(wsUrl)
-        }, 2000)
-      }
-    }
-
-    ws.onerror = () => {
-      ws?.close()
-    }
-  }
-
-  function appendToBuffer(data: ArrayBuffer) {
-    if (!sourceBuffer) return
-
-    if (sourceBuffer.updating) {
-      bufferQueue.push(data)
-      return
-    }
-
-    try {
-      sourceBuffer.appendBuffer(data)
-    } catch {
-      // Buffer full or error — reset
-      bufferQueue = []
-    }
-  }
-
-  function flushQueue() {
-    if (!sourceBuffer || sourceBuffer.updating || bufferQueue.length === 0) return
-
-    // Keep video near live edge
-    if (videoEl && videoEl.buffered.length > 0) {
-      const bufferedEnd = videoEl.buffered.end(videoEl.buffered.length - 1)
-      // Remove old buffer to avoid memory growth
-      if (bufferedEnd - (videoEl.currentTime || 0) > 4) {
-        videoEl.currentTime = bufferedEnd - 0.5
-      }
-      if (videoEl.buffered.start(0) < bufferedEnd - 10) {
-        try {
-          sourceBuffer.remove(0, bufferedEnd - 5)
-          return // wait for updateend after remove
-        } catch { /* ignored */ }
-      }
-    }
-
-    const chunk = bufferQueue.shift()
-    if (chunk) {
-      try {
-        sourceBuffer.appendBuffer(chunk)
-      } catch {
-        bufferQueue = []
-      }
-    }
-  }
-
-  function stopMSE() {
-    mseActive = false
-    pendingWsUrl = null
-    bufferQueue = []
-
-    if (ws) {
-      ws.onclose = null
-      ws.onerror = null
-      ws.close()
-      ws = null
-    }
-
-    if (sourceBuffer && mediaSource && mediaSource.readyState === 'open') {
-      try {
-        mediaSource.removeSourceBuffer(sourceBuffer)
-      } catch { /* ignored */ }
-    }
-    sourceBuffer = null
-
-    if (mediaSource && mediaSource.readyState === 'open') {
-      try { mediaSource.endOfStream() } catch { /* ignored */ }
-    }
-    mediaSource = null
-
-    if (mseObjectUrl) {
-      URL.revokeObjectURL(mseObjectUrl)
-      mseObjectUrl = null
-    }
-
-    if (videoEl) {
-      videoEl.src = ''
-    }
+    // Wait for videoEl to be rendered via mseActive=true, then start in next tick
+    requestAnimationFrame(() => {
+      if (videoEl && player) player.start(videoEl)
+    })
   }
 </script>
 
@@ -305,7 +159,7 @@
   ></div>
 {/if}
 
-<!-- Single camera container — repositioned via CSS for fullscreen -->
+<!-- Single camera container -->
 <div
   class="group overflow-hidden {fullscreen ? 'fixed inset-0 z-50 flex items-center justify-center bg-black' : 'relative rounded-lg border border-[var(--color-border)] bg-[var(--color-bg)]'}"
   role="button"

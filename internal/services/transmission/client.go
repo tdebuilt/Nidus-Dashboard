@@ -1,6 +1,7 @@
 package transmission
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -40,7 +41,7 @@ func (c *Client) SetCredentials(username, password string) {
 }
 
 // ListTorrents returns all torrents with detailed fields.
-func (c *Client) ListTorrents() ([]Torrent, error) {
+func (c *Client) ListTorrents(ctx context.Context) ([]Torrent, error) {
 	args := map[string]interface{}{
 		"fields": []string{
 			"id", "name", "status", "totalSize", "sizeWhenDone",
@@ -51,75 +52,75 @@ func (c *Client) ListTorrents() ([]Torrent, error) {
 	}
 
 	var resp TorrentListResponse
-	if err := c.doRPC("torrent-get", args, &resp); err != nil {
+	if err := c.doRPC(ctx, "torrent-get", args, &resp); err != nil {
 		return nil, fmt.Errorf("listing torrents: %w", err)
 	}
 	return resp.Torrents, nil
 }
 
 // AddTorrent adds a torrent by URL or magnet link.
-func (c *Client) AddTorrent(url string) error {
+func (c *Client) AddTorrent(ctx context.Context, url string) error {
 	args := map[string]string{
 		"filename": url,
 	}
-	if err := c.doRPC("torrent-add", args, nil); err != nil {
+	if err := c.doRPC(ctx, "torrent-add", args, nil); err != nil {
 		return fmt.Errorf("adding torrent: %w", err)
 	}
 	return nil
 }
 
 // AddTorrentByFile adds a torrent from base64-encoded .torrent file content.
-func (c *Client) AddTorrentByFile(metainfo string) error {
+func (c *Client) AddTorrentByFile(ctx context.Context, metainfo string) error {
 	args := map[string]string{
 		"metainfo": metainfo,
 	}
-	if err := c.doRPC("torrent-add", args, nil); err != nil {
+	if err := c.doRPC(ctx, "torrent-add", args, nil); err != nil {
 		return fmt.Errorf("adding torrent by file: %w", err)
 	}
 	return nil
 }
 
 // StartTorrent starts torrents by IDs.
-func (c *Client) StartTorrent(ids []int) error {
+func (c *Client) StartTorrent(ctx context.Context, ids []int) error {
 	args := map[string]interface{}{
 		"ids": ids,
 	}
-	if err := c.doRPC("torrent-start", args, nil); err != nil {
+	if err := c.doRPC(ctx, "torrent-start", args, nil); err != nil {
 		return fmt.Errorf("starting torrent: %w", err)
 	}
 	return nil
 }
 
 // StopTorrent stops torrents by IDs.
-func (c *Client) StopTorrent(ids []int) error {
+func (c *Client) StopTorrent(ctx context.Context, ids []int) error {
 	args := map[string]interface{}{
 		"ids": ids,
 	}
-	if err := c.doRPC("torrent-stop", args, nil); err != nil {
+	if err := c.doRPC(ctx, "torrent-stop", args, nil); err != nil {
 		return fmt.Errorf("stopping torrent: %w", err)
 	}
 	return nil
 }
 
 // StartAll starts all torrents.
-func (c *Client) StartAll() error {
-	if err := c.doRPC("torrent-start", nil, nil); err != nil {
+func (c *Client) StartAll(ctx context.Context) error {
+	if err := c.doRPC(ctx, "torrent-start", nil, nil); err != nil {
 		return fmt.Errorf("starting all torrents: %w", err)
 	}
 	return nil
 }
 
 // StopAll stops all torrents.
-func (c *Client) StopAll() error {
-	if err := c.doRPC("torrent-stop", nil, nil); err != nil {
+func (c *Client) StopAll(ctx context.Context) error {
+	if err := c.doRPC(ctx, "torrent-stop", nil, nil); err != nil {
 		return fmt.Errorf("stopping all torrents: %w", err)
 	}
 	return nil
 }
 
 // RemoveCompleted removes all completed torrents without deleting files.
-func (c *Client) RemoveCompleted() (int, error) {
-	torrents, err := c.ListTorrents()
+func (c *Client) RemoveCompleted(ctx context.Context) (int, error) {
+	torrents, err := c.ListTorrents(ctx)
 	if err != nil {
 		return 0, err
 	}
@@ -136,16 +137,16 @@ func (c *Client) RemoveCompleted() (int, error) {
 		"ids":               ids,
 		"delete-local-data": false,
 	}
-	if err := c.doRPC("torrent-remove", args, nil); err != nil {
+	if err := c.doRPC(ctx, "torrent-remove", args, nil); err != nil {
 		return 0, fmt.Errorf("removing completed torrents: %w", err)
 	}
 	return len(ids), nil
 }
 
 // GetSessionStats returns session statistics.
-func (c *Client) GetSessionStats() (*SessionStats, error) {
+func (c *Client) GetSessionStats(ctx context.Context) (*SessionStats, error) {
 	var stats SessionStats
-	if err := c.doRPC("session-stats", nil, &stats); err != nil {
+	if err := c.doRPC(ctx, "session-stats", nil, &stats); err != nil {
 		return nil, fmt.Errorf("getting session stats: %w", err)
 	}
 	return &stats, nil
@@ -192,7 +193,7 @@ func statusString(status int) string {
 	}
 }
 
-func (c *Client) doRPC(method string, args interface{}, result interface{}) error {
+func (c *Client) doRPC(ctx context.Context, method string, args interface{}, result interface{}) error {
 	rpcReq := RPCRequest{
 		Method:    method,
 		Arguments: args,
@@ -203,7 +204,7 @@ func (c *Client) doRPC(method string, args interface{}, result interface{}) erro
 		return fmt.Errorf("marshaling RPC request: %w", err)
 	}
 
-	resp, err := c.sendRequest(data)
+	resp, err := c.sendRequest(ctx, data)
 	if err != nil {
 		return err
 	}
@@ -215,7 +216,7 @@ func (c *Client) doRPC(method string, args interface{}, result interface{}) erro
 		c.mu.Unlock()
 		resp.Body.Close()
 
-		resp, err = c.sendRequest(data)
+		resp, err = c.sendRequest(ctx, data)
 		if err != nil {
 			return err
 		}
@@ -249,9 +250,9 @@ func (c *Client) doRPC(method string, args interface{}, result interface{}) erro
 	return nil
 }
 
-func (c *Client) sendRequest(data []byte) (*http.Response, error) {
+func (c *Client) sendRequest(ctx context.Context, data []byte) (*http.Response, error) {
 	rpcURL := c.baseURL + "/transmission/rpc"
-	req, err := http.NewRequest(http.MethodPost, rpcURL, strings.NewReader(string(data)))
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, rpcURL, strings.NewReader(string(data)))
 	if err != nil {
 		return nil, fmt.Errorf("creating request: %w", err)
 	}

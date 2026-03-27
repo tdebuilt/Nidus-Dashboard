@@ -2,6 +2,7 @@ package pihole
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -35,13 +36,13 @@ func NewClient(baseURL, password string, httpClient *http.Client) *Client {
 }
 
 // authenticate obtains a new session from the Pi-hole API.
-func (c *Client) authenticate() error {
+func (c *Client) authenticate(ctx context.Context) error {
 	payload, err := json.Marshal(AuthRequest{Password: c.password})
 	if err != nil {
 		return fmt.Errorf("marshaling auth request: %w", err)
 	}
 
-	req, err := http.NewRequest(http.MethodPost, c.baseURL+"/api/auth", bytes.NewReader(payload))
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.baseURL+"/api/auth", bytes.NewReader(payload))
 	if err != nil {
 		return fmt.Errorf("creating auth request: %w", err)
 	}
@@ -83,12 +84,12 @@ func (c *Client) isSessionValid() bool {
 }
 
 // getCredentials ensures a valid session exists and returns a copy of the credentials.
-func (c *Client) getCredentials() (sid, csrf string, err error) {
+func (c *Client) getCredentials(ctx context.Context) (sid, csrf string, err error) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
 	if !c.isSessionValid() {
-		if err := c.authenticate(); err != nil {
+		if err := c.authenticate(ctx); err != nil {
 			return "", "", err
 		}
 	}
@@ -96,11 +97,11 @@ func (c *Client) getCredentials() (sid, csrf string, err error) {
 }
 
 // refreshCredentials forces a re-authentication and returns new credentials.
-func (c *Client) refreshCredentials() (sid, csrf string, err error) {
+func (c *Client) refreshCredentials(ctx context.Context) (sid, csrf string, err error) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	if err := c.authenticate(); err != nil {
+	if err := c.authenticate(ctx); err != nil {
 		return "", "", err
 	}
 	return c.sid, c.csrf, nil
@@ -108,13 +109,13 @@ func (c *Client) refreshCredentials() (sid, csrf string, err error) {
 
 // authenticatedGet performs a GET request with session authentication.
 // On 401, it re-authenticates once and retries.
-func (c *Client) authenticatedGet(path string, result any) error {
-	sid, csrf, err := c.getCredentials()
+func (c *Client) authenticatedGet(ctx context.Context, path string, result any) error {
+	sid, csrf, err := c.getCredentials(ctx)
 	if err != nil {
 		return err
 	}
 
-	req, err := http.NewRequest(http.MethodGet, c.baseURL+path, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.baseURL+path, nil)
 	if err != nil {
 		return fmt.Errorf("creating request: %w", err)
 	}
@@ -123,12 +124,12 @@ func (c *Client) authenticatedGet(path string, result any) error {
 
 	status, err := c.doRequest(req, result)
 	if err != nil && status == http.StatusUnauthorized {
-		sid, csrf, err = c.refreshCredentials()
+		sid, csrf, err = c.refreshCredentials(ctx)
 		if err != nil {
 			return err
 		}
 
-		req, err = http.NewRequest(http.MethodGet, c.baseURL+path, nil)
+		req, err = http.NewRequestWithContext(ctx, http.MethodGet, c.baseURL+path, nil)
 		if err != nil {
 			return fmt.Errorf("creating retry request: %w", err)
 		}
@@ -143,25 +144,25 @@ func (c *Client) authenticatedGet(path string, result any) error {
 
 // authenticatedPost performs a POST request with session authentication.
 // On 401, it re-authenticates once and retries.
-func (c *Client) authenticatedPost(path string, body any, result any) error {
-	sid, csrf, err := c.getCredentials()
+func (c *Client) authenticatedPost(ctx context.Context, path string, body any, result any) error {
+	sid, csrf, err := c.getCredentials(ctx)
 	if err != nil {
 		return err
 	}
 
-	req, err := c.buildPostRequest(path, body, sid, csrf)
+	req, err := c.buildPostRequest(ctx, path, body, sid, csrf)
 	if err != nil {
 		return err
 	}
 
 	status, err := c.doRequest(req, result)
 	if err != nil && status == http.StatusUnauthorized {
-		sid, csrf, err = c.refreshCredentials()
+		sid, csrf, err = c.refreshCredentials(ctx)
 		if err != nil {
 			return err
 		}
 
-		req, err = c.buildPostRequest(path, body, sid, csrf)
+		req, err = c.buildPostRequest(ctx, path, body, sid, csrf)
 		if err != nil {
 			return err
 		}
@@ -172,7 +173,7 @@ func (c *Client) authenticatedPost(path string, body any, result any) error {
 	return err
 }
 
-func (c *Client) buildPostRequest(path string, body any, sid, csrf string) (*http.Request, error) {
+func (c *Client) buildPostRequest(ctx context.Context, path string, body any, sid, csrf string) (*http.Request, error) {
 	var reader io.Reader
 	if body != nil {
 		data, err := json.Marshal(body)
@@ -182,7 +183,7 @@ func (c *Client) buildPostRequest(path string, body any, sid, csrf string) (*htt
 		reader = bytes.NewReader(data)
 	}
 
-	req, err := http.NewRequest(http.MethodPost, c.baseURL+path, reader)
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.baseURL+path, reader)
 	if err != nil {
 		return nil, fmt.Errorf("creating request: %w", err)
 	}
@@ -221,14 +222,14 @@ func (c *Client) doRequest(req *http.Request, result any) (int, error) {
 }
 
 // GetStats returns combined DNS statistics and blocking status.
-func (c *Client) GetStats() (*StatsInfo, error) {
+func (c *Client) GetStats(ctx context.Context) (*StatsInfo, error) {
 	var statsResp StatsResponse
-	if err := c.authenticatedGet("/api/stats/summary", &statsResp); err != nil {
+	if err := c.authenticatedGet(ctx, "/api/stats/summary", &statsResp); err != nil {
 		return nil, fmt.Errorf("getting stats: %w", err)
 	}
 
 	var blockResp BlockingResponse
-	if err := c.authenticatedGet("/api/dns/blocking", &blockResp); err != nil {
+	if err := c.authenticatedGet(ctx, "/api/dns/blocking", &blockResp); err != nil {
 		return nil, fmt.Errorf("getting blocking status: %w", err)
 	}
 
@@ -244,9 +245,9 @@ func (c *Client) GetStats() (*StatsInfo, error) {
 }
 
 // SetBlocking enables or disables Pi-hole DNS blocking.
-func (c *Client) SetBlocking(enabled bool) error {
+func (c *Client) SetBlocking(ctx context.Context, enabled bool) error {
 	body := map[string]bool{"blocking": enabled}
-	if err := c.authenticatedPost("/api/dns/blocking", body, nil); err != nil {
+	if err := c.authenticatedPost(ctx, "/api/dns/blocking", body, nil); err != nil {
 		return fmt.Errorf("setting blocking: %w", err)
 	}
 	return nil

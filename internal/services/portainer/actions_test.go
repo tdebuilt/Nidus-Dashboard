@@ -1,6 +1,7 @@
 package portainer
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -78,13 +79,14 @@ func (l *actionLog) add(a string) {
 }
 
 func TestStartContainer(t *testing.T) {
+	t.Parallel()
 	srv, log := mockActionsServer(t)
 	defer srv.Close()
 
 	client := NewClient(srv.URL, srv.Client())
 	client.SetToken("test-token")
 
-	if err := client.StartContainer(1, "abc123"); err != nil {
+	if err := client.StartContainer(context.Background(), 1, "abc123"); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 	if len(log.actions) != 1 || log.actions[0] != "container:start" {
@@ -93,13 +95,14 @@ func TestStartContainer(t *testing.T) {
 }
 
 func TestStopContainer(t *testing.T) {
+	t.Parallel()
 	srv, log := mockActionsServer(t)
 	defer srv.Close()
 
 	client := NewClient(srv.URL, srv.Client())
 	client.SetToken("test-token")
 
-	if err := client.StopContainer(1, "abc123"); err != nil {
+	if err := client.StopContainer(context.Background(), 1, "abc123"); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 	if log.actions[0] != "container:stop" {
@@ -108,13 +111,14 @@ func TestStopContainer(t *testing.T) {
 }
 
 func TestRestartContainer(t *testing.T) {
+	t.Parallel()
 	srv, log := mockActionsServer(t)
 	defer srv.Close()
 
 	client := NewClient(srv.URL, srv.Client())
 	client.SetToken("test-token")
 
-	if err := client.RestartContainer(1, "abc123"); err != nil {
+	if err := client.RestartContainer(context.Background(), 1, "abc123"); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 	if log.actions[0] != "container:restart" {
@@ -123,13 +127,14 @@ func TestRestartContainer(t *testing.T) {
 }
 
 func TestRecreateContainerWithPull(t *testing.T) {
+	t.Parallel()
 	srv, log := mockActionsServer(t)
 	defer srv.Close()
 
 	client := NewClient(srv.URL, srv.Client())
 	client.SetToken("test-token")
 
-	if err := client.RecreateContainer(1, "abc123", true); err != nil {
+	if err := client.RecreateContainer(context.Background(), 1, "abc123", true); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 	if log.actions[0] != "container:recreate:pull" {
@@ -138,13 +143,14 @@ func TestRecreateContainerWithPull(t *testing.T) {
 }
 
 func TestRecreateContainerWithoutPull(t *testing.T) {
+	t.Parallel()
 	srv, log := mockActionsServer(t)
 	defer srv.Close()
 
 	client := NewClient(srv.URL, srv.Client())
 	client.SetToken("test-token")
 
-	if err := client.RecreateContainer(1, "abc123", false); err != nil {
+	if err := client.RecreateContainer(context.Background(), 1, "abc123", false); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 	if log.actions[0] != "container:recreate:nopull" {
@@ -153,13 +159,14 @@ func TestRecreateContainerWithoutPull(t *testing.T) {
 }
 
 func TestStartStack(t *testing.T) {
+	t.Parallel()
 	srv, log := mockActionsServer(t)
 	defer srv.Close()
 
 	client := NewClient(srv.URL, srv.Client())
 	client.SetToken("test-token")
 
-	if err := client.StartStack(10, 1); err != nil {
+	if err := client.StartStack(context.Background(), 10, 1); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 	if log.actions[0] != "stack:start" {
@@ -168,13 +175,14 @@ func TestStartStack(t *testing.T) {
 }
 
 func TestStopStack(t *testing.T) {
+	t.Parallel()
 	srv, log := mockActionsServer(t)
 	defer srv.Close()
 
 	client := NewClient(srv.URL, srv.Client())
 	client.SetToken("test-token")
 
-	if err := client.StopStack(10, 1); err != nil {
+	if err := client.StopStack(context.Background(), 10, 1); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 	if log.actions[0] != "stack:stop" {
@@ -183,13 +191,14 @@ func TestStopStack(t *testing.T) {
 }
 
 func TestContainerActionUnauthorized(t *testing.T) {
+	t.Parallel()
 	srv, _ := mockActionsServer(t)
 	defer srv.Close()
 
 	client := NewClient(srv.URL, srv.Client())
 	// No token
 
-	err := client.StartContainer(1, "abc123")
+	err := client.StartContainer(context.Background(), 1, "abc123")
 	if err == nil {
 		t.Fatal("expected unauthorized error")
 	}
@@ -199,13 +208,14 @@ func TestContainerActionUnauthorized(t *testing.T) {
 }
 
 func TestContainerActionNotFound(t *testing.T) {
+	t.Parallel()
 	srv, _ := mockActionsServer(t)
 	defer srv.Close()
 
 	client := NewClient(srv.URL, srv.Client())
 	client.SetToken("test-token")
 
-	err := client.StartContainer(1, "notfound")
+	err := client.StartContainer(context.Background(), 1, "notfound")
 	if err == nil {
 		t.Fatal("expected error for non-existent container")
 	}
@@ -215,10 +225,11 @@ func TestContainerActionNotFound(t *testing.T) {
 }
 
 func TestContainerActionNetworkError(t *testing.T) {
+	t.Parallel()
 	client := NewClient("http://localhost:1", nil)
 	client.SetToken("test-token")
 
-	err := client.StartContainer(1, "abc123")
+	err := client.StartContainer(context.Background(), 1, "abc123")
 	if err == nil {
 		t.Fatal("expected network error")
 	}

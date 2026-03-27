@@ -45,7 +45,7 @@ func (h *SearchHandler) Search(w http.ResponseWriter, r *http.Request) {
 
 	results := make([]SearchResult, 0)
 
-	widgets, err := h.DB.SearchWidgets(query)
+	widgets, err := h.DB.SearchWidgets(r.Context(), query)
 	if err != nil {
 		writeJSON(w, http.StatusInternalServerError, SearchResponse{Results: []SearchResult{}})
 		return
@@ -60,7 +60,7 @@ func (h *SearchHandler) Search(w http.ResponseWriter, r *http.Request) {
 		})
 	}
 
-	categories, err := h.DB.SearchCategories(query)
+	categories, err := h.DB.SearchCategories(r.Context(), query)
 	if err != nil {
 		writeJSON(w, http.StatusInternalServerError, SearchResponse{Results: []SearchResult{}})
 		return

@@ -24,7 +24,7 @@
   let compact = $state(false)
 
   let searchQuery = $state('')
-  let searchResults = $state<SearchResult[]>([])
+  let searchResults = $state.raw<SearchResult[]>([])
   let _searchLoading = $state(false)
   let showDropdown = $state(false)
   let searchTimeout: ReturnType<typeof setTimeout> | null = null

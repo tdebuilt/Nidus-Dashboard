@@ -7,6 +7,7 @@ import (
 )
 
 func TestLoadDefaults(t *testing.T) {
+	t.Parallel()
 	// Load from a non-existent file should return defaults
 	cfg, err := Load("/tmp/nidus_test_nonexistent.yaml")
 	if err != nil {
@@ -24,6 +25,7 @@ func TestLoadDefaults(t *testing.T) {
 }
 
 func TestLoadFromYAML(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	path := filepath.Join(dir, "config.yaml")
 
@@ -53,6 +55,7 @@ database:
 }
 
 func TestLoadPartialYAML(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	path := filepath.Join(dir, "config.yaml")
 
@@ -158,6 +161,7 @@ func TestValidateEmptyDBPath(t *testing.T) {
 }
 
 func TestInvalidYAML(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	path := filepath.Join(dir, "config.yaml")
 

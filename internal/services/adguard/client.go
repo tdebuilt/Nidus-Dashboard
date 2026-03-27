@@ -1,6 +1,7 @@
 package adguard
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -35,44 +36,44 @@ func (c *Client) SetCredentials(username, password string) {
 }
 
 // GetStats returns the DNS query statistics.
-func (c *Client) GetStats() (*Stats, error) {
+func (c *Client) GetStats(ctx context.Context) (*Stats, error) {
 	var stats Stats
-	if err := c.get("/control/stats", &stats); err != nil {
+	if err := c.get(ctx, "/control/stats", &stats); err != nil {
 		return nil, fmt.Errorf("getting stats: %w", err)
 	}
 	return &stats, nil
 }
 
 // GetFilteringStatus returns the current filtering status.
-func (c *Client) GetFilteringStatus() (*FilteringStatus, error) {
+func (c *Client) GetFilteringStatus(ctx context.Context) (*FilteringStatus, error) {
 	var status FilteringStatus
-	if err := c.get("/control/filtering/status", &status); err != nil {
+	if err := c.get(ctx, "/control/filtering/status", &status); err != nil {
 		return nil, fmt.Errorf("getting filtering status: %w", err)
 	}
 	return &status, nil
 }
 
 // SetFilteringEnabled enables or disables DNS filtering.
-func (c *Client) SetFilteringEnabled(enabled bool) error {
+func (c *Client) SetFilteringEnabled(ctx context.Context, enabled bool) error {
 	body := map[string]interface{}{
 		"enabled":  enabled,
 		"interval": 0,
 	}
-	if err := c.post("/control/filtering/config", body, nil); err != nil {
+	if err := c.post(ctx, "/control/filtering/config", body, nil); err != nil {
 		return fmt.Errorf("setting filtering: %w", err)
 	}
 	return nil
 }
 
-func (c *Client) get(path string, result any) error {
-	req, err := http.NewRequest(http.MethodGet, c.baseURL+path, nil)
+func (c *Client) get(ctx context.Context, path string, result any) error {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.baseURL+path, nil)
 	if err != nil {
 		return fmt.Errorf("creating request: %w", err)
 	}
 	return c.doRequest(req, result)
 }
 
-func (c *Client) post(path string, body any, result any) error {
+func (c *Client) post(ctx context.Context, path string, body any, result any) error {
 	var reader io.Reader
 	if body != nil {
 		data, err := json.Marshal(body)
@@ -82,7 +83,7 @@ func (c *Client) post(path string, body any, result any) error {
 		reader = strings.NewReader(string(data))
 	}
 
-	req, err := http.NewRequest(http.MethodPost, c.baseURL+path, reader)
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.baseURL+path, reader)
 	if err != nil {
 		return fmt.Errorf("creating request: %w", err)
 	}

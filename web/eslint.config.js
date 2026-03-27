@@ -79,6 +79,24 @@ export default [
       'no-empty': 'warn',
       'no-case-declarations': 'warn',
       'prefer-const': 'warn',
+      // Code complexity limits
+      'max-lines': ['warn', { max: 300, skipBlankLines: true, skipComments: true }],
+      'max-lines-per-function': ['warn', { max: 40, skipBlankLines: true, skipComments: true }],
+      'max-depth': ['warn', 4],
+      'complexity': ['warn', 10],
+    },
+  },
+  {
+    files: ['**/*.svelte', '**/*.svelte.ts'],
+    rules: {
+      'prefer-const': 'off', // Svelte 5 $props() destructuring requires let, not const
+    },
+  },
+  {
+    files: ['**/*.test.ts', '**/*.test.js', '**/*.spec.ts', '**/*.spec.js'],
+    rules: {
+      'max-lines-per-function': 'off',
+      'max-lines': 'off',
     },
   },
   {

@@ -14,6 +14,7 @@ func mustGenerateKey(t *testing.T) string {
 }
 
 func TestEncryptDecryptRoundTrip(t *testing.T) {
+	t.Parallel()
 	key := mustGenerateKey(t)
 	plaintext := "my-secret-api-key-12345"
 
@@ -38,6 +39,7 @@ func TestEncryptDecryptRoundTrip(t *testing.T) {
 }
 
 func TestEncryptDecryptEmptyString(t *testing.T) {
+	t.Parallel()
 	key := mustGenerateKey(t)
 
 	ciphertext, err := Encrypt("", key)
@@ -56,6 +58,7 @@ func TestEncryptDecryptEmptyString(t *testing.T) {
 }
 
 func TestDecryptWrongKeyFails(t *testing.T) {
+	t.Parallel()
 	key1 := mustGenerateKey(t)
 	key2 := mustGenerateKey(t)
 
@@ -74,6 +77,7 @@ func TestDecryptWrongKeyFails(t *testing.T) {
 }
 
 func TestDecryptCorruptedDataFails(t *testing.T) {
+	t.Parallel()
 	key := mustGenerateKey(t)
 
 	ciphertext, err := Encrypt("secret", key)
@@ -91,6 +95,7 @@ func TestDecryptCorruptedDataFails(t *testing.T) {
 }
 
 func TestDecryptTooShortFails(t *testing.T) {
+	t.Parallel()
 	key := mustGenerateKey(t)
 
 	_, err := Decrypt("abcd", key)
@@ -100,6 +105,7 @@ func TestDecryptTooShortFails(t *testing.T) {
 }
 
 func TestNonceIsUnique(t *testing.T) {
+	t.Parallel()
 	key := mustGenerateKey(t)
 	plaintext := "same-plaintext"
 
@@ -126,6 +132,7 @@ func TestNonceIsUnique(t *testing.T) {
 }
 
 func TestInvalidKeyTooShort(t *testing.T) {
+	t.Parallel()
 	_, err := Encrypt("test", "abcdef")
 	if err != ErrInvalidKey {
 		t.Errorf("expected ErrInvalidKey, got %v", err)
@@ -133,6 +140,7 @@ func TestInvalidKeyTooShort(t *testing.T) {
 }
 
 func TestInvalidKeyNotHex(t *testing.T) {
+	t.Parallel()
 	_, err := Encrypt("test", "zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz")
 	if err != ErrInvalidKey {
 		t.Errorf("expected ErrInvalidKey, got %v", err)
@@ -140,6 +148,7 @@ func TestInvalidKeyNotHex(t *testing.T) {
 }
 
 func TestGenerateKeyLength(t *testing.T) {
+	t.Parallel()
 	key := mustGenerateKey(t)
 
 	// 32 bytes = 64 hex chars
@@ -162,6 +171,7 @@ func TestGenerateKeyLength(t *testing.T) {
 }
 
 func TestGenerateKeyUnique(t *testing.T) {
+	t.Parallel()
 	k1 := mustGenerateKey(t)
 	k2 := mustGenerateKey(t)
 	if k1 == k2 {
@@ -170,6 +180,7 @@ func TestGenerateKeyUnique(t *testing.T) {
 }
 
 func TestLongPlaintext(t *testing.T) {
+	t.Parallel()
 	key := mustGenerateKey(t)
 
 	// 10KB of data

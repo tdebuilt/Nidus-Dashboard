@@ -7,6 +7,7 @@ import (
 )
 
 func TestGetCurrentWeather(t *testing.T) {
+	t.Parallel()
 	mux := http.NewServeMux()
 	mux.HandleFunc("/data/2.5/weather", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
@@ -79,6 +80,7 @@ func TestGetCurrentWeather(t *testing.T) {
 }
 
 func TestAggregateForecast(t *testing.T) {
+	t.Parallel()
 	resp := &owmForecastResponse{
 		List: []struct {
 			Dt   int64 `json:"dt"`
@@ -163,6 +165,7 @@ func TestAggregateForecast(t *testing.T) {
 }
 
 func TestConvertCurrentNoWeather(t *testing.T) {
+	t.Parallel()
 	resp := &owmCurrentResponse{
 		Name: "Unknown",
 	}

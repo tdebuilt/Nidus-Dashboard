@@ -1,6 +1,7 @@
 package arr
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -31,32 +32,32 @@ func NewClient(baseURL, apiKey, apiVersion string, httpClient *http.Client) *Cli
 }
 
 // GetSystemStatus returns version and instance information.
-func (c *Client) GetSystemStatus() (*SystemStatus, error) {
+func (c *Client) GetSystemStatus(ctx context.Context) (*SystemStatus, error) {
 	var status SystemStatus
-	if err := c.get("/system/status", &status); err != nil {
+	if err := c.get(ctx, "/system/status", &status); err != nil {
 		return nil, fmt.Errorf("getting system status: %w", err)
 	}
 	return &status, nil
 }
 
 // GetQueue returns the download queue with pagination.
-func (c *Client) GetQueue(pageSize int) (*QueueResponse, error) {
+func (c *Client) GetQueue(ctx context.Context, pageSize int) (*QueueResponse, error) {
 	path := fmt.Sprintf("/queue?pageSize=%d&sortDirection=descending&sortKey=progress", pageSize)
 	var queue QueueResponse
-	if err := c.get(path, &queue); err != nil {
+	if err := c.get(ctx, path, &queue); err != nil {
 		return nil, fmt.Errorf("getting queue: %w", err)
 	}
 	return &queue, nil
 }
 
 // GetCalendar returns upcoming media items for the next 7 days.
-func (c *Client) GetCalendar(start, end time.Time) ([]CalendarItem, error) {
+func (c *Client) GetCalendar(ctx context.Context, start, end time.Time) ([]CalendarItem, error) {
 	path := fmt.Sprintf("/calendar?start=%s&end=%s",
 		start.Format(time.RFC3339),
 		end.Format(time.RFC3339),
 	)
 	var items []CalendarItem
-	if err := c.get(path, &items); err != nil {
+	if err := c.get(ctx, path, &items); err != nil {
 		return nil, fmt.Errorf("getting calendar: %w", err)
 	}
 	return items, nil
@@ -64,17 +65,17 @@ func (c *Client) GetCalendar(start, end time.Time) ([]CalendarItem, error) {
 
 // GetLibraryCount returns the number of items in the library.
 // It decodes the response as a raw JSON array to avoid defining full model structs.
-func (c *Client) GetLibraryCount(libraryPath string) (int, error) {
+func (c *Client) GetLibraryCount(ctx context.Context, libraryPath string) (int, error) {
 	var items []json.RawMessage
-	if err := c.get(libraryPath, &items); err != nil {
+	if err := c.get(ctx, libraryPath, &items); err != nil {
 		return 0, fmt.Errorf("getting library count: %w", err)
 	}
 	return len(items), nil
 }
 
-func (c *Client) get(path string, result any) error {
+func (c *Client) get(ctx context.Context, path string, result any) error {
 	url := fmt.Sprintf("%s/api/%s%s", c.baseURL, c.apiVersion, path)
-	req, err := http.NewRequest(http.MethodGet, url, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
 		return fmt.Errorf("creating request: %w", err)
 	}

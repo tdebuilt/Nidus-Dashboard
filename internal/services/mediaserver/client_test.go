@@ -1,6 +1,7 @@
 package mediaserver
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -8,6 +9,7 @@ import (
 )
 
 func TestPlexGetSessions(t *testing.T) {
+	t.Parallel()
 	mux := http.NewServeMux()
 	mux.HandleFunc("/status/sessions", func(w http.ResponseWriter, r *http.Request) {
 		if r.Header.Get("X-Plex-Token") != "test-token" {
@@ -40,7 +42,7 @@ func TestPlexGetSessions(t *testing.T) {
 	defer srv.Close()
 
 	client := NewPlexClient(srv.URL, "test-token", nil)
-	sessions, err := client.GetSessions()
+	sessions, err := client.GetSessions(context.Background())
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -74,6 +76,7 @@ func TestPlexGetSessions(t *testing.T) {
 }
 
 func TestPlexGetSessionsEpisode(t *testing.T) {
+	t.Parallel()
 	mux := http.NewServeMux()
 	mux.HandleFunc("/status/sessions", func(w http.ResponseWriter, r *http.Request) {
 		resp := map[string]any{
@@ -103,7 +106,7 @@ func TestPlexGetSessionsEpisode(t *testing.T) {
 	defer srv.Close()
 
 	client := NewPlexClient(srv.URL, "", nil)
-	sessions, err := client.GetSessions()
+	sessions, err := client.GetSessions(context.Background())
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -118,6 +121,7 @@ func TestPlexGetSessionsEpisode(t *testing.T) {
 }
 
 func TestPlexGetLibraries(t *testing.T) {
+	t.Parallel()
 	mux := http.NewServeMux()
 	mux.HandleFunc("/library/sections", func(w http.ResponseWriter, r *http.Request) {
 		resp := map[string]any{
@@ -137,7 +141,7 @@ func TestPlexGetLibraries(t *testing.T) {
 	defer srv.Close()
 
 	client := NewPlexClient(srv.URL, "", nil)
-	libraries, err := client.GetLibraries()
+	libraries, err := client.GetLibraries(context.Background())
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -154,6 +158,7 @@ func TestPlexGetLibraries(t *testing.T) {
 }
 
 func TestPlexGetServerName(t *testing.T) {
+	t.Parallel()
 	mux := http.NewServeMux()
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		resp := map[string]any{
@@ -169,7 +174,7 @@ func TestPlexGetServerName(t *testing.T) {
 	defer srv.Close()
 
 	client := NewPlexClient(srv.URL, "", nil)
-	name, err := client.GetServerName()
+	name, err := client.GetServerName(context.Background())
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -179,6 +184,7 @@ func TestPlexGetServerName(t *testing.T) {
 }
 
 func TestPlexServerError(t *testing.T) {
+	t.Parallel()
 	mux := http.NewServeMux()
 	mux.HandleFunc("/status/sessions", func(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "internal error", http.StatusInternalServerError)
@@ -188,13 +194,14 @@ func TestPlexServerError(t *testing.T) {
 	defer srv.Close()
 
 	client := NewPlexClient(srv.URL, "", nil)
-	_, err := client.GetSessions()
+	_, err := client.GetSessions(context.Background())
 	if err == nil {
 		t.Fatal("expected error for server error response")
 	}
 }
 
 func TestJellyfinGetSessions(t *testing.T) {
+	t.Parallel()
 	mux := http.NewServeMux()
 	mux.HandleFunc("/Sessions", func(w http.ResponseWriter, r *http.Request) {
 		auth := r.Header.Get("Authorization")
@@ -235,7 +242,7 @@ func TestJellyfinGetSessions(t *testing.T) {
 	defer srv.Close()
 
 	client := NewJellyfinClient(srv.URL, "test-key", nil)
-	sessions, err := client.GetSessions()
+	sessions, err := client.GetSessions(context.Background())
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -267,6 +274,7 @@ func TestJellyfinGetSessions(t *testing.T) {
 }
 
 func TestJellyfinGetSessionsEpisode(t *testing.T) {
+	t.Parallel()
 	mux := http.NewServeMux()
 	mux.HandleFunc("/Sessions", func(w http.ResponseWriter, r *http.Request) {
 		resp := []map[string]any{
@@ -298,7 +306,7 @@ func TestJellyfinGetSessionsEpisode(t *testing.T) {
 	defer srv.Close()
 
 	client := NewJellyfinClient(srv.URL, "", nil)
-	sessions, err := client.GetSessions()
+	sessions, err := client.GetSessions(context.Background())
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -316,6 +324,7 @@ func TestJellyfinGetSessionsEpisode(t *testing.T) {
 }
 
 func TestJellyfinGetServerName(t *testing.T) {
+	t.Parallel()
 	mux := http.NewServeMux()
 	mux.HandleFunc("/System/Info/Public", func(w http.ResponseWriter, r *http.Request) {
 		resp := map[string]string{"ServerName": "My Jellyfin", "Version": "10.9.0"}
@@ -327,7 +336,7 @@ func TestJellyfinGetServerName(t *testing.T) {
 	defer srv.Close()
 
 	client := NewJellyfinClient(srv.URL, "", nil)
-	name, err := client.GetServerName()
+	name, err := client.GetServerName(context.Background())
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -337,6 +346,7 @@ func TestJellyfinGetServerName(t *testing.T) {
 }
 
 func TestJellyfinGetLibraries(t *testing.T) {
+	t.Parallel()
 	mux := http.NewServeMux()
 	mux.HandleFunc("/Library/VirtualFolders", func(w http.ResponseWriter, r *http.Request) {
 		resp := []map[string]any{
@@ -356,7 +366,7 @@ func TestJellyfinGetLibraries(t *testing.T) {
 	defer srv.Close()
 
 	client := NewJellyfinClient(srv.URL, "", nil)
-	libraries, err := client.GetLibraries()
+	libraries, err := client.GetLibraries(context.Background())
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -373,6 +383,7 @@ func TestJellyfinGetLibraries(t *testing.T) {
 }
 
 func TestJellyfinServerError(t *testing.T) {
+	t.Parallel()
 	mux := http.NewServeMux()
 	mux.HandleFunc("/Sessions", func(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "internal error", http.StatusInternalServerError)
@@ -382,13 +393,14 @@ func TestJellyfinServerError(t *testing.T) {
 	defer srv.Close()
 
 	client := NewJellyfinClient(srv.URL, "", nil)
-	_, err := client.GetSessions()
+	_, err := client.GetSessions(context.Background())
 	if err == nil {
 		t.Fatal("expected error for server error response")
 	}
 }
 
 func TestTicksToSeconds(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		ticks    int64
 		expected int64

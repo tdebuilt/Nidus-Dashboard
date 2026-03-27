@@ -3,6 +3,7 @@
   import { api } from '../../api/client'
   import { toasts } from '../../stores/toast'
   import { t, translate } from '../../i18n'
+  import { focusTrap } from '../../actions/focusTrap'
 
   interface Props {
     open: boolean
@@ -71,11 +72,10 @@
 {#if open}
   <!-- svelte-ignore a11y_no_static_element_interactions -->
   <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onclick={onClose} onkeydown={() => {}}>
-    <!-- svelte-ignore a11y_no_static_element_interactions -->
-    <div class="mx-4 w-full max-w-md rounded-xl bg-[var(--color-bg-secondary)] p-6 shadow-xl animate-[dialogIn_0.2s_ease-out]" onclick={(e) => e.stopPropagation()} onkeydown={() => {}}>
+    <div class="mx-4 w-full max-w-md rounded-xl bg-[var(--color-bg-secondary)] p-6 shadow-xl animate-[dialogIn_0.2s_ease-out]" onclick={(e) => e.stopPropagation()} onkeydown={() => {}} role="dialog" aria-modal="true" use:focusTrap={{ onClose: onClose }}>
       <div class="mb-4 flex items-center justify-between">
         <h2 class="text-lg font-semibold text-[var(--color-text)]">{$t('transmission.addTorrent')}</h2>
-        <button onclick={onClose} class="touch-action-btn rounded p-2 text-[var(--color-text-muted)] hover:text-[var(--color-text)]">
+        <button onclick={onClose} class="touch-action-btn rounded p-2 text-[var(--color-text-muted)] hover:text-[var(--color-text)]" aria-label={$t('common.close')}>
           <X size={16} />
         </button>
       </div>
@@ -103,6 +103,7 @@
           type="text"
           bind:value={url}
           placeholder={$t('transmission.urlPlaceholder')}
+          aria-label={$t('transmission.urlPlaceholder')}
           class="w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-2 text-sm text-[var(--color-text)] placeholder:text-[var(--color-text-muted)] focus:border-[var(--color-primary)] focus:outline-none"
         />
       {:else}

@@ -4,6 +4,7 @@
   import { toasts } from '../stores/toast'
   import { t, translate } from '../i18n'
   import WidgetConfigForm from './config/WidgetConfigForm.svelte'
+  import { focusTrap } from '../actions/focusTrap'
 
   interface Widget {
     id: number
@@ -59,7 +60,7 @@
 {#if open}
   <button class="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm" onclick={handleClose} aria-label={$t('common.close')}></button>
   <div class="fixed inset-0 z-50 flex items-center justify-center p-4" data-testid="edit-widget-dialog">
-    <div class="w-full max-w-2xl max-h-[90vh] flex flex-col rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-secondary)] p-6 shadow-2xl animate-[dialogIn_0.2s_ease-out]">
+    <div class="w-full max-w-2xl max-h-[90vh] flex flex-col rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-secondary)] p-6 shadow-2xl animate-[dialogIn_0.2s_ease-out]" role="dialog" aria-modal="true" use:focusTrap={{ onClose: handleClose }}>
       <div class="mb-4 flex shrink-0 items-center justify-between">
         <h3 class="text-lg font-semibold text-[var(--color-text)]">{$t('widget.editTitle')}</h3>
         <button onclick={handleClose} class="touch-action-btn rounded p-2 text-[var(--color-text-muted)] hover:text-[var(--color-text)]" data-testid="edit-widget-close">

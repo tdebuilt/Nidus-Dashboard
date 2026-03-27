@@ -1,6 +1,7 @@
 package grafana
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -33,34 +34,34 @@ func (c *Client) SetToken(apiKey string) {
 }
 
 // SearchDashboards returns all dashboards.
-func (c *Client) SearchDashboards() ([]DashboardSearchResult, error) {
+func (c *Client) SearchDashboards(ctx context.Context) ([]DashboardSearchResult, error) {
 	var results []DashboardSearchResult
-	if err := c.get("/api/search?type=dash-db", &results); err != nil {
+	if err := c.get(ctx, "/api/search?type=dash-db", &results); err != nil {
 		return nil, fmt.Errorf("searching dashboards: %w", err)
 	}
 	return results, nil
 }
 
 // GetDashboard returns the full dashboard detail by UID.
-func (c *Client) GetDashboard(uid string) (*DashboardDetail, error) {
+func (c *Client) GetDashboard(ctx context.Context, uid string) (*DashboardDetail, error) {
 	var detail DashboardDetail
-	if err := c.get("/api/dashboards/uid/"+uid, &detail); err != nil {
+	if err := c.get(ctx, "/api/dashboards/uid/"+uid, &detail); err != nil {
 		return nil, fmt.Errorf("getting dashboard: %w", err)
 	}
 	return &detail, nil
 }
 
 // GetHealth checks the Grafana server health.
-func (c *Client) GetHealth() (*HealthResponse, error) {
+func (c *Client) GetHealth(ctx context.Context) (*HealthResponse, error) {
 	var health HealthResponse
-	if err := c.get("/api/health", &health); err != nil {
+	if err := c.get(ctx, "/api/health", &health); err != nil {
 		return nil, fmt.Errorf("checking health: %w", err)
 	}
 	return &health, nil
 }
 
-func (c *Client) get(path string, result any) error {
-	req, err := http.NewRequest(http.MethodGet, c.baseURL+path, nil)
+func (c *Client) get(ctx context.Context, path string, result any) error {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.baseURL+path, nil)
 	if err != nil {
 		return fmt.Errorf("creating request: %w", err)
 	}

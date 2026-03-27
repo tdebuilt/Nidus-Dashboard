@@ -26,7 +26,7 @@ type CategoriesHandler struct {
 // @Router /categories [get]
 // @Security BearerAuth
 func (h *CategoriesHandler) List(w http.ResponseWriter, r *http.Request) {
-	categories, err := h.DB.GetCategories()
+	categories, err := h.DB.GetCategories(r.Context())
 	if err != nil {
 		writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "failed to list categories"})
 		return
@@ -65,7 +65,7 @@ func (h *CategoriesHandler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	cat, err := h.DB.CreateCategory(req.Name, req.Icon)
+	cat, err := h.DB.CreateCategory(r.Context(), req.Name, req.Icon)
 	if err != nil {
 		writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "failed to create category"})
 		return
@@ -93,7 +93,7 @@ func (h *CategoriesHandler) Get(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	cat, err := h.DB.GetCategory(id)
+	cat, err := h.DB.GetCategory(r.Context(), id)
 	if err != nil {
 		writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "failed to get category"})
 		return
@@ -142,7 +142,7 @@ func (h *CategoriesHandler) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	cat, err := h.DB.UpdateCategory(id, req.Name, req.Icon)
+	cat, err := h.DB.UpdateCategory(r.Context(), id, req.Name, req.Icon)
 	if err != nil {
 		writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "failed to update category"})
 		return
@@ -174,7 +174,7 @@ func (h *CategoriesHandler) Delete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	deleted, err := h.DB.DeleteCategory(id)
+	deleted, err := h.DB.DeleteCategory(r.Context(), id)
 	if err != nil {
 		writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "failed to delete category"})
 		return
@@ -211,12 +211,12 @@ func (h *CategoriesHandler) Reorder(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := h.DB.ReorderCategories(req.IDs); err != nil {
+	if err := h.DB.ReorderCategories(r.Context(), req.IDs); err != nil {
 		writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "failed to reorder categories"})
 		return
 	}
 
-	categories, err := h.DB.GetCategories()
+	categories, err := h.DB.GetCategories(r.Context())
 	if err != nil {
 		writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "failed to list categories"})
 		return

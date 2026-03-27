@@ -18,10 +18,10 @@
 
   const { value = '{}', onchange }: Props = $props()
 
-  let allEntities = $state<EntityInfo[]>([])
+  let allEntities = $state.raw<EntityInfo[]>([])
   let loading = $state(true)
-  let selectedEntities = $state<string[]>([])
-  let selectedDomains = $state<string[]>([])
+  let selectedEntities = $state.raw<string[]>([])
+  let selectedDomains = $state.raw<string[]>([])
   let filterMode = $state<'entities' | 'domains'>('entities')
   let entitySearch = $state('')
   let entitySize = $state<'sm' | 'md' | 'lg'>('md')
@@ -29,28 +29,34 @@
   let columnsTablet = $state(0)
   let columnsMobile = $state(0)
 
-  $effect(() => {
+  function parseFilterMode(parsed: Record<string, unknown>) {
+    if (parsed.entities && Array.isArray(parsed.entities)) {
+      selectedEntities = parsed.entities
+      filterMode = 'entities'
+    } else if (parsed.domains && Array.isArray(parsed.domains)) {
+      selectedDomains = parsed.domains
+      filterMode = 'domains'
+    }
+  }
+
+  function parseLayoutOptions(parsed: Record<string, unknown>) {
+    if (parsed.entitySize === 'sm' || parsed.entitySize === 'lg') entitySize = parsed.entitySize
+    if (typeof parsed.columns === 'number') columns = parsed.columns
+    if (typeof parsed.columnsTablet === 'number') columnsTablet = parsed.columnsTablet
+    if (typeof parsed.columnsMobile === 'number') columnsMobile = parsed.columnsMobile
+  }
+
+  function parseConfig() {
     try {
       const parsed = JSON.parse(value)
-      if (parsed.entities && Array.isArray(parsed.entities)) {
-        selectedEntities = parsed.entities
-        filterMode = 'entities'
-      } else if (parsed.domains && Array.isArray(parsed.domains)) {
-        selectedDomains = parsed.domains
-        filterMode = 'domains'
-      }
-      if (parsed.entitySize === 'sm' || parsed.entitySize === 'lg') {
-        entitySize = parsed.entitySize
-      }
-      if (typeof parsed.columns === 'number') {
-        columns = parsed.columns
-      }
-      if (typeof parsed.columnsTablet === 'number') columnsTablet = parsed.columnsTablet
-      if (typeof parsed.columnsMobile === 'number') columnsMobile = parsed.columnsMobile
+      parseFilterMode(parsed)
+      parseLayoutOptions(parsed)
     } catch {
       // ignore
     }
-  })
+  }
+
+  $effect(() => { parseConfig() })
 
   const availableDomains = $derived(
     [...new Set(allEntities.map((e) => e.domain))].sort()
@@ -66,28 +72,22 @@
       : allEntities
   )
 
-  function emitChange() {
-    // Preserve fields set by the widget itself (e.g. cameraSizes)
-    let existing: Record<string, unknown> = {}
-    try { existing = JSON.parse(value) } catch { /* ignore */ }
-
+  function buildConfig(existing: Record<string, unknown>): Record<string, unknown> {
     const config: Record<string, unknown> = {}
-    if (existing.cameraSizes) {
-      config.cameraSizes = existing.cameraSizes
-    }
-    if (filterMode === 'entities' && selectedEntities.length > 0) {
-      config.entities = selectedEntities
-    } else if (filterMode === 'domains' && selectedDomains.length > 0) {
-      config.domains = selectedDomains
-    }
-    if (entitySize !== 'md') {
-      config.entitySize = entitySize
-    }
-    if (columns > 1) {
-      config.columns = columns
-    }
+    if (existing.cameraSizes) config.cameraSizes = existing.cameraSizes
+    if (filterMode === 'entities' && selectedEntities.length > 0) config.entities = selectedEntities
+    else if (filterMode === 'domains' && selectedDomains.length > 0) config.domains = selectedDomains
+    if (entitySize !== 'md') config.entitySize = entitySize
+    if (columns > 1) config.columns = columns
     if (columnsTablet > 0) config.columnsTablet = columnsTablet
     if (columnsMobile > 0) config.columnsMobile = columnsMobile
+    return config
+  }
+
+  function emitChange() {
+    let existing: Record<string, unknown> = {}
+    try { existing = JSON.parse(value) } catch { /* ignore */ }
+    const config = buildConfig(existing)
     onchange?.(Object.keys(config).length > 0 ? JSON.stringify(config) : '{}')
   }
 

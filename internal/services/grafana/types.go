@@ -56,3 +56,31 @@ type PanelInfo struct {
 	Title string `json:"title"`
 	Type  string `json:"type"`
 }
+
+// BuildDashboardInfo converts a full dashboard detail to the simplified frontend format.
+func BuildDashboardInfo(detail *DashboardDetail) DashboardInfo {
+	panels := FlattenPanels(detail.Dashboard.Panels)
+	return DashboardInfo{
+		UID:    detail.Dashboard.UID,
+		Title:  detail.Dashboard.Title,
+		Slug:   detail.Meta.Slug,
+		Panels: panels,
+	}
+}
+
+// FlattenPanels recursively flattens row panels into a flat list of PanelInfo.
+func FlattenPanels(panels []Panel) []PanelInfo {
+	var result []PanelInfo
+	for _, p := range panels {
+		if p.Type == "row" {
+			result = append(result, FlattenPanels(p.Panels)...)
+			continue
+		}
+		result = append(result, PanelInfo{
+			ID:    p.ID,
+			Title: p.Title,
+			Type:  p.Type,
+		})
+	}
+	return result
+}

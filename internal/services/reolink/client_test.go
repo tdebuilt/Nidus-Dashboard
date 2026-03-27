@@ -1,6 +1,7 @@
 package reolink
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -10,7 +11,8 @@ import (
 )
 
 func TestNewClient_DefaultHTTPClient(t *testing.T) {
-	c := NewClient("192.168.1.1", "admin", "pass", 0, nil)
+	t.Parallel()
+	c := NewClient("192.168.1.1", "admin", "pass", 0, nil, true)
 	if c.httpClient == nil {
 		t.Fatal("expected default HTTP client to be created, got nil")
 	}
@@ -20,14 +22,16 @@ func TestNewClient_DefaultHTTPClient(t *testing.T) {
 }
 
 func TestNewClient_CustomHTTPClient(t *testing.T) {
+	t.Parallel()
 	custom := &http.Client{}
-	c := NewClient("192.168.1.1", "admin", "pass", 0, custom)
+	c := NewClient("192.168.1.1", "admin", "pass", 0, custom, false)
 	if c.httpClient != custom {
 		t.Error("expected custom HTTP client to be used")
 	}
 }
 
 func TestIsJPEG(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name string
 		data []byte
@@ -62,6 +66,7 @@ func TestIsJPEG(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			got := isJPEG(tt.data)
 			if got != tt.want {
 				t.Errorf("isJPEG(%v) = %v, want %v", tt.data, got, tt.want)
@@ -71,6 +76,7 @@ func TestIsJPEG(t *testing.T) {
 }
 
 func TestFormatRTSPURL(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name       string
 		username   string
@@ -129,6 +135,7 @@ func TestFormatRTSPURL(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			got := FormatRTSPURL(tt.username, tt.password, tt.ip, tt.channel, tt.streamType)
 			if got != tt.want {
 				t.Errorf("FormatRTSPURL() = %q, want %q", got, tt.want)
@@ -140,6 +147,7 @@ func TestFormatRTSPURL(t *testing.T) {
 var mockJPEG = []byte{0xFF, 0xD8, 0xFF, 0xE0, 0x00, 0x10}
 
 func TestGetSnapshot_DirectAuth(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if !strings.Contains(r.URL.Path, "/cgi-bin/api.cgi") {
 			http.NotFound(w, r)
@@ -161,8 +169,8 @@ func TestGetSnapshot_DirectAuth(t *testing.T) {
 	// Extract host from server URL (strip http://)
 	host := strings.TrimPrefix(server.URL, "http://")
 
-	c := NewClient(host, "admin", "pass", 0, server.Client())
-	data, contentType, err := c.GetSnapshot()
+	c := NewClient(host, "admin", "pass", 0, server.Client(), false)
+	data, contentType, err := c.GetSnapshot(context.Background())
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -175,6 +183,7 @@ func TestGetSnapshot_DirectAuth(t *testing.T) {
 }
 
 func TestGetSnapshot_TokenAuth(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		cmd := r.URL.Query().Get("cmd")
 
@@ -222,9 +231,9 @@ func TestGetSnapshot_TokenAuth(t *testing.T) {
 	defer server.Close()
 
 	host := strings.TrimPrefix(server.URL, "http://")
-	c := NewClient(host, "admin", "pass", 0, server.Client())
+	c := NewClient(host, "admin", "pass", 0, server.Client(), false)
 
-	data, contentType, err := c.GetSnapshot()
+	data, contentType, err := c.GetSnapshot(context.Background())
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -237,6 +246,7 @@ func TestGetSnapshot_TokenAuth(t *testing.T) {
 }
 
 func TestGetSnapshot_SchemeDiscovery(t *testing.T) {
+	t.Parallel()
 	// Server only responds on the scheme it was started on (http via httptest).
 	// The client should discover the working scheme.
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -251,11 +261,11 @@ func TestGetSnapshot_SchemeDiscovery(t *testing.T) {
 	defer server.Close()
 
 	host := strings.TrimPrefix(server.URL, "http://")
-	c := NewClient(host, "admin", "pass", 0, server.Client())
+	c := NewClient(host, "admin", "pass", 0, server.Client(), false)
 	// Clear scheme to force discovery
 	c.scheme = ""
 
-	data, contentType, err := c.GetSnapshot()
+	data, contentType, err := c.GetSnapshot(context.Background())
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -276,6 +286,7 @@ func TestGetSnapshot_SchemeDiscovery(t *testing.T) {
 }
 
 func TestLogin_Success(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Query().Get("cmd") != "Login" {
 			http.NotFound(w, r)
@@ -287,9 +298,9 @@ func TestLogin_Success(t *testing.T) {
 	defer server.Close()
 
 	host := strings.TrimPrefix(server.URL, "http://")
-	c := NewClient(host, "admin", "pass", 0, server.Client())
+	c := NewClient(host, "admin", "pass", 0, server.Client(), false)
 
-	token, err := c.login("http")
+	token, err := c.login(context.Background(), "http")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -299,6 +310,7 @@ func TestLogin_Success(t *testing.T) {
 }
 
 func TestLogin_Failure(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Query().Get("cmd") != "Login" {
 			http.NotFound(w, r)
@@ -311,9 +323,9 @@ func TestLogin_Failure(t *testing.T) {
 	defer server.Close()
 
 	host := strings.TrimPrefix(server.URL, "http://")
-	c := NewClient(host, "admin", "wrongpass", 0, server.Client())
+	c := NewClient(host, "admin", "wrongpass", 0, server.Client(), false)
 
-	_, err := c.login("http")
+	_, err := c.login(context.Background(), "http")
 	if err == nil {
 		t.Fatal("expected error for failed login, got nil")
 	}

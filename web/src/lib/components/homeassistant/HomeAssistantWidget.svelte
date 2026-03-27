@@ -35,7 +35,7 @@
   let loading = $state(true)
   let refreshing = $state(false)
   let error = $state<string | null>(null)
-  let entities = $state<EntityInfo[]>([])
+  let entities = $state.raw<EntityInfo[]>([])
 
   const parsedConfig = $derived((() => {
     try { return JSON.parse(config) } catch { return {} }

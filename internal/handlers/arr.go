@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"sync"
@@ -20,8 +21,8 @@ type ArrHandler struct {
 
 var arrServiceTypes = []string{"sonarr", "radarr", "lidarr", "prowlarr"}
 
-func (h *ArrHandler) getArrClient(serviceType string) (*arr.Client, error) {
-	svc, err := h.DB.GetServiceByType(serviceType)
+func (h *ArrHandler) getArrClient(ctx context.Context, serviceType string) (*arr.Client, error) {
+	svc, err := h.DB.GetServiceByType(ctx, serviceType)
 	if err != nil {
 		return nil, err
 	}
@@ -31,7 +32,7 @@ func (h *ArrHandler) getArrClient(serviceType string) (*arr.Client, error) {
 
 	apiKey := ""
 	if svc.Credentials != "" {
-		encKey, err := h.DB.GetSystemSetting("encryption_key")
+		encKey, err := h.DB.GetSystemSetting(ctx, "encryption_key")
 		if err != nil || encKey == "" {
 			return nil, err
 		}
@@ -55,14 +56,14 @@ func (h *ArrHandler) getArrClient(serviceType string) (*arr.Client, error) {
 	return arr.NewClient(svc.URL, apiKey, cfg.APIVersion, nil), nil
 }
 
-func (h *ArrHandler) fetchServiceOverview(serviceType string) arr.ArrOverview {
+func (h *ArrHandler) fetchServiceOverview(ctx context.Context, serviceType string) arr.ArrOverview {
 	cfg := arr.Configs[serviceType]
 	overview := arr.ArrOverview{
 		Type:  serviceType,
 		Label: cfg.Label,
 	}
 
-	client, err := h.getArrClient(serviceType)
+	client, err := h.getArrClient(ctx, serviceType)
 	if err != nil {
 		overview.Error = "connection error"
 		return overview
@@ -72,12 +73,12 @@ func (h *ArrHandler) fetchServiceOverview(serviceType string) arr.ArrOverview {
 		return overview
 	}
 
-	status, err := client.GetSystemStatus()
+	status, err := client.GetSystemStatus(ctx)
 	if err == nil {
 		overview.Status = status
 	}
 
-	queue, err := client.GetQueue(20)
+	queue, err := client.GetQueue(ctx, 20)
 	if err == nil {
 		overview.QueueCount = queue.TotalRecords
 		overview.QueueItems = queue.Records
@@ -86,13 +87,13 @@ func (h *ArrHandler) fetchServiceOverview(serviceType string) arr.ArrOverview {
 	if cfg.CalendarPath != "" {
 		now := time.Now()
 		end := now.AddDate(0, 0, 7)
-		cal, err := client.GetCalendar(now, end)
+		cal, err := client.GetCalendar(ctx, now, end)
 		if err == nil {
 			overview.CalendarItems = cal
 		}
 	}
 
-	count, err := client.GetLibraryCount(cfg.LibraryPath)
+	count, err := client.GetLibraryCount(ctx, cfg.LibraryPath)
 	if err == nil {
 		overview.LibraryCount = count
 	}
@@ -121,7 +122,7 @@ func (h *ArrHandler) GetOverview(w http.ResponseWriter, r *http.Request) {
 		wg.Add(1)
 		go func(idx int, st string) {
 			defer wg.Done()
-			results[idx] = h.fetchServiceOverview(st)
+			results[idx] = h.fetchServiceOverview(r.Context(), st)
 		}(i, svcType)
 	}
 	wg.Wait()

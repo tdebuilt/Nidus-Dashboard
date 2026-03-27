@@ -59,10 +59,12 @@ export function hexToRgba(hex: string, alpha: number): string {
 
 export function deriveFullTheme(base: BaseColors): ThemeColors {
   const isDark = base.mode === 'dark'
+  const shift = (color: string, amount: number) =>
+    isDark ? lightenColor(color, amount) : darkenColor(color, amount)
 
   return {
     'color-bg': base.bg,
-    'color-bg-primary': isDark ? lightenColor(base.bg, 0.02) : darkenColor(base.bg, 0.02),
+    'color-bg-primary': shift(base.bg, 0.02),
     'color-bg-secondary': isDark ? lightenColor(base.bg, 0.08) : darkenColor(base.bg, 0.04),
     'color-bg-tertiary': isDark ? lightenColor(base.bg, 0.15) : darkenColor(base.bg, 0.08),
     'color-border': isDark ? lightenColor(base.bg, 0.15) : darkenColor(base.bg, 0.12),
@@ -73,20 +75,20 @@ export function deriveFullTheme(base: BaseColors): ThemeColors {
     'color-primary': base.primary,
     'color-primary-hover': darkenColor(base.primary, 0.15),
     'color-accent': base.accent,
-    'color-accent-hover': isDark ? lightenColor(base.accent, 0.15) : darkenColor(base.accent, 0.15),
+    'color-accent-hover': shift(base.accent, 0.15),
     'color-danger': base.danger,
     'color-danger-hover': darkenColor(base.danger, 0.15),
     'color-success': base.success,
     'color-warning': base.warning,
     'color-sidebar-bg': isDark ? lightenColor(base.bg, 0.08) : darkenColor(base.bg, 0.02),
     'color-sidebar-hover': isDark ? lightenColor(base.bg, 0.15) : darkenColor(base.bg, 0.06),
-    'color-error-text': isDark ? lightenColor(base.danger, 0.20) : darkenColor(base.danger, 0.10),
+    'color-error-text': shift(base.danger, isDark ? 0.20 : 0.10),
     'color-error-border': base.danger,
     'color-error-bg': hexToRgba(base.danger, 0.1),
-    'color-success-text': isDark ? lightenColor(base.success, 0.30) : darkenColor(base.success, 0.10),
+    'color-success-text': shift(base.success, isDark ? 0.30 : 0.10),
     'color-success-border': base.success,
     'color-success-bg': hexToRgba(base.success, 0.1),
-    'color-info-text': isDark ? lightenColor(base.primary, 0.30) : darkenColor(base.primary, 0.10),
+    'color-info-text': shift(base.primary, isDark ? 0.30 : 0.10),
     'color-info-border': base.primary,
     'color-info-bg': hexToRgba(base.primary, 0.1),
   }

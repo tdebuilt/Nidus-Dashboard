@@ -1,6 +1,7 @@
 package portainer
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -28,7 +29,7 @@ func NewClient(baseURL string, httpClient *http.Client) *Client {
 }
 
 // Authenticate logs in and stores the JWT token for subsequent requests.
-func (c *Client) Authenticate(username, password string) error {
+func (c *Client) Authenticate(ctx context.Context, username, password string) error {
 	body, err := json.Marshal(AuthRequest{
 		Username: username,
 		Password: password,
@@ -37,11 +38,13 @@ func (c *Client) Authenticate(username, password string) error {
 		return fmt.Errorf("marshaling auth request: %w", err)
 	}
 
-	resp, err := c.httpClient.Post(
-		c.baseURL+"/api/auth",
-		"application/json",
-		strings.NewReader(string(body)),
-	)
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.baseURL+"/api/auth", strings.NewReader(string(body)))
+	if err != nil {
+		return fmt.Errorf("creating auth request: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := c.httpClient.Do(req)
 	if err != nil {
 		return fmt.Errorf("auth request: %w", err)
 	}
@@ -78,84 +81,84 @@ func (c *Client) GetTokenPrefix() string {
 }
 
 // ListEnvironments returns all Portainer environments (endpoints).
-func (c *Client) ListEnvironments() ([]Environment, error) {
+func (c *Client) ListEnvironments(ctx context.Context) ([]Environment, error) {
 	var envs []Environment
-	if err := c.get("/api/endpoints", &envs); err != nil {
+	if err := c.get(ctx, "/api/endpoints", &envs); err != nil {
 		return nil, fmt.Errorf("listing environments: %w", err)
 	}
 	return envs, nil
 }
 
 // ListStacks returns all stacks, optionally filtered by environment ID.
-func (c *Client) ListStacks(envID int) ([]Stack, error) {
+func (c *Client) ListStacks(ctx context.Context, envID int) ([]Stack, error) {
 	path := "/api/stacks"
 	if envID > 0 {
 		path = fmt.Sprintf("/api/stacks?filters={\"EndpointID\":%d}", envID)
 	}
 
 	var stacks []Stack
-	if err := c.get(path, &stacks); err != nil {
+	if err := c.get(ctx, path, &stacks); err != nil {
 		return nil, fmt.Errorf("listing stacks: %w", err)
 	}
 	return stacks, nil
 }
 
 // ListContainers returns all containers for a given environment.
-func (c *Client) ListContainers(envID int) ([]Container, error) {
+func (c *Client) ListContainers(ctx context.Context, envID int) ([]Container, error) {
 	path := fmt.Sprintf("/api/endpoints/%d/docker/containers/json?all=true", envID)
 
 	var containers []Container
-	if err := c.get(path, &containers); err != nil {
+	if err := c.get(ctx, path, &containers); err != nil {
 		return nil, fmt.Errorf("listing containers: %w", err)
 	}
 	return containers, nil
 }
 
 // InspectContainer returns detailed info for a container.
-func (c *Client) InspectContainer(envID int, containerID string) (*ContainerDetails, error) {
+func (c *Client) InspectContainer(ctx context.Context, envID int, containerID string) (*ContainerDetails, error) {
 	path := fmt.Sprintf("/api/endpoints/%d/docker/containers/%s/json", envID, containerID)
 
 	var details ContainerDetails
-	if err := c.get(path, &details); err != nil {
+	if err := c.get(ctx, path, &details); err != nil {
 		return nil, fmt.Errorf("inspecting container: %w", err)
 	}
 	return &details, nil
 }
 
 // InspectImage returns inspect data for a local image.
-func (c *Client) InspectImage(envID int, imageID string) (*ImageInspect, error) {
+func (c *Client) InspectImage(ctx context.Context, envID int, imageID string) (*ImageInspect, error) {
 	path := fmt.Sprintf("/api/endpoints/%d/docker/images/%s/json", envID, imageID)
 	var img ImageInspect
-	if err := c.get(path, &img); err != nil {
+	if err := c.get(ctx, path, &img); err != nil {
 		return nil, fmt.Errorf("inspecting image: %w", err)
 	}
 	return &img, nil
 }
 
 // GetDistribution returns the remote registry digest for an image without pulling.
-func (c *Client) GetDistribution(envID int, imageName string) (*DistributionInfo, error) {
+func (c *Client) GetDistribution(ctx context.Context, envID int, imageName string) (*DistributionInfo, error) {
 	path := fmt.Sprintf("/api/endpoints/%d/docker/distribution/%s/json", envID, imageName)
 	var info DistributionInfo
-	if err := c.get(path, &info); err != nil {
+	if err := c.get(ctx, path, &info); err != nil {
 		return nil, fmt.Errorf("getting distribution: %w", err)
 	}
 	return &info, nil
 }
 
 // GetContainerStats returns a single stats snapshot for a container.
-func (c *Client) GetContainerStats(envID int, containerID string) (*DockerStats, error) {
+func (c *Client) GetContainerStats(ctx context.Context, envID int, containerID string) (*DockerStats, error) {
 	path := fmt.Sprintf("/api/endpoints/%d/docker/containers/%s/stats?stream=false&one-shot=true", envID, containerID)
 
 	var stats DockerStats
-	if err := c.get(path, &stats); err != nil {
+	if err := c.get(ctx, path, &stats); err != nil {
 		return nil, fmt.Errorf("getting container stats: %w", err)
 	}
 	return &stats, nil
 }
 
 // CalculateContainerStats fetches raw stats and computes CPU% and memory usage.
-func (c *Client) CalculateContainerStats(envID int, containerID string) (*ContainerStats, error) {
-	raw, err := c.GetContainerStats(envID, containerID)
+func (c *Client) CalculateContainerStats(ctx context.Context, envID int, containerID string) (*ContainerStats, error) {
+	raw, err := c.GetContainerStats(ctx, envID, containerID)
 	if err != nil {
 		return nil, err
 	}
@@ -192,15 +195,15 @@ func (c *Client) CalculateContainerStats(envID int, containerID string) (*Contai
 	}, nil
 }
 
-func (c *Client) get(path string, result any) error {
-	req, err := http.NewRequest(http.MethodGet, c.baseURL+path, nil)
+func (c *Client) get(ctx context.Context, path string, result any) error {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.baseURL+path, nil)
 	if err != nil {
 		return fmt.Errorf("creating request: %w", err)
 	}
 	return c.doRequest(req, result)
 }
 
-func (c *Client) post(path string, body any, result any) error {
+func (c *Client) post(ctx context.Context, path string, body any, result any) error {
 	var reader io.Reader
 	if body != nil {
 		data, err := json.Marshal(body)
@@ -210,7 +213,7 @@ func (c *Client) post(path string, body any, result any) error {
 		reader = strings.NewReader(string(data))
 	}
 
-	req, err := http.NewRequest(http.MethodPost, c.baseURL+path, reader)
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.baseURL+path, reader)
 	if err != nil {
 		return fmt.Errorf("creating request: %w", err)
 	}
@@ -220,7 +223,7 @@ func (c *Client) post(path string, body any, result any) error {
 	return c.doRequest(req, result)
 }
 
-func (c *Client) put(path string, body any, result any) error {
+func (c *Client) put(ctx context.Context, path string, body any, result any) error {
 	var reader io.Reader
 	if body != nil {
 		data, err := json.Marshal(body)
@@ -230,7 +233,7 @@ func (c *Client) put(path string, body any, result any) error {
 		reader = strings.NewReader(string(data))
 	}
 
-	req, err := http.NewRequest(http.MethodPut, c.baseURL+path, reader)
+	req, err := http.NewRequestWithContext(ctx, http.MethodPut, c.baseURL+path, reader)
 	if err != nil {
 		return fmt.Errorf("creating request: %w", err)
 	}

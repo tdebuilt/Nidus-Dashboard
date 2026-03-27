@@ -19,7 +19,7 @@ Nidus is a lightweight, self-hosted dashboard for monitoring and managing Docker
 | Database | SQLite (WAL mode) | Single file, zero config |
 | Streaming | go2rtc (embedded) | RTSP → WebRTC/MSE for cameras |
 | Desktop | Tauri | Native app for Linux, macOS, Windows |
-| Deployment | Docker Compose | Multi-arch (amd64 + arm64) |
+| Deployment | Docker Compose | amd64 |
 
 ### No Agent
 

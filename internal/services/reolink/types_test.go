@@ -6,6 +6,7 @@ import (
 )
 
 func TestGenerateCameraID(t *testing.T) {
+	t.Parallel()
 	// Deterministic: same input always produces the same output
 	id1 := GenerateCameraID("192.168.1.100", 0)
 	id2 := GenerateCameraID("192.168.1.100", 0)
@@ -27,6 +28,7 @@ func TestGenerateCameraID(t *testing.T) {
 }
 
 func TestGenerateCameraID_Format(t *testing.T) {
+	t.Parallel()
 	id := GenerateCameraID("10.0.0.1", 0)
 
 	// Should be a hex string of 16 characters (8 bytes)
@@ -42,6 +44,7 @@ func TestGenerateCameraID_Format(t *testing.T) {
 }
 
 func TestCameraEntry_ToCamera_Direct(t *testing.T) {
+	t.Parallel()
 	entry := CameraEntry{
 		Name:     "Front Door",
 		IP:       "192.168.1.50",
@@ -66,6 +69,7 @@ func TestCameraEntry_ToCamera_Direct(t *testing.T) {
 }
 
 func TestCameraEntry_ToCamera_HomeAssistant(t *testing.T) {
+	t.Parallel()
 	entry := CameraEntry{
 		Name:     "Back Yard",
 		IP:       "192.168.1.60",
@@ -97,6 +101,7 @@ func TestCameraEntry_ToCamera_HomeAssistant(t *testing.T) {
 }
 
 func TestCameraEntry_ToCamera_Fields(t *testing.T) {
+	t.Parallel()
 	entry := CameraEntry{
 		Name:     "Garage",
 		IP:       "10.0.0.5",
@@ -137,6 +142,7 @@ func TestCameraEntry_ToCamera_Fields(t *testing.T) {
 }
 
 func TestCamera_ToResponse(t *testing.T) {
+	t.Parallel()
 	cam := Camera{
 		ID:       "abc12345def67890",
 		Name:     "Front Door",

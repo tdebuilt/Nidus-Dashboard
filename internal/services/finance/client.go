@@ -1,6 +1,7 @@
 package finance
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -32,7 +33,7 @@ func NewClient(httpClient *http.Client) *Client {
 
 // GetQuotes fetches real-time quotes for the given symbols using the v8 chart API.
 // Requests are made in parallel (one per symbol).
-func (c *Client) GetQuotes(symbols []string) (*QuotesResponse, error) {
+func (c *Client) GetQuotes(ctx context.Context, symbols []string) (*QuotesResponse, error) {
 	if len(symbols) == 0 {
 		return nil, fmt.Errorf("no symbols provided")
 	}
@@ -49,7 +50,7 @@ func (c *Client) GetQuotes(symbols []string) (*QuotesResponse, error) {
 		wg.Add(1)
 		go func(idx int, sym string) {
 			defer wg.Done()
-			q, err := c.fetchChart(sym)
+			q, err := c.fetchChart(ctx, sym)
 			results[idx] = result{quote: q, err: err}
 		}(i, symbol)
 	}
@@ -72,11 +73,11 @@ func (c *Client) GetQuotes(symbols []string) (*QuotesResponse, error) {
 	}, nil
 }
 
-func (c *Client) fetchChart(symbol string) (Quote, error) {
+func (c *Client) fetchChart(ctx context.Context, symbol string) (Quote, error) {
 	apiURL := fmt.Sprintf("%s/%s?range=1d&interval=1d", chartBaseURL, url.PathEscape(symbol))
 
 	var resp yahooChartResponse
-	if err := c.doRequest(apiURL, &resp); err != nil {
+	if err := c.doRequest(ctx, apiURL, &resp); err != nil {
 		return Quote{}, fmt.Errorf("fetching chart for %s: %w", symbol, err)
 	}
 
@@ -129,7 +130,7 @@ func (c *Client) fetchChart(symbol string) (Quote, error) {
 }
 
 // Search finds symbols matching the query (for autocomplete).
-func (c *Client) Search(query string) ([]SearchResult, error) {
+func (c *Client) Search(ctx context.Context, query string) ([]SearchResult, error) {
 	if query == "" {
 		return nil, fmt.Errorf("empty search query")
 	}
@@ -138,7 +139,7 @@ func (c *Client) Search(query string) ([]SearchResult, error) {
 		searchBaseURL, url.QueryEscape(query))
 
 	var resp yahooSearchResponse
-	if err := c.doRequest(apiURL, &resp); err != nil {
+	if err := c.doRequest(ctx, apiURL, &resp); err != nil {
 		return nil, fmt.Errorf("searching symbols: %w", err)
 	}
 
@@ -155,8 +156,8 @@ func (c *Client) Search(query string) ([]SearchResult, error) {
 	return results, nil
 }
 
-func (c *Client) doRequest(apiURL string, result any) error {
-	req, err := http.NewRequest(http.MethodGet, apiURL, nil)
+func (c *Client) doRequest(ctx context.Context, apiURL string, result any) error {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, apiURL, nil)
 	if err != nil {
 		return fmt.Errorf("creating request: %w", err)
 	}

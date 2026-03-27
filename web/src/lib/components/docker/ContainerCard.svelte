@@ -128,7 +128,7 @@
     <span class="min-w-0 flex-1 truncate text-sm font-medium text-[var(--color-text)]">{container.name}</span>
 
     {#if link}
-      <a href={link} target="_blank" rel="noopener" class="touch-action-btn flex-shrink-0 inline-flex items-center justify-center rounded p-1 text-[var(--color-primary)] hover:text-[var(--color-primary-hover)]" title={$t('docker.openLink')}>
+      <a href={link} target="_blank" rel="noopener" class="touch-action-btn flex-shrink-0 inline-flex items-center justify-center rounded p-1 text-[var(--color-primary)] hover:text-[var(--color-primary-hover)]" title={$t('docker.openLink')} aria-label={$t('docker.openLink')}>
         <ExternalLink size={14} />
       </a>
     {/if}
@@ -139,20 +139,20 @@
     {#if !$isViewer}
       <div class="flex flex-shrink-0 gap-1">
         {#if isStopped}
-          <button onclick={() => doAction('start')} class="touch-action-btn rounded p-2 sm:p-1 text-[var(--color-text-muted)] hover:text-[var(--color-success)]" title={$t('docker.start')}>
+          <button onclick={() => doAction('start')} class="touch-action-btn rounded p-2 sm:p-1 text-[var(--color-text-muted)] hover:text-[var(--color-success)]" title={$t('docker.start')} aria-label={$t('docker.start')}>
             <Play size={14} />
           </button>
         {/if}
         {#if isRunning}
-          <button onclick={() => doAction('stop')} class="touch-action-btn rounded p-2 sm:p-1 text-[var(--color-text-muted)] hover:text-[var(--color-danger)]" title={$t('docker.stop')}>
+          <button onclick={() => doAction('stop')} class="touch-action-btn rounded p-2 sm:p-1 text-[var(--color-text-muted)] hover:text-[var(--color-danger)]" title={$t('docker.stop')} aria-label={$t('docker.stop')}>
             <Square size={14} />
           </button>
-          <button onclick={() => doAction('restart')} class="touch-action-btn rounded p-2 sm:p-1 text-[var(--color-text-muted)] hover:text-[var(--color-primary)]" title={$t('docker.restart')}>
+          <button onclick={() => doAction('restart')} class="touch-action-btn rounded p-2 sm:p-1 text-[var(--color-text-muted)] hover:text-[var(--color-primary)]" title={$t('docker.restart')} aria-label={$t('docker.restart')}>
             <RotateCw size={14} />
           </button>
         {/if}
         {#if hasUpdate && isRunning && !inStack}
-          <button onclick={doRecreate} class="touch-action-btn rounded p-2 sm:p-1 text-[var(--color-warning)] hover:text-[var(--color-primary)]" title={$t('docker.recreate')}>
+          <button onclick={doRecreate} class="touch-action-btn rounded p-2 sm:p-1 text-[var(--color-warning)] hover:text-[var(--color-primary)]" title={$t('docker.recreate')} aria-label={$t('docker.recreate')}>
             <RefreshCw size={14} />
           </button>
         {/if}

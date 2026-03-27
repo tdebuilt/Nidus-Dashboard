@@ -1,6 +1,7 @@
 package portainer
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -121,12 +122,13 @@ func mockPortainerServer(t *testing.T) *httptest.Server {
 }
 
 func TestAuthenticate(t *testing.T) {
+	t.Parallel()
 	srv := mockPortainerServer(t)
 	defer srv.Close()
 
 	client := NewClient(srv.URL, srv.Client())
 
-	err := client.Authenticate("admin", "secret")
+	err := client.Authenticate(context.Background(), "admin", "secret")
 	if err != nil {
 		t.Fatalf("expected successful auth, got: %v", err)
 	}
@@ -136,12 +138,13 @@ func TestAuthenticate(t *testing.T) {
 }
 
 func TestAuthenticateInvalidCredentials(t *testing.T) {
+	t.Parallel()
 	srv := mockPortainerServer(t)
 	defer srv.Close()
 
 	client := NewClient(srv.URL, srv.Client())
 
-	err := client.Authenticate("admin", "wrong")
+	err := client.Authenticate(context.Background(), "admin", "wrong")
 	if err == nil {
 		t.Fatal("expected auth error for invalid credentials")
 	}
@@ -151,22 +154,24 @@ func TestAuthenticateInvalidCredentials(t *testing.T) {
 }
 
 func TestAuthenticateNetworkError(t *testing.T) {
+	t.Parallel()
 	client := NewClient("http://localhost:1", nil)
 
-	err := client.Authenticate("admin", "secret")
+	err := client.Authenticate(context.Background(), "admin", "secret")
 	if err == nil {
 		t.Fatal("expected network error")
 	}
 }
 
 func TestListEnvironments(t *testing.T) {
+	t.Parallel()
 	srv := mockPortainerServer(t)
 	defer srv.Close()
 
 	client := NewClient(srv.URL, srv.Client())
 	client.SetToken("test-jwt-token")
 
-	envs, err := client.ListEnvironments()
+	envs, err := client.ListEnvironments(context.Background())
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -182,13 +187,14 @@ func TestListEnvironments(t *testing.T) {
 }
 
 func TestListEnvironmentsUnauthorized(t *testing.T) {
+	t.Parallel()
 	srv := mockPortainerServer(t)
 	defer srv.Close()
 
 	client := NewClient(srv.URL, srv.Client())
 	// No token set
 
-	_, err := client.ListEnvironments()
+	_, err := client.ListEnvironments(context.Background())
 	if err == nil {
 		t.Fatal("expected unauthorized error")
 	}
@@ -198,13 +204,14 @@ func TestListEnvironmentsUnauthorized(t *testing.T) {
 }
 
 func TestListStacks(t *testing.T) {
+	t.Parallel()
 	srv := mockPortainerServer(t)
 	defer srv.Close()
 
 	client := NewClient(srv.URL, srv.Client())
 	client.SetToken("test-jwt-token")
 
-	stacks, err := client.ListStacks(0)
+	stacks, err := client.ListStacks(context.Background(), 0)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -217,13 +224,14 @@ func TestListStacks(t *testing.T) {
 }
 
 func TestListContainers(t *testing.T) {
+	t.Parallel()
 	srv := mockPortainerServer(t)
 	defer srv.Close()
 
 	client := NewClient(srv.URL, srv.Client())
 	client.SetToken("test-jwt-token")
 
-	containers, err := client.ListContainers(1)
+	containers, err := client.ListContainers(context.Background(), 1)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -245,25 +253,27 @@ func TestListContainers(t *testing.T) {
 }
 
 func TestListContainersUnauthorized(t *testing.T) {
+	t.Parallel()
 	srv := mockPortainerServer(t)
 	defer srv.Close()
 
 	client := NewClient(srv.URL, srv.Client())
 
-	_, err := client.ListContainers(1)
+	_, err := client.ListContainers(context.Background(), 1)
 	if err == nil {
 		t.Fatal("expected unauthorized error")
 	}
 }
 
 func TestInspectContainer(t *testing.T) {
+	t.Parallel()
 	srv := mockPortainerServer(t)
 	defer srv.Close()
 
 	client := NewClient(srv.URL, srv.Client())
 	client.SetToken("test-jwt-token")
 
-	details, err := client.InspectContainer(1, "abc123")
+	details, err := client.InspectContainer(context.Background(), 1, "abc123")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -285,6 +295,7 @@ func TestInspectContainer(t *testing.T) {
 }
 
 func TestSetToken(t *testing.T) {
+	t.Parallel()
 	client := NewClient("http://example.com", nil)
 	client.SetToken("my-api-key")
 
@@ -294,18 +305,21 @@ func TestSetToken(t *testing.T) {
 }
 
 func TestFullAuthFlow(t *testing.T) {
+	t.Parallel()
 	srv := mockPortainerServer(t)
 	defer srv.Close()
 
 	client := NewClient(srv.URL, srv.Client())
 
+	ctx := context.Background()
+
 	// Authenticate
-	if err := client.Authenticate("admin", "secret"); err != nil {
+	if err := client.Authenticate(ctx, "admin", "secret"); err != nil {
 		t.Fatalf("auth failed: %v", err)
 	}
 
 	// List environments
-	envs, err := client.ListEnvironments()
+	envs, err := client.ListEnvironments(ctx)
 	if err != nil {
 		t.Fatalf("list envs failed: %v", err)
 	}
@@ -314,7 +328,7 @@ func TestFullAuthFlow(t *testing.T) {
 	}
 
 	// List stacks
-	stacks, err := client.ListStacks(0)
+	stacks, err := client.ListStacks(ctx, 0)
 	if err != nil {
 		t.Fatalf("list stacks failed: %v", err)
 	}
@@ -323,7 +337,7 @@ func TestFullAuthFlow(t *testing.T) {
 	}
 
 	// List containers
-	containers, err := client.ListContainers(envs[0].ID)
+	containers, err := client.ListContainers(ctx, envs[0].ID)
 	if err != nil {
 		t.Fatalf("list containers failed: %v", err)
 	}
@@ -333,13 +347,14 @@ func TestFullAuthFlow(t *testing.T) {
 }
 
 func TestTrailingSlashInBaseURL(t *testing.T) {
+	t.Parallel()
 	srv := mockPortainerServer(t)
 	defer srv.Close()
 
 	client := NewClient(srv.URL+"/", srv.Client())
 	client.SetToken("test-jwt-token")
 
-	envs, err := client.ListEnvironments()
+	envs, err := client.ListEnvironments(context.Background())
 	if err != nil {
 		t.Fatalf("unexpected error with trailing slash: %v", err)
 	}

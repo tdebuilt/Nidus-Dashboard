@@ -221,11 +221,6 @@ export const builtinThemes: Record<string, ThemeDefinition> = {
   dracula: draculaTheme,
 }
 
-/** Get a built-in theme by ID */
-export function getBuiltinTheme(id: string): ThemeDefinition | undefined {
-  return builtinThemes[id]
-}
-
 /** Get all available theme definitions */
 export function getAvailableThemes(): ThemeDefinition[] {
   return Object.values(builtinThemes)
@@ -246,6 +241,22 @@ export const themeColorKeys: (keyof ThemeColors)[] = [
   'color-info-text', 'color-info-border', 'color-info-bg',
 ]
 
+function validateRequired(obj: Record<string, unknown>, key: string, type: string): string | null {
+  if (typeof obj[key] !== type || (type === 'string' && !obj[key])) return `Missing or invalid "${key}"`
+  return null
+}
+
+function validateColors(obj: Record<string, unknown>): string | null {
+  if (!obj.colors || typeof obj.colors !== 'object') return 'Missing or invalid "colors"'
+  const colors = obj.colors as Record<string, unknown>
+  const missing: string[] = []
+  for (const key of themeColorKeys) {
+    if (typeof colors[key] !== 'string') missing.push(key)
+  }
+  if (missing.length > 0) return `Missing color keys: ${missing.join(', ')}`
+  return null
+}
+
 /**
  * Parse and validate a JSON object as a ThemeDefinition.
  * Returns the theme if valid, or an error string if not.
@@ -254,24 +265,21 @@ export function parseThemeJSON(json: unknown): ThemeDefinition | string {
   if (!json || typeof json !== 'object') return 'Theme must be a JSON object'
   const obj = json as Record<string, unknown>
 
-  if (typeof obj.id !== 'string' || !obj.id) return 'Missing or invalid "id"'
-  if (typeof obj.name !== 'string' || !obj.name) return 'Missing or invalid "name"'
-  if (typeof obj.author !== 'string') return 'Missing or invalid "author"'
+  const idErr = validateRequired(obj, 'id', 'string')
+  if (idErr) return idErr
+  const nameErr = validateRequired(obj, 'name', 'string')
+  if (nameErr) return nameErr
+  const authorErr = validateRequired(obj, 'author', 'string')
+  if (authorErr) return authorErr
   if (obj.mode !== 'dark' && obj.mode !== 'light') return '"mode" must be "dark" or "light"'
-  if (!obj.colors || typeof obj.colors !== 'object') return 'Missing or invalid "colors"'
-
-  const colors = obj.colors as Record<string, unknown>
-  const missing: string[] = []
-  for (const key of themeColorKeys) {
-    if (typeof colors[key] !== 'string') missing.push(key)
-  }
-  if (missing.length > 0) return `Missing color keys: ${missing.join(', ')}`
+  const colorsErr = validateColors(obj)
+  if (colorsErr) return colorsErr
 
   return {
-    id: obj.id,
-    name: obj.name,
+    id: obj.id as string,
+    name: obj.name as string,
     author: obj.author as string,
     mode: obj.mode as 'dark' | 'light',
-    colors: colors as unknown as ThemeColors,
+    colors: obj.colors as unknown as ThemeColors,
   }
 }

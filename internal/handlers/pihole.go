@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 
@@ -17,8 +18,8 @@ type PiholeHandler struct {
 	Cache *cache.Cache
 }
 
-func (h *PiholeHandler) getPiholeClient() (*pihole.Client, error) {
-	svc, err := h.DB.GetServiceByType("pihole")
+func (h *PiholeHandler) getPiholeClient(ctx context.Context) (*pihole.Client, error) {
+	svc, err := h.DB.GetServiceByType(ctx, "pihole")
 	if err != nil {
 		return nil, err
 	}
@@ -28,7 +29,7 @@ func (h *PiholeHandler) getPiholeClient() (*pihole.Client, error) {
 
 	password := ""
 	if svc.Credentials != "" {
-		encKey, err := h.DB.GetSystemSetting("encryption_key")
+		encKey, err := h.DB.GetSystemSetting(ctx, "encryption_key")
 		if err != nil || encKey == "" {
 			return nil, err
 		}
@@ -63,7 +64,7 @@ func (h *PiholeHandler) GetStats(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	client, err := h.getPiholeClient()
+	client, err := h.getPiholeClient(r.Context())
 	if err != nil {
 		writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "failed to connect to Pi-hole"})
 		return
@@ -73,7 +74,7 @@ func (h *PiholeHandler) GetStats(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	stats, err := client.GetStats()
+	stats, err := client.GetStats(r.Context())
 	if err != nil {
 		writeJSON(w, http.StatusBadGateway, models.ErrorResponse{Error: "failed to fetch stats"})
 		return
@@ -103,13 +104,13 @@ func (h *PiholeHandler) ToggleBlocking(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	client, err := h.getPiholeClient()
+	client, err := h.getPiholeClient(r.Context())
 	if err != nil || client == nil {
 		writeJSON(w, http.StatusBadGateway, models.ErrorResponse{Error: "Pi-hole not available"})
 		return
 	}
 
-	if err := client.SetBlocking(body.Blocking); err != nil {
+	if err := client.SetBlocking(r.Context(), body.Blocking); err != nil {
 		writeJSON(w, http.StatusBadGateway, models.ErrorResponse{Error: "toggle failed: " + err.Error()})
 		return
 	}

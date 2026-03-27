@@ -1,6 +1,7 @@
 package uptimekuma
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -28,31 +29,31 @@ func NewClient(baseURL string, httpClient *http.Client) *Client {
 }
 
 // GetStatusPage returns the status page configuration and monitor list.
-func (c *Client) GetStatusPage(slug string) (*StatusPageResponse, error) {
+func (c *Client) GetStatusPage(ctx context.Context, slug string) (*StatusPageResponse, error) {
 	var resp StatusPageResponse
-	if err := c.get("/api/status-page/"+slug, &resp); err != nil {
+	if err := c.get(ctx, "/api/status-page/"+slug, &resp); err != nil {
 		return nil, fmt.Errorf("getting status page: %w", err)
 	}
 	return &resp, nil
 }
 
 // GetHeartbeats returns heartbeats and uptime for all monitors on a status page.
-func (c *Client) GetHeartbeats(slug string) (*HeartbeatResponse, error) {
+func (c *Client) GetHeartbeats(ctx context.Context, slug string) (*HeartbeatResponse, error) {
 	var resp HeartbeatResponse
-	if err := c.get("/api/status-page/heartbeat/"+slug, &resp); err != nil {
+	if err := c.get(ctx, "/api/status-page/heartbeat/"+slug, &resp); err != nil {
 		return nil, fmt.Errorf("getting heartbeats: %w", err)
 	}
 	return &resp, nil
 }
 
 // GetMonitors returns the combined monitor overview for a status page.
-func (c *Client) GetMonitors(slug string) (*MonitorsOverview, error) {
-	statusPage, err := c.GetStatusPage(slug)
+func (c *Client) GetMonitors(ctx context.Context, slug string) (*MonitorsOverview, error) {
+	statusPage, err := c.GetStatusPage(ctx, slug)
 	if err != nil {
 		return nil, err
 	}
 
-	heartbeats, err := c.GetHeartbeats(slug)
+	heartbeats, err := c.GetHeartbeats(ctx, slug)
 	if err != nil {
 		return nil, err
 	}
@@ -112,8 +113,8 @@ func (c *Client) GetMonitors(slug string) (*MonitorsOverview, error) {
 	}, nil
 }
 
-func (c *Client) get(path string, result any) error {
-	req, err := http.NewRequest(http.MethodGet, c.baseURL+path, nil)
+func (c *Client) get(ctx context.Context, path string, result any) error {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.baseURL+path, nil)
 	if err != nil {
 		return fmt.Errorf("creating request: %w", err)
 	}

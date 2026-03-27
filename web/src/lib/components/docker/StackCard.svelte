@@ -161,17 +161,17 @@
       {#if !$isViewer}
         <div class="flex flex-shrink-0 gap-1">
           {#if hasStackUpdate && isRunning}
-            <button onclick={doStackUpdate} class="rounded p-1 text-[var(--color-warning)] hover:text-[var(--color-primary)]" title={$t('docker.updateStack')}>
+            <button onclick={doStackUpdate} class="rounded p-1 text-[var(--color-warning)] hover:text-[var(--color-primary)]" title={$t('docker.updateStack')} aria-label={$t('docker.updateStack')}>
               <RefreshCw size={14} />
             </button>
           {/if}
           {#if isStopped}
-            <button onclick={() => doStackAction('start')} class="rounded p-1 text-[var(--color-text-muted)] hover:text-[var(--color-success)]" title={$t('docker.start')}>
+            <button onclick={() => doStackAction('start')} class="rounded p-1 text-[var(--color-text-muted)] hover:text-[var(--color-success)]" title={$t('docker.start')} aria-label={$t('docker.start')}>
               <Play size={14} />
             </button>
           {/if}
           {#if isRunning}
-            <button onclick={() => doStackAction('stop')} class="rounded p-1 text-[var(--color-text-muted)] hover:text-[var(--color-danger)]" title={$t('docker.stop')}>
+            <button onclick={() => doStackAction('stop')} class="rounded p-1 text-[var(--color-text-muted)] hover:text-[var(--color-danger)]" title={$t('docker.stop')} aria-label={$t('docker.stop')}>
               <Square size={14} />
             </button>
           {/if}

@@ -55,7 +55,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 - Incoming webhooks with HMAC validation
 - OpenAPI/Swagger documentation
 - Tauri desktop app (Linux, macOS, Windows)
-- Docker multi-arch image (amd64 + arm64)
+- Docker image (amd64)
 - CI/CD with GitHub Actions (tests, lint, E2E, Docker, desktop builds)
 - Embedded go2rtc for camera streaming
 - Pre-commit hook with Go lint, frontend lint, and tests

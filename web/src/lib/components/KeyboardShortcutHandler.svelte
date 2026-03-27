@@ -18,56 +18,48 @@
     return false
   }
 
+  function handleNumberKey(key: string, e: KeyboardEvent) {
+    if (get(currentRoute) !== 'dashboard') return
+    const cats = get(categories)
+    const sorted = [...cats].sort((a, b) => a.sort_order - b.sort_order)
+    const index = parseInt(key) - 1
+    if (index < sorted.length) {
+      navigate('/dashboard/' + sorted[index].slug)
+      e.preventDefault()
+    }
+  }
+
+  const shortcuts: Record<string, (e: KeyboardEvent) => void> = {
+    'e': (e) => { if (get(isEditor)) { toggleEditMode(); e.preventDefault() } },
+    'E': (e) => { if (get(isEditor)) { toggleEditMode(); e.preventDefault() } },
+    '?': (e) => { toggleShortcutHelp(); e.preventDefault() },
+    '/': (e) => {
+      e.preventDefault()
+      const searchInput = document.querySelector<HTMLInputElement>('[data-testid="search-input"]')
+      searchInput?.focus()
+    },
+  }
+
+  function handleEscape(e: KeyboardEvent): boolean {
+    if (e.key !== 'Escape') return false
+    if (get(shortcutHelpOpen)) { closeShortcutHelp(); e.preventDefault() }
+    return true
+  }
+
+  function hasModifier(e: KeyboardEvent): boolean {
+    return e.ctrlKey || e.altKey || e.metaKey
+  }
+
   function handleKeydown(e: KeyboardEvent) {
     if (!get(keyboardShortcutsEnabled)) return
-    if (e.ctrlKey || e.altKey || e.metaKey) return
+    if (hasModifier(e)) return
     if (!allowedRoutes.includes(get(currentRoute))) return
-
-    // Escape always works, even in inputs (to close help modal)
-    if (e.key === 'Escape') {
-      if (get(shortcutHelpOpen)) {
-        closeShortcutHelp()
-        e.preventDefault()
-      }
-      return
-    }
-
+    if (handleEscape(e)) return
     if (isInputFocused()) return
 
-    switch (e.key) {
-      case 'e':
-      case 'E':
-        if (get(isEditor)) {
-          toggleEditMode()
-          e.preventDefault()
-        }
-        break
-
-      case '?':
-        toggleShortcutHelp()
-        e.preventDefault()
-        break
-
-      case '/': {
-        e.preventDefault()
-        const searchInput = document.querySelector<HTMLInputElement>('[data-testid="search-input"]')
-        searchInput?.focus()
-        break
-      }
-
-      case '1': case '2': case '3': case '4': case '5':
-      case '6': case '7': case '8': case '9': {
-        if (get(currentRoute) !== 'dashboard') break
-        const cats = get(categories)
-        const sorted = [...cats].sort((a, b) => a.sort_order - b.sort_order)
-        const index = parseInt(e.key) - 1
-        if (index < sorted.length) {
-          navigate('/dashboard/' + sorted[index].slug)
-          e.preventDefault()
-        }
-        break
-      }
-    }
+    const handler = shortcuts[e.key]
+    if (handler) { handler(e); return }
+    if (e.key >= '1' && e.key <= '9') handleNumberKey(e.key, e)
   }
 </script>
 

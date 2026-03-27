@@ -55,7 +55,7 @@
   let loading = $state(true)
   let refreshing = $state(false)
   let error = $state<string | null>(null)
-  let services = $state<ArrOverview[]>([])
+  let services = $state.raw<ArrOverview[]>([])
   let activeTab = $state(0)
 
   async function fetchData() {

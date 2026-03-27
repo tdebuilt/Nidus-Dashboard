@@ -1,6 +1,7 @@
 package proxmox
 
 import (
+	"context"
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
@@ -21,14 +22,17 @@ type Client struct {
 }
 
 // NewClient creates a Proxmox API client.
-// By default, TLS verification is skipped (self-signed certs are common).
-func NewClient(baseURL string, httpClient *http.Client) *Client {
+// When insecureSkipTLS is true and no custom httpClient is provided,
+// TLS certificate verification is skipped (common for self-signed certs).
+func NewClient(baseURL string, httpClient *http.Client, insecureSkipTLS bool) *Client {
 	if httpClient == nil {
+		transport := &http.Transport{}
+		if insecureSkipTLS {
+			transport.TLSClientConfig = &tls.Config{InsecureSkipVerify: true} //nolint:gosec // user-configurable
+		}
 		httpClient = &http.Client{
-			Timeout: 10 * time.Second,
-			Transport: &http.Transport{
-				TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
-			},
+			Timeout:   10 * time.Second,
+			Transport: transport,
 		}
 	}
 	return &Client{
@@ -38,16 +42,20 @@ func NewClient(baseURL string, httpClient *http.Client) *Client {
 }
 
 // Authenticate obtains a ticket and CSRF token via username/password.
-func (c *Client) Authenticate(username, password string) error {
+func (c *Client) Authenticate(ctx context.Context, username, password string) error {
 	data := url.Values{}
 	data.Set("username", username)
 	data.Set("password", password)
 
-	resp, err := c.httpClient.Post(
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost,
 		c.baseURL+"/api2/json/access/ticket",
-		"application/x-www-form-urlencoded",
-		strings.NewReader(data.Encode()),
-	)
+		strings.NewReader(data.Encode()))
+	if err != nil {
+		return fmt.Errorf("creating auth request: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+
+	resp, err := c.httpClient.Do(req)
 	if err != nil {
 		return fmt.Errorf("auth request: %w", err)
 	}
@@ -77,19 +85,19 @@ func (c *Client) SetAPIToken(token string) {
 }
 
 // ListNodes returns all cluster nodes.
-func (c *Client) ListNodes() ([]Node, error) {
+func (c *Client) ListNodes(ctx context.Context) ([]Node, error) {
 	var nodes []Node
-	if err := c.get("/api2/json/nodes", &nodes); err != nil {
+	if err := c.get(ctx, "/api2/json/nodes", &nodes); err != nil {
 		return nil, fmt.Errorf("listing nodes: %w", err)
 	}
 	return nodes, nil
 }
 
 // ListVMs returns all VMs (qemu) for a given node.
-func (c *Client) ListVMs(node string) ([]VM, error) {
+func (c *Client) ListVMs(ctx context.Context, node string) ([]VM, error) {
 	path := fmt.Sprintf("/api2/json/nodes/%s/qemu", node)
 	var vms []VM
-	if err := c.get(path, &vms); err != nil {
+	if err := c.get(ctx, path, &vms); err != nil {
 		return nil, fmt.Errorf("listing VMs: %w", err)
 	}
 	for i := range vms {
@@ -100,10 +108,10 @@ func (c *Client) ListVMs(node string) ([]VM, error) {
 }
 
 // ListLXCs returns all LXC containers for a given node.
-func (c *Client) ListLXCs(node string) ([]VM, error) {
+func (c *Client) ListLXCs(ctx context.Context, node string) ([]VM, error) {
 	path := fmt.Sprintf("/api2/json/nodes/%s/lxc", node)
 	var lxcs []VM
-	if err := c.get(path, &lxcs); err != nil {
+	if err := c.get(ctx, path, &lxcs); err != nil {
 		return nil, fmt.Errorf("listing LXCs: %w", err)
 	}
 	for i := range lxcs {
@@ -114,21 +122,21 @@ func (c *Client) ListLXCs(node string) ([]VM, error) {
 }
 
 // ListAllVMs returns all VMs and LXCs across all nodes.
-func (c *Client) ListAllVMs() ([]VM, error) {
-	nodes, err := c.ListNodes()
+func (c *Client) ListAllVMs(ctx context.Context) ([]VM, error) {
+	nodes, err := c.ListNodes(ctx)
 	if err != nil {
 		return nil, err
 	}
 
 	var all []VM
 	for _, n := range nodes {
-		vms, err := c.ListVMs(n.Node)
+		vms, err := c.ListVMs(ctx, n.Node)
 		if err != nil {
 			return nil, err
 		}
 		all = append(all, vms...)
 
-		lxcs, err := c.ListLXCs(n.Node)
+		lxcs, err := c.ListLXCs(ctx, n.Node)
 		if err != nil {
 			return nil, err
 		}
@@ -137,21 +145,21 @@ func (c *Client) ListAllVMs() ([]VM, error) {
 	return all, nil
 }
 
-func (c *Client) get(path string, result any) error {
-	req, err := http.NewRequest(http.MethodGet, c.baseURL+path, nil)
+func (c *Client) get(ctx context.Context, path string, result any) error {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.baseURL+path, nil)
 	if err != nil {
 		return fmt.Errorf("creating request: %w", err)
 	}
 	return c.doRequest(req, result)
 }
 
-func (c *Client) post(path string, data url.Values, result any) error {
+func (c *Client) post(ctx context.Context, path string, data url.Values, result any) error {
 	var body io.Reader
 	if data != nil {
 		body = strings.NewReader(data.Encode())
 	}
 
-	req, err := http.NewRequest(http.MethodPost, c.baseURL+path, body)
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.baseURL+path, body)
 	if err != nil {
 		return fmt.Errorf("creating request: %w", err)
 	}

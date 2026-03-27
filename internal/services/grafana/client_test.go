@@ -1,6 +1,7 @@
 package grafana
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -54,11 +55,12 @@ func mockGrafanaServer(t *testing.T) *httptest.Server {
 }
 
 func TestGetHealth(t *testing.T) {
+	t.Parallel()
 	srv := mockGrafanaServer(t)
 	defer srv.Close()
 
 	client := NewClient(srv.URL, nil)
-	health, err := client.GetHealth()
+	health, err := client.GetHealth(context.Background())
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -68,13 +70,14 @@ func TestGetHealth(t *testing.T) {
 }
 
 func TestSearchDashboards(t *testing.T) {
+	t.Parallel()
 	srv := mockGrafanaServer(t)
 	defer srv.Close()
 
 	client := NewClient(srv.URL, nil)
 	client.SetToken("test-token")
 
-	results, err := client.SearchDashboards()
+	results, err := client.SearchDashboards(context.Background())
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -84,25 +87,27 @@ func TestSearchDashboards(t *testing.T) {
 }
 
 func TestSearchDashboardsUnauthorized(t *testing.T) {
+	t.Parallel()
 	srv := mockGrafanaServer(t)
 	defer srv.Close()
 
 	client := NewClient(srv.URL, nil)
 	// No token set
-	_, err := client.SearchDashboards()
+	_, err := client.SearchDashboards(context.Background())
 	if err == nil {
 		t.Fatal("expected error for unauthorized request")
 	}
 }
 
 func TestGetDashboard(t *testing.T) {
+	t.Parallel()
 	srv := mockGrafanaServer(t)
 	defer srv.Close()
 
 	client := NewClient(srv.URL, nil)
 	client.SetToken("test-token")
 
-	detail, err := client.GetDashboard("abc")
+	detail, err := client.GetDashboard(context.Background(), "abc")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -115,11 +120,12 @@ func TestGetDashboard(t *testing.T) {
 }
 
 func TestTrailingSlash(t *testing.T) {
+	t.Parallel()
 	srv := mockGrafanaServer(t)
 	defer srv.Close()
 
 	client := NewClient(srv.URL+"/", nil)
-	health, err := client.GetHealth()
+	health, err := client.GetHealth(context.Background())
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}

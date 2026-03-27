@@ -2,13 +2,10 @@ package handlers
 
 import (
 	"net/http"
-	"regexp"
 
 	"github.com/tdebuilt/nidus/internal/cache"
 	"github.com/tdebuilt/nidus/internal/services/weather"
 )
-
-var validIconCode = regexp.MustCompile(`^[0-9]{2}[dn]$`)
 
 // WeatherHandler handles weather-related HTTP requests.
 type WeatherHandler struct {
@@ -62,9 +59,9 @@ func (h *WeatherHandler) GetWeather(w http.ResponseWriter, r *http.Request) {
 	var err error
 
 	if city != "" {
-		data, err = client.GetCurrentByCity(city)
+		data, err = client.GetCurrentByCity(r.Context(), city)
 	} else {
-		data, err = client.GetWeather(lat, lon)
+		data, err = client.GetWeather(r.Context(), lat, lon)
 	}
 
 	if err != nil {
@@ -74,21 +71,4 @@ func (h *WeatherHandler) GetWeather(w http.ResponseWriter, r *http.Request) {
 
 	h.Cache.Set(cacheKey, data)
 	writeJSON(w, http.StatusOK, data)
-}
-
-// ProxyIcon handles GET /api/weather/icon/{code}.
-// Returns the OpenWeatherMap icon URL for use in img tags.
-func (h *WeatherHandler) ProxyIcon(w http.ResponseWriter, r *http.Request) {
-	// Just redirect to OpenWeatherMap's icon CDN
-	code := r.URL.Query().Get("code")
-	if code == "" {
-		http.Error(w, "missing code", http.StatusBadRequest)
-		return
-	}
-	if !validIconCode.MatchString(code) {
-		http.Error(w, "invalid icon code", http.StatusBadRequest)
-		return
-	}
-	iconURL := "https://openweathermap.org/img/wn/" + code + "@2x.png"
-	http.Redirect(w, r, iconURL, http.StatusTemporaryRedirect)
 }

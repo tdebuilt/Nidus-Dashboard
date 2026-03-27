@@ -63,7 +63,7 @@ func (h *RSSHandler) GetFeed(w http.ResponseWriter, r *http.Request) {
 	}
 
 	client := rss.NewClient(nil)
-	data, err := client.FetchFeeds(urls, maxItems)
+	data, err := client.FetchFeeds(r.Context(), urls, maxItems)
 	if err != nil {
 		writeJSON(w, http.StatusBadGateway, map[string]string{"error": "failed to fetch feeds: " + err.Error()})
 		return

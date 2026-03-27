@@ -1,7 +1,6 @@
 import type { Component } from 'svelte'
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type SvelteComponent = Component<any>
+type SvelteComponent = Component<Record<string, unknown>>
 type LazyComponent = () => Promise<{ default: SvelteComponent }>
 
 import { Container, Monitor, Activity, Shield, Download, Radio, Link, HeartPulse, MonitorPlay, CloudSun, CalendarDays, Rss, Server, ShieldCheck, Film, Camera, TrendingUp, LayoutDashboard } from 'lucide-svelte'

@@ -165,19 +165,19 @@
         {#if !$isViewer}
           <div class="flex gap-1">
             {#if queue.running}
-              <button onclick={pauseQueue} class="rounded p-1 text-[var(--color-text-muted)] hover:text-[var(--color-warning)]" title={$t('jdownloader.pause')}>
+              <button onclick={pauseQueue} class="rounded p-1 text-[var(--color-text-muted)] hover:text-[var(--color-warning)]" title={$t('jdownloader.pause')} aria-label={$t('jdownloader.pause')}>
                 <Pause size={14} />
               </button>
             {:else}
-              <button onclick={startQueue} class="rounded p-1 text-[var(--color-text-muted)] hover:text-[var(--color-success)]" title={$t('jdownloader.start')}>
+              <button onclick={startQueue} class="rounded p-1 text-[var(--color-text-muted)] hover:text-[var(--color-success)]" title={$t('jdownloader.start')} aria-label={$t('jdownloader.start')}>
                 <Play size={14} />
               </button>
             {/if}
-            <button onclick={() => showAddDialog = true} class="rounded p-1 text-[var(--color-text-muted)] hover:text-[var(--color-primary)]" title={$t('jdownloader.addLinks')}>
+            <button onclick={() => showAddDialog = true} class="rounded p-1 text-[var(--color-text-muted)] hover:text-[var(--color-primary)]" title={$t('jdownloader.addLinks')} aria-label={$t('jdownloader.addLinks')}>
               <Plus size={14} />
             </button>
             {#if hasFinished}
-              <button onclick={cleanupFinished} class="rounded p-1 text-[var(--color-text-muted)] hover:text-[var(--color-danger)]" title={$t('jdownloader.cleanup')}>
+              <button onclick={cleanupFinished} class="rounded p-1 text-[var(--color-text-muted)] hover:text-[var(--color-danger)]" title={$t('jdownloader.cleanup')} aria-label={$t('jdownloader.cleanup')}>
                 <Trash2 size={14} />
               </button>
             {/if}

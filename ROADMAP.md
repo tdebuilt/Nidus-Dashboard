@@ -25,7 +25,7 @@
 ### Infrastructure
 - [x] E2E tests with Playwright (setup wizard, auth, CRUD, drag/resize, services)
 - [x] CI/CD with GitHub Actions (Go lint, frontend lint, unit tests, E2E tests)
-- [x] Docker multi-arch build (amd64 + arm64)
+- [x] Docker image build (amd64)
 - [x] Tauri desktop app (Linux, macOS, Windows)
 - [x] OpenAPI/Swagger documentation
 - [x] Incoming webhooks with HMAC validation

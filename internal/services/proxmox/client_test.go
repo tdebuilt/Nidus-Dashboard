@@ -1,6 +1,7 @@
 package proxmox
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -117,11 +118,12 @@ func checkAuth(r *http.Request) bool {
 }
 
 func TestAuthenticate(t *testing.T) {
+	t.Parallel()
 	srv := mockProxmoxServer(t)
 	defer srv.Close()
 
-	client := NewClient(srv.URL, srv.Client())
-	if err := client.Authenticate("root@pam", "secret"); err != nil {
+	client := NewClient(srv.URL, srv.Client(), false)
+	if err := client.Authenticate(context.Background(), "root@pam", "secret"); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 	if client.ticket == "" {
@@ -133,11 +135,12 @@ func TestAuthenticate(t *testing.T) {
 }
 
 func TestAuthenticateInvalidCredentials(t *testing.T) {
+	t.Parallel()
 	srv := mockProxmoxServer(t)
 	defer srv.Close()
 
-	client := NewClient(srv.URL, srv.Client())
-	err := client.Authenticate("root@pam", "wrong")
+	client := NewClient(srv.URL, srv.Client(), false)
+	err := client.Authenticate(context.Background(), "root@pam", "wrong")
 	if err == nil {
 		t.Fatal("expected error for invalid credentials")
 	}
@@ -147,21 +150,23 @@ func TestAuthenticateInvalidCredentials(t *testing.T) {
 }
 
 func TestAuthenticateNetworkError(t *testing.T) {
-	client := NewClient("http://localhost:1", nil)
-	err := client.Authenticate("root@pam", "secret")
+	t.Parallel()
+	client := NewClient("http://localhost:1", nil, false)
+	err := client.Authenticate(context.Background(), "root@pam", "secret")
 	if err == nil {
 		t.Fatal("expected network error")
 	}
 }
 
 func TestListNodes(t *testing.T) {
+	t.Parallel()
 	srv := mockProxmoxServer(t)
 	defer srv.Close()
 
-	client := NewClient(srv.URL, srv.Client())
+	client := NewClient(srv.URL, srv.Client(), false)
 	client.SetAPIToken("user@pam!mytoken=uuid-value")
 
-	nodes, err := client.ListNodes()
+	nodes, err := client.ListNodes(context.Background())
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -180,24 +185,26 @@ func TestListNodes(t *testing.T) {
 }
 
 func TestListNodesUnauthorized(t *testing.T) {
+	t.Parallel()
 	srv := mockProxmoxServer(t)
 	defer srv.Close()
 
-	client := NewClient(srv.URL, srv.Client())
-	_, err := client.ListNodes()
+	client := NewClient(srv.URL, srv.Client(), false)
+	_, err := client.ListNodes(context.Background())
 	if err == nil {
 		t.Fatal("expected unauthorized error")
 	}
 }
 
 func TestListVMs(t *testing.T) {
+	t.Parallel()
 	srv := mockProxmoxServer(t)
 	defer srv.Close()
 
-	client := NewClient(srv.URL, srv.Client())
+	client := NewClient(srv.URL, srv.Client(), false)
 	client.SetAPIToken("user@pam!mytoken=uuid-value")
 
-	vms, err := client.ListVMs("pve1")
+	vms, err := client.ListVMs(context.Background(), "pve1")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -216,13 +223,14 @@ func TestListVMs(t *testing.T) {
 }
 
 func TestListLXCs(t *testing.T) {
+	t.Parallel()
 	srv := mockProxmoxServer(t)
 	defer srv.Close()
 
-	client := NewClient(srv.URL, srv.Client())
+	client := NewClient(srv.URL, srv.Client(), false)
 	client.SetAPIToken("user@pam!mytoken=uuid-value")
 
-	lxcs, err := client.ListLXCs("pve1")
+	lxcs, err := client.ListLXCs(context.Background(), "pve1")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -238,13 +246,14 @@ func TestListLXCs(t *testing.T) {
 }
 
 func TestListAllVMs(t *testing.T) {
+	t.Parallel()
 	srv := mockProxmoxServer(t)
 	defer srv.Close()
 
-	client := NewClient(srv.URL, srv.Client())
+	client := NewClient(srv.URL, srv.Client(), false)
 	client.SetAPIToken("user@pam!mytoken=uuid-value")
 
-	all, err := client.ListAllVMs()
+	all, err := client.ListAllVMs(context.Background())
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -266,7 +275,8 @@ func TestListAllVMs(t *testing.T) {
 }
 
 func TestSetAPIToken(t *testing.T) {
-	client := NewClient("http://example.com", nil)
+	t.Parallel()
+	client := NewClient("http://example.com", nil, false)
 	client.SetAPIToken("user@pam!token=uuid")
 
 	if client.apiToken != "user@pam!token=uuid" {
@@ -275,18 +285,21 @@ func TestSetAPIToken(t *testing.T) {
 }
 
 func TestFullAuthFlow(t *testing.T) {
+	t.Parallel()
 	srv := mockProxmoxServer(t)
 	defer srv.Close()
 
-	client := NewClient(srv.URL, srv.Client())
+	client := NewClient(srv.URL, srv.Client(), false)
+
+	ctx := context.Background()
 
 	// Authenticate with password
-	if err := client.Authenticate("root@pam", "secret"); err != nil {
+	if err := client.Authenticate(ctx, "root@pam", "secret"); err != nil {
 		t.Fatalf("auth failed: %v", err)
 	}
 
 	// List nodes
-	nodes, err := client.ListNodes()
+	nodes, err := client.ListNodes(ctx)
 	if err != nil {
 		t.Fatalf("list nodes failed: %v", err)
 	}
@@ -295,7 +308,7 @@ func TestFullAuthFlow(t *testing.T) {
 	}
 
 	// List VMs
-	vms, err := client.ListVMs(nodes[0].Node)
+	vms, err := client.ListVMs(ctx, nodes[0].Node)
 	if err != nil {
 		t.Fatalf("list VMs failed: %v", err)
 	}
@@ -304,7 +317,7 @@ func TestFullAuthFlow(t *testing.T) {
 	}
 
 	// List all
-	all, err := client.ListAllVMs()
+	all, err := client.ListAllVMs(ctx)
 	if err != nil {
 		t.Fatalf("list all failed: %v", err)
 	}
@@ -314,13 +327,14 @@ func TestFullAuthFlow(t *testing.T) {
 }
 
 func TestMetricsValues(t *testing.T) {
+	t.Parallel()
 	srv := mockProxmoxServer(t)
 	defer srv.Close()
 
-	client := NewClient(srv.URL, srv.Client())
+	client := NewClient(srv.URL, srv.Client(), false)
 	client.SetAPIToken("user@pam!mytoken=uuid-value")
 
-	vms, err := client.ListVMs("pve1")
+	vms, err := client.ListVMs(context.Background(), "pve1")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}

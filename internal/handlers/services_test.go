@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -15,13 +16,14 @@ import (
 
 func servicesHandler(t *testing.T) *ServicesHandler {
 	t.Helper()
+	ctx := context.Background()
 	db := setupTestDB(t)
 	// Set up encryption key (required for credential encryption)
 	encKey, err := crypto.GenerateKey()
 	if err != nil {
 		t.Fatalf("failed to generate encryption key: %v", err)
 	}
-	if err := db.SetSystemSetting("encryption_key", encKey); err != nil {
+	if err := db.SetSystemSetting(ctx, "encryption_key", encKey); err != nil {
 		t.Fatalf("failed to set encryption key: %v", err)
 	}
 	return &ServicesHandler{DB: db}
@@ -37,6 +39,7 @@ func serviceRouter(h *ServicesHandler) *chi.Mux {
 }
 
 func TestServiceListEmpty(t *testing.T) {
+	t.Parallel()
 	h := servicesHandler(t)
 	r := serviceRouter(h)
 
@@ -56,6 +59,7 @@ func TestServiceListEmpty(t *testing.T) {
 }
 
 func TestServiceSaveConfig(t *testing.T) {
+	t.Parallel()
 	h := servicesHandler(t)
 	r := serviceRouter(h)
 
@@ -90,6 +94,7 @@ func TestServiceSaveConfig(t *testing.T) {
 }
 
 func TestServiceCredentialsEncryptedInDB(t *testing.T) {
+	t.Parallel()
 	h := servicesHandler(t)
 	r := serviceRouter(h)
 
@@ -108,7 +113,8 @@ func TestServiceCredentialsEncryptedInDB(t *testing.T) {
 	}
 
 	// Read directly from DB — credentials should NOT be plaintext
-	svc, err := h.DB.GetServiceByType("portainer")
+	ctx := context.Background()
+	svc, err := h.DB.GetServiceByType(ctx, "portainer")
 	if err != nil {
 		t.Fatalf("failed to get service: %v", err)
 	}
@@ -120,7 +126,7 @@ func TestServiceCredentialsEncryptedInDB(t *testing.T) {
 	}
 
 	// Decrypt and verify
-	encKey, _ := h.DB.GetSystemSetting("encryption_key")
+	encKey, _ := h.DB.GetSystemSetting(ctx, "encryption_key")
 	decrypted, err := crypto.Decrypt(svc.Credentials, encKey)
 	if err != nil {
 		t.Fatalf("failed to decrypt credentials: %v", err)
@@ -131,6 +137,7 @@ func TestServiceCredentialsEncryptedInDB(t *testing.T) {
 }
 
 func TestServiceGETReturnsNoSecrets(t *testing.T) {
+	t.Parallel()
 	h := servicesHandler(t)
 	r := serviceRouter(h)
 
@@ -175,6 +182,7 @@ func TestServiceGETReturnsNoSecrets(t *testing.T) {
 }
 
 func TestServiceUpdatePreservesCredentials(t *testing.T) {
+	t.Parallel()
 	h := servicesHandler(t)
 	r := serviceRouter(h)
 
@@ -202,12 +210,13 @@ func TestServiceUpdatePreservesCredentials(t *testing.T) {
 	}
 
 	// Credentials should still be there
-	svc, _ := h.DB.GetServiceByType("portainer")
+	ctx := context.Background()
+	svc, _ := h.DB.GetServiceByType(ctx, "portainer")
 	if svc.Credentials == "" {
 		t.Error("credentials should be preserved when not provided in update")
 	}
 
-	encKey, _ := h.DB.GetSystemSetting("encryption_key")
+	encKey, _ := h.DB.GetSystemSetting(ctx, "encryption_key")
 	decrypted, _ := crypto.Decrypt(svc.Credentials, encKey)
 	if decrypted != `{"token": "original_secret"}` {
 		t.Errorf("expected original credentials, got '%s'", decrypted)
@@ -215,6 +224,7 @@ func TestServiceUpdatePreservesCredentials(t *testing.T) {
 }
 
 func TestServiceInvalidType(t *testing.T) {
+	t.Parallel()
 	h := servicesHandler(t)
 	r := serviceRouter(h)
 
@@ -232,6 +242,7 @@ func TestServiceInvalidType(t *testing.T) {
 }
 
 func TestServiceUpdateMissingName(t *testing.T) {
+	t.Parallel()
 	h := servicesHandler(t)
 	r := serviceRouter(h)
 
@@ -249,6 +260,7 @@ func TestServiceUpdateMissingName(t *testing.T) {
 }
 
 func TestServiceUpdateMissingURL(t *testing.T) {
+	t.Parallel()
 	h := servicesHandler(t)
 	r := serviceRouter(h)
 
@@ -266,6 +278,7 @@ func TestServiceUpdateMissingURL(t *testing.T) {
 }
 
 func TestServiceUpdateInvalidJSON(t *testing.T) {
+	t.Parallel()
 	h := servicesHandler(t)
 	r := serviceRouter(h)
 
@@ -279,6 +292,7 @@ func TestServiceUpdateInvalidJSON(t *testing.T) {
 }
 
 func TestServiceTestNotConfigured(t *testing.T) {
+	t.Parallel()
 	h := servicesHandler(t)
 	r := serviceRouter(h)
 
@@ -292,6 +306,7 @@ func TestServiceTestNotConfigured(t *testing.T) {
 }
 
 func TestServiceTestInvalidType(t *testing.T) {
+	t.Parallel()
 	h := servicesHandler(t)
 	r := serviceRouter(h)
 
@@ -305,6 +320,7 @@ func TestServiceTestInvalidType(t *testing.T) {
 }
 
 func TestServiceTestConfigured(t *testing.T) {
+	t.Parallel()
 	h := servicesHandler(t)
 	r := serviceRouter(h)
 
@@ -341,6 +357,7 @@ func TestServiceTestConfigured(t *testing.T) {
 }
 
 func TestServiceEnabledFlag(t *testing.T) {
+	t.Parallel()
 	h := servicesHandler(t)
 	r := serviceRouter(h)
 
@@ -366,6 +383,7 @@ func TestServiceEnabledFlag(t *testing.T) {
 }
 
 func TestServiceAllValidTypes(t *testing.T) {
+	t.Parallel()
 	h := servicesHandler(t)
 	r := serviceRouter(h)
 
@@ -397,10 +415,12 @@ func TestServiceAllValidTypes(t *testing.T) {
 
 // TestServiceDBMethodsDirectly tests database layer for services.
 func TestServiceDBMethodsDirectly(t *testing.T) {
+	t.Parallel()
 	db := setupTestDB(t)
+	ctx := context.Background()
 
 	// Upsert a new service
-	svc, err := db.UpsertService("portainer", "Test", "https://test.local", "encrypted_creds", "{}", true)
+	svc, err := db.UpsertService(ctx, "portainer", "Test", "https://test.local", "encrypted_creds", "{}", true)
 	if err != nil {
 		t.Fatalf("failed to upsert: %v", err)
 	}
@@ -412,7 +432,7 @@ func TestServiceDBMethodsDirectly(t *testing.T) {
 	}
 
 	// Upsert again (update)
-	svc2, err := db.UpsertService("portainer", "Updated", "https://new.local", "", "{}", false)
+	svc2, err := db.UpsertService(ctx, "portainer", "Updated", "https://new.local", "", "{}", false)
 	if err != nil {
 		t.Fatalf("failed to upsert update: %v", err)
 	}
@@ -428,7 +448,7 @@ func TestServiceDBMethodsDirectly(t *testing.T) {
 	}
 
 	// Get by type
-	got, err := db.GetServiceByType("portainer")
+	got, err := db.GetServiceByType(ctx, "portainer")
 	if err != nil {
 		t.Fatalf("failed to get: %v", err)
 	}
@@ -440,7 +460,7 @@ func TestServiceDBMethodsDirectly(t *testing.T) {
 	}
 
 	// Get non-existent
-	notFound, err := db.GetServiceByType("nonexistent")
+	notFound, err := db.GetServiceByType(ctx, "nonexistent")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -450,6 +470,7 @@ func TestServiceDBMethodsDirectly(t *testing.T) {
 }
 
 func TestServiceDelete(t *testing.T) {
+	t.Parallel()
 	h := servicesHandler(t)
 	r := serviceRouter(h)
 
@@ -486,6 +507,7 @@ func TestServiceDelete(t *testing.T) {
 }
 
 func TestServiceDeleteNotFound(t *testing.T) {
+	t.Parallel()
 	h := servicesHandler(t)
 	r := serviceRouter(h)
 
@@ -499,6 +521,7 @@ func TestServiceDeleteNotFound(t *testing.T) {
 }
 
 func TestServiceDeleteInvalidType(t *testing.T) {
+	t.Parallel()
 	h := servicesHandler(t)
 	r := serviceRouter(h)
 

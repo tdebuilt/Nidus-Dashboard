@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"context"
 	"encoding/hex"
 	"fmt"
 	"net/http"
@@ -23,7 +24,8 @@ func setupTestDB(t *testing.T) *database.DB {
 	if err != nil {
 		t.Fatalf("failed to open test db: %v", err)
 	}
-	if err := db.Migrate(); err != nil {
+	ctx := context.Background()
+	if err := db.Migrate(ctx); err != nil {
 		t.Fatalf("failed to migrate: %v", err)
 	}
 	t.Cleanup(func() { db.Close() })
@@ -33,7 +35,8 @@ func setupTestDB(t *testing.T) *database.DB {
 // setupUserAndSecret creates a test user and JWT secret, returns the secret bytes.
 func setupUserAndSecret(t *testing.T, db *database.DB) []byte {
 	t.Helper()
-	_, err := db.CreateUser("admin", "$2a$10$abcdefghijklmnopqrstuuABCDEFGHIJKLMNOPQRSTUVWXYZ012", "admin")
+	ctx := context.Background()
+	_, err := db.CreateUser(ctx, "admin", "$2a$10$abcdefghijklmnopqrstuuABCDEFGHIJKLMNOPQRSTUVWXYZ012", "admin")
 	if err != nil {
 		t.Fatalf("failed to create user: %v", err)
 	}
@@ -44,7 +47,7 @@ func setupUserAndSecret(t *testing.T, db *database.DB) []byte {
 		secret[i] = byte(i)
 	}
 	secretHex := hex.EncodeToString(secret)
-	if err := db.SetSystemSetting("jwt_secret", secretHex); err != nil {
+	if err := db.SetSystemSetting(ctx, "jwt_secret", secretHex); err != nil {
 		t.Fatalf("failed to set jwt_secret: %v", err)
 	}
 	return secret
@@ -83,6 +86,7 @@ func itoa(n int64) string {
 }
 
 func TestAuthMiddlewareValidCookie(t *testing.T) {
+	t.Parallel()
 	db := setupTestDB(t)
 	secret := setupUserAndSecret(t, db)
 
@@ -101,6 +105,7 @@ func TestAuthMiddlewareValidCookie(t *testing.T) {
 }
 
 func TestAuthMiddlewareValidBearerHeader(t *testing.T) {
+	t.Parallel()
 	db := setupTestDB(t)
 	secret := setupUserAndSecret(t, db)
 
@@ -119,6 +124,7 @@ func TestAuthMiddlewareValidBearerHeader(t *testing.T) {
 }
 
 func TestAuthMiddlewareExpiredToken(t *testing.T) {
+	t.Parallel()
 	db := setupTestDB(t)
 	secret := setupUserAndSecret(t, db)
 
@@ -138,6 +144,7 @@ func TestAuthMiddlewareExpiredToken(t *testing.T) {
 }
 
 func TestAuthMiddlewareMissingToken(t *testing.T) {
+	t.Parallel()
 	db := setupTestDB(t)
 	setupUserAndSecret(t, db)
 
@@ -153,6 +160,7 @@ func TestAuthMiddlewareMissingToken(t *testing.T) {
 }
 
 func TestAuthMiddlewareInvalidToken(t *testing.T) {
+	t.Parallel()
 	db := setupTestDB(t)
 	setupUserAndSecret(t, db)
 
@@ -169,6 +177,7 @@ func TestAuthMiddlewareInvalidToken(t *testing.T) {
 }
 
 func TestAuthMiddlewareWrongSigningKey(t *testing.T) {
+	t.Parallel()
 	db := setupTestDB(t)
 	setupUserAndSecret(t, db)
 
@@ -192,6 +201,7 @@ func TestAuthMiddlewareWrongSigningKey(t *testing.T) {
 }
 
 func TestAuthMiddlewareNonexistentUser(t *testing.T) {
+	t.Parallel()
 	db := setupTestDB(t)
 	secret := setupUserAndSecret(t, db)
 
@@ -211,6 +221,7 @@ func TestAuthMiddlewareNonexistentUser(t *testing.T) {
 }
 
 func TestAuthMiddlewareInjectsUserID(t *testing.T) {
+	t.Parallel()
 	db := setupTestDB(t)
 	secret := setupUserAndSecret(t, db)
 
@@ -238,6 +249,7 @@ func TestAuthMiddlewareInjectsUserID(t *testing.T) {
 }
 
 func TestGetUserIDWithoutMiddleware(t *testing.T) {
+	t.Parallel()
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	_, ok := GetUserID(req.Context())
 	if ok {

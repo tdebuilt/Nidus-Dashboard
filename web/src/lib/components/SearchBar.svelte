@@ -14,7 +14,7 @@
   }
 
   let query = $state('')
-  let results = $state<SearchResult[]>([])
+  let results = $state.raw<SearchResult[]>([])
   let showResults = $state(false)
   let timer: ReturnType<typeof setTimeout> | null = null
   let containerEl: HTMLDivElement | undefined = $state()

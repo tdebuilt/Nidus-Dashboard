@@ -5,6 +5,7 @@
   import { t, translate } from '../i18n'
   import WidgetConfigForm from './config/WidgetConfigForm.svelte'
   import { getAllWidgetTypes, getServiceToWidgetMap } from '../widgetRegistry'
+  import { focusTrap } from '../actions/focusTrap'
 
   interface ServiceResponse {
     type: string
@@ -25,7 +26,7 @@
   let title = $state('')
   let config = $state('{}')
   let loading = $state(false)
-  let configuredServices = $state<string[]>([])
+  let configuredServices = $state.raw<string[]>([])
   let loadingServices = $state(false)
 
   const serviceToWidget = getServiceToWidgetMap()
@@ -98,7 +99,7 @@
 {#if open}
   <button class="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm" onclick={handleClose} aria-label={$t('common.close')}></button>
   <div class="fixed inset-0 z-50 flex items-center justify-center p-4" data-testid="add-widget-dialog">
-    <div class="w-full max-w-2xl max-h-[90vh] flex flex-col rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-secondary)] p-6 shadow-2xl animate-[dialogIn_0.2s_ease-out]">
+    <div class="w-full max-w-2xl max-h-[90vh] flex flex-col rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-secondary)] p-6 shadow-2xl animate-[dialogIn_0.2s_ease-out]" role="dialog" aria-modal="true" use:focusTrap={{ onClose: handleClose }}>
       <div class="mb-4 flex items-center justify-between">
         <h3 class="text-lg font-semibold text-[var(--color-text)]">{$t('widget.addTitle')}</h3>
         <button onclick={handleClose} class="touch-action-btn rounded p-2 text-[var(--color-text-muted)] hover:text-[var(--color-text)]" data-testid="add-widget-close">

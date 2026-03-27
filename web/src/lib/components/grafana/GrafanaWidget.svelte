@@ -22,7 +22,7 @@
 
   let loading = $state(true)
   let error = $state<string | null>(null)
-  let embedUrls = $state<{ title: string; url: string }[]>([])
+  let embedUrls = $state.raw<{ title: string; url: string }[]>([])
 
   const parsedConfig = $derived((() => {
     try { return JSON.parse(config) } catch { return {} }

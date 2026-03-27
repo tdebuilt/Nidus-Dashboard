@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -49,6 +50,7 @@ func serveWithChi(method, pattern string, handler http.HandlerFunc, req *http.Re
 }
 
 func TestCategoryListEmpty(t *testing.T) {
+	t.Parallel()
 	h := categoriesHandler(t)
 
 	req := httptest.NewRequest(http.MethodGet, "/api/categories", nil)
@@ -69,6 +71,7 @@ func TestCategoryListEmpty(t *testing.T) {
 }
 
 func TestCategoryCreate(t *testing.T) {
+	t.Parallel()
 	h := categoriesHandler(t)
 
 	req := createCategoryRequest(t, models.CreateCategoryRequest{
@@ -104,6 +107,7 @@ func TestCategoryCreate(t *testing.T) {
 }
 
 func TestCategoryCreateMissingName(t *testing.T) {
+	t.Parallel()
 	h := categoriesHandler(t)
 
 	req := createCategoryRequest(t, models.CreateCategoryRequest{
@@ -119,6 +123,7 @@ func TestCategoryCreateMissingName(t *testing.T) {
 }
 
 func TestCategoryCreateMissingIcon(t *testing.T) {
+	t.Parallel()
 	h := categoriesHandler(t)
 
 	req := createCategoryRequest(t, models.CreateCategoryRequest{
@@ -134,6 +139,7 @@ func TestCategoryCreateMissingIcon(t *testing.T) {
 }
 
 func TestCategoryCreateInvalidJSON(t *testing.T) {
+	t.Parallel()
 	h := categoriesHandler(t)
 
 	req := httptest.NewRequest(http.MethodPost, "/api/categories", bytes.NewReader([]byte("not json")))
@@ -146,10 +152,12 @@ func TestCategoryCreateInvalidJSON(t *testing.T) {
 }
 
 func TestCategoryGet(t *testing.T) {
+	t.Parallel()
 	h := categoriesHandler(t)
+	ctx := context.Background()
 
 	// Create a category first
-	cat, err := h.DB.CreateCategory("Media", "film")
+	cat, err := h.DB.CreateCategory(ctx, "Media", "film")
 	if err != nil {
 		t.Fatalf("failed to create: %v", err)
 	}
@@ -172,6 +180,7 @@ func TestCategoryGet(t *testing.T) {
 }
 
 func TestCategoryGetNotFound(t *testing.T) {
+	t.Parallel()
 	h := categoriesHandler(t)
 
 	req := httptest.NewRequest(http.MethodGet, "/api/categories/999", nil)
@@ -183,6 +192,7 @@ func TestCategoryGetNotFound(t *testing.T) {
 }
 
 func TestCategoryGetInvalidID(t *testing.T) {
+	t.Parallel()
 	h := categoriesHandler(t)
 
 	req := httptest.NewRequest(http.MethodGet, "/api/categories/abc", nil)
@@ -194,9 +204,11 @@ func TestCategoryGetInvalidID(t *testing.T) {
 }
 
 func TestCategoryUpdate(t *testing.T) {
+	t.Parallel()
 	h := categoriesHandler(t)
+	ctx := context.Background()
 
-	cat, err := h.DB.CreateCategory("Old Name", "folder")
+	cat, err := h.DB.CreateCategory(ctx, "Old Name", "folder")
 	if err != nil {
 		t.Fatalf("failed to create: %v", err)
 	}
@@ -223,6 +235,7 @@ func TestCategoryUpdate(t *testing.T) {
 }
 
 func TestCategoryUpdateNotFound(t *testing.T) {
+	t.Parallel()
 	h := categoriesHandler(t)
 
 	body, _ := json.Marshal(models.UpdateCategoryRequest{
@@ -238,9 +251,11 @@ func TestCategoryUpdateNotFound(t *testing.T) {
 }
 
 func TestCategoryUpdateMissingName(t *testing.T) {
+	t.Parallel()
 	h := categoriesHandler(t)
+	ctx := context.Background()
 
-	cat, _ := h.DB.CreateCategory("Test", "folder")
+	cat, _ := h.DB.CreateCategory(ctx, "Test", "folder")
 	body, _ := json.Marshal(models.UpdateCategoryRequest{Name: "", Icon: "star"})
 	req := httptest.NewRequest(http.MethodPut, fmt.Sprintf("/api/categories/%d", cat.ID), bytes.NewReader(body))
 	w := serveWithChi(http.MethodPut, "/api/categories/{id}", h.Update, req)
@@ -251,9 +266,11 @@ func TestCategoryUpdateMissingName(t *testing.T) {
 }
 
 func TestCategoryUpdateMissingIcon(t *testing.T) {
+	t.Parallel()
 	h := categoriesHandler(t)
+	ctx := context.Background()
 
-	cat, _ := h.DB.CreateCategory("Test", "folder")
+	cat, _ := h.DB.CreateCategory(ctx, "Test", "folder")
 	body, _ := json.Marshal(models.UpdateCategoryRequest{Name: "Test", Icon: ""})
 	req := httptest.NewRequest(http.MethodPut, fmt.Sprintf("/api/categories/%d", cat.ID), bytes.NewReader(body))
 	w := serveWithChi(http.MethodPut, "/api/categories/{id}", h.Update, req)
@@ -264,9 +281,11 @@ func TestCategoryUpdateMissingIcon(t *testing.T) {
 }
 
 func TestCategoryDelete(t *testing.T) {
+	t.Parallel()
 	h := categoriesHandler(t)
+	ctx := context.Background()
 
-	cat, _ := h.DB.CreateCategory("ToDelete", "trash")
+	cat, _ := h.DB.CreateCategory(ctx, "ToDelete", "trash")
 
 	req := httptest.NewRequest(http.MethodDelete, fmt.Sprintf("/api/categories/%d", cat.ID), nil)
 	w := serveWithChi(http.MethodDelete, "/api/categories/{id}", h.Delete, req)
@@ -276,7 +295,7 @@ func TestCategoryDelete(t *testing.T) {
 	}
 
 	// Verify it's gone
-	got, err := h.DB.GetCategory(cat.ID)
+	got, err := h.DB.GetCategory(ctx, cat.ID)
 	if err != nil {
 		t.Fatalf("failed to query: %v", err)
 	}
@@ -286,6 +305,7 @@ func TestCategoryDelete(t *testing.T) {
 }
 
 func TestCategoryDeleteNotFound(t *testing.T) {
+	t.Parallel()
 	h := categoriesHandler(t)
 
 	req := httptest.NewRequest(http.MethodDelete, "/api/categories/999", nil)
@@ -297,11 +317,13 @@ func TestCategoryDeleteNotFound(t *testing.T) {
 }
 
 func TestCategoryReorder(t *testing.T) {
+	t.Parallel()
 	h := categoriesHandler(t)
+	ctx := context.Background()
 
-	cat1, _ := h.DB.CreateCategory("First", "one")
-	cat2, _ := h.DB.CreateCategory("Second", "two")
-	cat3, _ := h.DB.CreateCategory("Third", "three")
+	cat1, _ := h.DB.CreateCategory(ctx, "First", "one")
+	cat2, _ := h.DB.CreateCategory(ctx, "Second", "two")
+	cat3, _ := h.DB.CreateCategory(ctx, "Third", "three")
 
 	// Reverse order
 	body, _ := json.Marshal(models.ReorderRequest{
@@ -334,6 +356,7 @@ func TestCategoryReorder(t *testing.T) {
 }
 
 func TestCategoryReorderEmptyIDs(t *testing.T) {
+	t.Parallel()
 	h := categoriesHandler(t)
 
 	body, _ := json.Marshal(models.ReorderRequest{IDs: []int64{}})
@@ -347,10 +370,12 @@ func TestCategoryReorderEmptyIDs(t *testing.T) {
 }
 
 func TestCategoryListAfterCreate(t *testing.T) {
+	t.Parallel()
 	h := categoriesHandler(t)
+	ctx := context.Background()
 
-	h.DB.CreateCategory("Alpha", "a")
-	h.DB.CreateCategory("Beta", "b")
+	h.DB.CreateCategory(ctx, "Alpha", "a")
+	h.DB.CreateCategory(ctx, "Beta", "b")
 
 	req := httptest.NewRequest(http.MethodGet, "/api/categories", nil)
 	w := httptest.NewRecorder()
@@ -375,11 +400,13 @@ func TestCategoryListAfterCreate(t *testing.T) {
 }
 
 func TestCategorySortOrderAutoIncrement(t *testing.T) {
+	t.Parallel()
 	h := categoriesHandler(t)
+	ctx := context.Background()
 
-	cat1, _ := h.DB.CreateCategory("First", "one")
-	cat2, _ := h.DB.CreateCategory("Second", "two")
-	cat3, _ := h.DB.CreateCategory("Third", "three")
+	cat1, _ := h.DB.CreateCategory(ctx, "First", "one")
+	cat2, _ := h.DB.CreateCategory(ctx, "Second", "two")
+	cat3, _ := h.DB.CreateCategory(ctx, "Third", "three")
 
 	if cat1.SortOrder != 0 {
 		t.Errorf("expected sort_order 0, got %d", cat1.SortOrder)
@@ -393,9 +420,11 @@ func TestCategorySortOrderAutoIncrement(t *testing.T) {
 }
 
 func TestCategorySlugStableOnRename(t *testing.T) {
+	t.Parallel()
 	h := categoriesHandler(t)
+	ctx := context.Background()
 
-	cat, _ := h.DB.CreateCategory("Old Name", "folder")
+	cat, _ := h.DB.CreateCategory(ctx, "Old Name", "folder")
 	originalSlug := cat.Slug
 
 	body, _ := json.Marshal(models.UpdateCategoryRequest{
@@ -417,10 +446,12 @@ func TestCategorySlugStableOnRename(t *testing.T) {
 }
 
 func TestCategorySlugCollision(t *testing.T) {
+	t.Parallel()
 	h := categoriesHandler(t)
+	ctx := context.Background()
 
-	cat1, _ := h.DB.CreateCategory("Test", "folder")
-	cat2, _ := h.DB.CreateCategory("Test", "folder")
+	cat1, _ := h.DB.CreateCategory(ctx, "Test", "folder")
+	cat2, _ := h.DB.CreateCategory(ctx, "Test", "folder")
 
 	if cat1.Slug != "test" {
 		t.Errorf("expected first slug 'test', got '%s'", cat1.Slug)
@@ -431,9 +462,11 @@ func TestCategorySlugCollision(t *testing.T) {
 }
 
 func TestCategorySlugFrenchAccents(t *testing.T) {
+	t.Parallel()
 	h := categoriesHandler(t)
+	ctx := context.Background()
 
-	cat, _ := h.DB.CreateCategory("Réseau Sécurité", "shield")
+	cat, _ := h.DB.CreateCategory(ctx, "Réseau Sécurité", "shield")
 	if cat.Slug != "reseau-securite" {
 		t.Errorf("expected slug 'reseau-securite', got '%s'", cat.Slug)
 	}

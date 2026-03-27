@@ -1,6 +1,7 @@
 package calendar
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"net/http"
@@ -22,7 +23,7 @@ func NewClient(httpClient *http.Client) *Client {
 }
 
 // FetchEvents fetches one or more iCal URLs and returns upcoming events.
-func (c *Client) FetchEvents(urls []string, days int) (*CalendarData, error) {
+func (c *Client) FetchEvents(ctx context.Context, urls []string, days int) (*CalendarData, error) {
 	if days <= 0 {
 		days = 14
 	}
@@ -34,7 +35,7 @@ func (c *Client) FetchEvents(urls []string, days int) (*CalendarData, error) {
 	var allEvents []CalendarEvent
 
 	for _, url := range urls {
-		events, err := c.fetchURL(url, from, to)
+		events, err := c.fetchURL(ctx, url, from, to)
 		if err != nil {
 			// Log error but continue with other URLs
 			continue
@@ -50,8 +51,12 @@ func (c *Client) FetchEvents(urls []string, days int) (*CalendarData, error) {
 	return &CalendarData{Events: allEvents}, nil
 }
 
-func (c *Client) fetchURL(url string, from, to time.Time) ([]CalendarEvent, error) {
-	resp, err := c.httpClient.Get(url)
+func (c *Client) fetchURL(ctx context.Context, url string, from, to time.Time) ([]CalendarEvent, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	if err != nil {
+		return nil, fmt.Errorf("creating request for %s: %w", url, err)
+	}
+	resp, err := c.httpClient.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("fetching %s: %w", url, err)
 	}

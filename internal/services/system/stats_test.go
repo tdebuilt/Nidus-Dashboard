@@ -5,6 +5,7 @@ import (
 )
 
 func TestFormatBytes(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		input    uint64
 		expected string
@@ -27,6 +28,7 @@ func TestFormatBytes(t *testing.T) {
 }
 
 func TestGetStats(t *testing.T) {
+	t.Parallel()
 	stats, err := GetStats()
 	if err != nil {
 		t.Fatalf("GetStats error: %v", err)

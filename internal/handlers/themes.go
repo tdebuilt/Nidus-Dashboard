@@ -72,7 +72,7 @@ func (e *validationError) Error() string {
 
 // List returns all custom themes.
 func (h *ThemesHandler) List(w http.ResponseWriter, r *http.Request) {
-	themes, err := h.DB.ListCustomThemes()
+	themes, err := h.DB.ListCustomThemes(r.Context())
 	if err != nil {
 		writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "failed to list themes"})
 		return
@@ -98,7 +98,7 @@ func (h *ThemesHandler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	count, err := h.DB.CountCustomThemes()
+	count, err := h.DB.CountCustomThemes(r.Context())
 	if err != nil {
 		writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "failed to count themes"})
 		return
@@ -108,13 +108,13 @@ func (h *ThemesHandler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	id, err := h.DB.CreateCustomTheme(req.Name, req.ThemeJSON)
+	id, err := h.DB.CreateCustomTheme(r.Context(), req.Name, req.ThemeJSON)
 	if err != nil {
 		writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "failed to create theme"})
 		return
 	}
 
-	theme, err := h.DB.GetCustomTheme(id)
+	theme, err := h.DB.GetCustomTheme(r.Context(), id)
 	if err != nil {
 		writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "failed to read created theme"})
 		return
@@ -136,7 +136,7 @@ func (h *ThemesHandler) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	existing, err := h.DB.GetCustomTheme(id)
+	existing, err := h.DB.GetCustomTheme(r.Context(), id)
 	if err != nil {
 		writeJSON(w, http.StatusNotFound, models.ErrorResponse{Error: "theme not found"})
 		return
@@ -161,12 +161,12 @@ func (h *ThemesHandler) Update(w http.ResponseWriter, r *http.Request) {
 		themeJSON = *req.ThemeJSON
 	}
 
-	if err := h.DB.UpdateCustomTheme(id, name, themeJSON); err != nil {
+	if err := h.DB.UpdateCustomTheme(r.Context(), id, name, themeJSON); err != nil {
 		writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "failed to update theme"})
 		return
 	}
 
-	theme, err := h.DB.GetCustomTheme(id)
+	theme, err := h.DB.GetCustomTheme(r.Context(), id)
 	if err != nil {
 		writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "failed to read updated theme"})
 		return
@@ -182,7 +182,7 @@ func (h *ThemesHandler) Delete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := h.DB.DeleteCustomTheme(id); err != nil {
+	if err := h.DB.DeleteCustomTheme(r.Context(), id); err != nil {
 		writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "failed to delete theme"})
 		return
 	}

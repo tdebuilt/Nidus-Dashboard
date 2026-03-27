@@ -1,18 +1,20 @@
 package proxmox
 
 import (
+	"context"
 	"strings"
 	"testing"
 )
 
 func TestStartVM(t *testing.T) {
+	t.Parallel()
 	srv := mockProxmoxServer(t)
 	defer srv.Close()
 
-	client := NewClient(srv.URL, srv.Client())
+	client := NewClient(srv.URL, srv.Client(), false)
 	client.SetAPIToken("user@pam!mytoken=uuid-value")
 
-	taskID, err := client.StartVM("pve1", 100)
+	taskID, err := client.StartVM(context.Background(), "pve1", 100)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -22,13 +24,14 @@ func TestStartVM(t *testing.T) {
 }
 
 func TestStopVM(t *testing.T) {
+	t.Parallel()
 	srv := mockProxmoxServer(t)
 	defer srv.Close()
 
-	client := NewClient(srv.URL, srv.Client())
+	client := NewClient(srv.URL, srv.Client(), false)
 	client.SetAPIToken("user@pam!mytoken=uuid-value")
 
-	taskID, err := client.StopVM("pve1", 100)
+	taskID, err := client.StopVM(context.Background(), "pve1", 100)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -38,13 +41,14 @@ func TestStopVM(t *testing.T) {
 }
 
 func TestShutdownVM(t *testing.T) {
+	t.Parallel()
 	srv := mockProxmoxServer(t)
 	defer srv.Close()
 
-	client := NewClient(srv.URL, srv.Client())
+	client := NewClient(srv.URL, srv.Client(), false)
 	client.SetAPIToken("user@pam!mytoken=uuid-value")
 
-	taskID, err := client.ShutdownVM("pve1", 100)
+	taskID, err := client.ShutdownVM(context.Background(), "pve1", 100)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -54,13 +58,14 @@ func TestShutdownVM(t *testing.T) {
 }
 
 func TestRebootVM(t *testing.T) {
+	t.Parallel()
 	srv := mockProxmoxServer(t)
 	defer srv.Close()
 
-	client := NewClient(srv.URL, srv.Client())
+	client := NewClient(srv.URL, srv.Client(), false)
 	client.SetAPIToken("user@pam!mytoken=uuid-value")
 
-	taskID, err := client.RebootVM("pve1", 100)
+	taskID, err := client.RebootVM(context.Background(), "pve1", 100)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -70,13 +75,14 @@ func TestRebootVM(t *testing.T) {
 }
 
 func TestVMActionUnauthorized(t *testing.T) {
+	t.Parallel()
 	srv := mockProxmoxServer(t)
 	defer srv.Close()
 
-	client := NewClient(srv.URL, srv.Client())
+	client := NewClient(srv.URL, srv.Client(), false)
 	// No auth
 
-	_, err := client.StartVM("pve1", 100)
+	_, err := client.StartVM(context.Background(), "pve1", 100)
 	if err == nil {
 		t.Fatal("expected unauthorized error")
 	}
@@ -86,42 +92,46 @@ func TestVMActionUnauthorized(t *testing.T) {
 }
 
 func TestVMActionNetworkError(t *testing.T) {
-	client := NewClient("http://localhost:1", nil)
+	t.Parallel()
+	client := NewClient("http://localhost:1", nil, false)
 	client.SetAPIToken("user@pam!mytoken=uuid-value")
 
-	_, err := client.StartVM("pve1", 100)
+	_, err := client.StartVM(context.Background(), "pve1", 100)
 	if err == nil {
 		t.Fatal("expected network error")
 	}
 }
 
 func TestLXCActions(t *testing.T) {
+	t.Parallel()
 	// LXC endpoints use the same mock pattern — they share the same handler
 	// pattern as VMs, so we test the method routing works correctly.
 	srv := mockProxmoxServer(t)
 	defer srv.Close()
 
-	client := NewClient(srv.URL, srv.Client())
+	client := NewClient(srv.URL, srv.Client(), false)
 	client.SetAPIToken("user@pam!mytoken=uuid-value")
 
 	// LXC actions aren't registered in mock (only qemu/100),
 	// so these should return 404 errors.
-	_, err := client.StartLXC("pve1", 200)
+	_, err := client.StartLXC(context.Background(), "pve1", 200)
 	if err == nil {
 		t.Fatal("expected error for unregistered LXC route")
 	}
 }
 
 func TestAllVMActions(t *testing.T) {
+	t.Parallel()
 	srv := mockProxmoxServer(t)
 	defer srv.Close()
 
-	client := NewClient(srv.URL, srv.Client())
+	client := NewClient(srv.URL, srv.Client(), false)
 	client.SetAPIToken("user@pam!mytoken=uuid-value")
 
+	ctx := context.Background()
 	actions := []struct {
 		name string
-		fn   func(string, int) (string, error)
+		fn   func(context.Context, string, int) (string, error)
 	}{
 		{"start", client.StartVM},
 		{"stop", client.StopVM},
@@ -130,7 +140,7 @@ func TestAllVMActions(t *testing.T) {
 	}
 
 	for _, a := range actions {
-		taskID, err := a.fn("pve1", 100)
+		taskID, err := a.fn(ctx, "pve1", 100)
 		if err != nil {
 			t.Fatalf("action %s: unexpected error: %v", a.name, err)
 		}

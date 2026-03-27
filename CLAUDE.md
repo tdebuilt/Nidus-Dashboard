@@ -16,6 +16,23 @@ Nidus is a self-hosted dashboard for managing Docker (via Portainer), Proxmox, a
 
 Tracked in `ROADMAP.md`. Use `/next-task` to implement the next pending task.
 
+## Code Quality
+
+### Go (backend)
+- **Function length**: max 50 lines (Linux Kernel standard) — split into helpers beyond that
+- **File length**: max 400 lines — split by responsibility if exceeded
+- **Nesting depth**: max 3 levels — use guard clauses and early returns (Go idiomatic "line of sight")
+- **Route registration** (`server.go → New()`): exempt from function length rule, but group routes by domain in sub-functions
+
+### Svelte / TypeScript (frontend)
+- **Function length**: max 40 lines (Google JS standard)
+- **Component file length**: max 300 lines (ESLint default) — extract sub-components or utility modules
+- **TypeScript file length**: max 250 lines (CodeClimate default) — data-only files (themes, registries) are exempt
+- **Nesting depth**: max 4 levels (ESLint default) — use guard clauses and early returns
+
+### Sources
+Thresholds based on: Linux Kernel coding style, Google JS Style Guide, ESLint defaults (`max-lines`, `max-lines-per-function`, `max-depth`), CodeClimate defaults, and SonarQube cognitive complexity principles.
+
 ## Conventions
 
 - **Code language**: English (variable names, functions, comments)

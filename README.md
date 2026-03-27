@@ -15,7 +15,7 @@ The name comes from Latin — *nidus* means "nest". A central hub where all your
 
 ### Key highlights
 
-- **~30-70 MB RAM** — runs on anything, including a Raspberry Pi
+- **~30-70 MB RAM** — runs on any x86_64 machine
 - **Single binary or Docker container** — no external database, includes embedded go2rtc for camera streaming
 - **Real control** — start, stop, restart, update containers and VMs directly
 - **18 widget types** — Docker, Proxmox, Home Assistant, media servers, cameras, and more

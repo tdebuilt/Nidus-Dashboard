@@ -10,7 +10,7 @@
     testid?: string
   }
 
-  /* eslint-disable prefer-const */
+   
   let {
     id,
     value = $bindable(),
@@ -19,7 +19,7 @@
     required = false,
     testid = '',
   }: Props = $props()
-  /* eslint-enable prefer-const */
+   
 
   let showPassword = $state(false)
 </script>

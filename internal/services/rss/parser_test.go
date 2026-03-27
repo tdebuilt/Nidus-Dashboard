@@ -5,6 +5,7 @@ import (
 )
 
 func TestParseRSS(t *testing.T) {
+	t.Parallel()
 	data := []byte(`<?xml version="1.0" encoding="UTF-8"?>
 <rss version="2.0">
   <channel>
@@ -52,6 +53,7 @@ func TestParseRSS(t *testing.T) {
 }
 
 func TestParseAtom(t *testing.T) {
+	t.Parallel()
 	data := []byte(`<?xml version="1.0" encoding="UTF-8"?>
 <feed xmlns="http://www.w3.org/2005/Atom">
   <title>Atom Blog</title>
@@ -102,6 +104,7 @@ func TestParseAtom(t *testing.T) {
 }
 
 func TestParseInvalidFormat(t *testing.T) {
+	t.Parallel()
 	data := []byte(`<html><body>Not a feed</body></html>`)
 
 	_, err := Parse(data, "https://example.com")
@@ -111,6 +114,7 @@ func TestParseInvalidFormat(t *testing.T) {
 }
 
 func TestStripHTML(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		input    string
 		expected string
@@ -130,6 +134,7 @@ func TestStripHTML(t *testing.T) {
 }
 
 func TestNormalizeDate(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		input string
 		valid bool
@@ -152,6 +157,7 @@ func TestNormalizeDate(t *testing.T) {
 }
 
 func TestTruncateText(t *testing.T) {
+	t.Parallel()
 	short := "Hello"
 	if truncateText(short, 10) != "Hello" {
 		t.Error("should not truncate short text")

@@ -6,6 +6,7 @@ import (
 )
 
 func TestParseICalBasic(t *testing.T) {
+	t.Parallel()
 	ical := `BEGIN:VCALENDAR
 VERSION:2.0
 BEGIN:VEVENT
@@ -51,6 +52,7 @@ END:VCALENDAR`
 }
 
 func TestParseICalAllDay(t *testing.T) {
+	t.Parallel()
 	ical := `BEGIN:VCALENDAR
 BEGIN:VEVENT
 UID:holiday@test
@@ -80,6 +82,7 @@ END:VCALENDAR`
 }
 
 func TestParseICalTimeRange(t *testing.T) {
+	t.Parallel()
 	ical := `BEGIN:VCALENDAR
 BEGIN:VEVENT
 UID:past@test
@@ -109,6 +112,7 @@ END:VCALENDAR`
 }
 
 func TestParseICalWithTZID(t *testing.T) {
+	t.Parallel()
 	ical := `BEGIN:VCALENDAR
 BEGIN:VEVENT
 UID:tz@test
@@ -138,6 +142,7 @@ END:VCALENDAR`
 }
 
 func TestParseICalLineUnfolding(t *testing.T) {
+	t.Parallel()
 	ical := "BEGIN:VCALENDAR\r\nBEGIN:VEVENT\r\nUID:fold@test\r\nSUMMARY:Very Long\r\n  Event Name\r\nDTSTART:20260301T100000Z\r\nDTEND:20260301T110000Z\r\nEND:VEVENT\r\nEND:VCALENDAR"
 
 	from := time.Date(2026, 3, 1, 0, 0, 0, 0, time.UTC)
@@ -157,6 +162,7 @@ func TestParseICalLineUnfolding(t *testing.T) {
 }
 
 func TestUnescapeICal(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		input    string
 		expected string

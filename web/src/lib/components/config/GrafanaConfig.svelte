@@ -37,12 +37,12 @@
 
   const { value = '{}', onchange }: Props = $props()
 
-  let dashboards = $state<DashboardItem[]>([])
-  let availablePanels = $state<PanelItem[]>([])
+  let dashboards = $state.raw<DashboardItem[]>([])
+  let availablePanels = $state.raw<PanelItem[]>([])
   let loading = $state(true)
   let loadingPanels = $state(false)
 
-  let panels = $state<PanelEntry[]>([])
+  let panels = $state.raw<PanelEntry[]>([])
   let columns = $state(2)
   let columnsTablet = $state(0)
   let columnsMobile = $state(0)

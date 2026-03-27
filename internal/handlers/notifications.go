@@ -27,7 +27,7 @@ type NotificationsHandler struct {
 // @Router /notifications/providers [get]
 // @Security BearerAuth
 func (h *NotificationsHandler) ListProviders(w http.ResponseWriter, r *http.Request) {
-	providers, err := h.DB.ListNotificationProviders()
+	providers, err := h.DB.ListNotificationProviders(r.Context())
 	if err != nil {
 		writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "failed to list providers"})
 		return
@@ -82,7 +82,7 @@ func (h *NotificationsHandler) CreateProvider(w http.ResponseWriter, r *http.Req
 		return
 	}
 
-	provider, err := h.DB.CreateNotificationProvider(req.Type, req.Name, req.URL, req.Token, req.Config)
+	provider, err := h.DB.CreateNotificationProvider(r.Context(), req.Type, req.Name, req.URL, req.Token, req.Config)
 	if err != nil {
 		writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "failed to create provider"})
 		return
@@ -116,12 +116,12 @@ func (h *NotificationsHandler) UpdateProvider(w http.ResponseWriter, r *http.Req
 		return
 	}
 
-	if err := h.DB.UpdateNotificationProvider(id, req.Name, req.URL, req.Token, req.Enabled, req.Config); err != nil {
+	if err := h.DB.UpdateNotificationProvider(r.Context(), id, req.Name, req.URL, req.Token, req.Enabled, req.Config); err != nil {
 		writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "failed to update provider"})
 		return
 	}
 
-	provider, _ := h.DB.GetNotificationProvider(id)
+	provider, _ := h.DB.GetNotificationProvider(r.Context(), id)
 	writeJSON(w, http.StatusOK, provider)
 }
 
@@ -142,7 +142,7 @@ func (h *NotificationsHandler) DeleteProvider(w http.ResponseWriter, r *http.Req
 		return
 	}
 
-	if err := h.DB.DeleteNotificationProvider(id); err != nil {
+	if err := h.DB.DeleteNotificationProvider(r.Context(), id); err != nil {
 		writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "failed to delete provider"})
 		return
 	}
@@ -169,7 +169,7 @@ func (h *NotificationsHandler) TestProvider(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	provider, err := h.DB.GetNotificationProvider(req.ProviderID)
+	provider, err := h.DB.GetNotificationProvider(r.Context(), req.ProviderID)
 	if err != nil {
 		writeJSON(w, http.StatusNotFound, models.ErrorResponse{Error: "provider not found"})
 		return
@@ -196,7 +196,7 @@ func (h *NotificationsHandler) TestProvider(w http.ResponseWriter, r *http.Reque
 // @Router /notifications/rules [get]
 // @Security BearerAuth
 func (h *NotificationsHandler) ListRules(w http.ResponseWriter, r *http.Request) {
-	rules, err := h.DB.ListNotificationRules()
+	rules, err := h.DB.ListNotificationRules(r.Context())
 	if err != nil {
 		writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "failed to list rules"})
 		return
@@ -228,12 +228,12 @@ func (h *NotificationsHandler) CreateRule(w http.ResponseWriter, r *http.Request
 	}
 
 	// Verify provider exists
-	if _, err := h.DB.GetNotificationProvider(req.ProviderID); err != nil {
+	if _, err := h.DB.GetNotificationProvider(r.Context(), req.ProviderID); err != nil {
 		writeJSON(w, http.StatusBadRequest, models.ErrorResponse{Error: "provider not found"})
 		return
 	}
 
-	rule, err := h.DB.CreateNotificationRule(req.EventType, req.ProviderID, req.Config)
+	rule, err := h.DB.CreateNotificationRule(r.Context(), req.EventType, req.ProviderID, req.Config)
 	if err != nil {
 		writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "failed to create rule"})
 		return
@@ -267,12 +267,12 @@ func (h *NotificationsHandler) UpdateRule(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	if err := h.DB.UpdateNotificationRule(id, req.Enabled, req.Config); err != nil {
+	if err := h.DB.UpdateNotificationRule(r.Context(), id, req.Enabled, req.Config); err != nil {
 		writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "failed to update rule"})
 		return
 	}
 
-	rule, _ := h.DB.GetNotificationRule(id)
+	rule, _ := h.DB.GetNotificationRule(r.Context(), id)
 	writeJSON(w, http.StatusOK, rule)
 }
 
@@ -293,7 +293,7 @@ func (h *NotificationsHandler) DeleteRule(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	if err := h.DB.DeleteNotificationRule(id); err != nil {
+	if err := h.DB.DeleteNotificationRule(r.Context(), id); err != nil {
 		writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "failed to delete rule"})
 		return
 	}

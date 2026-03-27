@@ -1,6 +1,7 @@
 package jdownloader
 
 import (
+	"context"
 	"encoding/base64"
 	"encoding/json"
 	"io"
@@ -138,6 +139,7 @@ func (u *urlRewriter) RoundTrip(req *http.Request) (*http.Response, error) {
 }
 
 func TestNewClient(t *testing.T) {
+	t.Parallel()
 	c := NewClient("test@test.com", "password")
 	if c.email != "test@test.com" {
 		t.Fatal("email not set")
@@ -151,13 +153,14 @@ func TestNewClient(t *testing.T) {
 }
 
 func TestConnect(t *testing.T) {
+	t.Parallel()
 	email, password := "user@example.com", "secret123"
 	srv := mockCloudServer(t, email, password)
 	defer srv.Close()
 
 	c := newTestClient(t, srv.URL, email, password)
 
-	if err := c.Connect(); err != nil {
+	if err := c.Connect(context.Background()); err != nil {
 		t.Fatalf("Connect failed: %v", err)
 	}
 
@@ -176,17 +179,18 @@ func TestConnect(t *testing.T) {
 }
 
 func TestListDevices(t *testing.T) {
+	t.Parallel()
 	email, password := "user@example.com", "secret123"
 	srv := mockCloudServer(t, email, password)
 	defer srv.Close()
 
 	c := newTestClient(t, srv.URL, email, password)
 
-	if err := c.Connect(); err != nil {
+	if err := c.Connect(context.Background()); err != nil {
 		t.Fatalf("Connect failed: %v", err)
 	}
 
-	devices, err := c.ListDevices()
+	devices, err := c.ListDevices(context.Background())
 	if err != nil {
 		t.Fatalf("ListDevices failed: %v", err)
 	}
@@ -199,17 +203,18 @@ func TestListDevices(t *testing.T) {
 }
 
 func TestDisconnect(t *testing.T) {
+	t.Parallel()
 	email, password := "user@example.com", "secret123"
 	srv := mockCloudServer(t, email, password)
 	defer srv.Close()
 
 	c := newTestClient(t, srv.URL, email, password)
 
-	if err := c.Connect(); err != nil {
+	if err := c.Connect(context.Background()); err != nil {
 		t.Fatalf("Connect failed: %v", err)
 	}
 
-	if err := c.Disconnect(); err != nil {
+	if err := c.Disconnect(context.Background()); err != nil {
 		t.Fatalf("Disconnect failed: %v", err)
 	}
 
@@ -219,13 +224,14 @@ func TestDisconnect(t *testing.T) {
 }
 
 func TestListPackages(t *testing.T) {
+	t.Parallel()
 	email, password := "user@example.com", "secret123"
 	srv := mockCloudServer(t, email, password)
 	defer srv.Close()
 
 	c := newTestClient(t, srv.URL, email, password)
 
-	packages, err := c.ListPackages()
+	packages, err := c.ListPackages(context.Background())
 	if err != nil {
 		t.Fatalf("ListPackages failed: %v", err)
 	}
@@ -241,13 +247,14 @@ func TestListPackages(t *testing.T) {
 }
 
 func TestGetSpeed(t *testing.T) {
+	t.Parallel()
 	email, password := "user@example.com", "secret123"
 	srv := mockCloudServer(t, email, password)
 	defer srv.Close()
 
 	c := newTestClient(t, srv.URL, email, password)
 
-	speed, err := c.GetSpeed()
+	speed, err := c.GetSpeed(context.Background())
 	if err != nil {
 		t.Fatalf("GetSpeed failed: %v", err)
 	}
@@ -257,13 +264,14 @@ func TestGetSpeed(t *testing.T) {
 }
 
 func TestIsRunning(t *testing.T) {
+	t.Parallel()
 	email, password := "user@example.com", "secret123"
 	srv := mockCloudServer(t, email, password)
 	defer srv.Close()
 
 	c := newTestClient(t, srv.URL, email, password)
 
-	running, err := c.IsRunning()
+	running, err := c.IsRunning(context.Background())
 	if err != nil {
 		t.Fatalf("IsRunning failed: %v", err)
 	}
@@ -273,50 +281,54 @@ func TestIsRunning(t *testing.T) {
 }
 
 func TestAddLinks(t *testing.T) {
+	t.Parallel()
 	email, password := "user@example.com", "secret123"
 	srv := mockCloudServer(t, email, password)
 	defer srv.Close()
 
 	c := newTestClient(t, srv.URL, email, password)
 
-	err := c.AddLinks([]string{"https://example.com/file.zip"})
+	err := c.AddLinks(context.Background(), []string{"https://example.com/file.zip"})
 	if err != nil {
 		t.Fatalf("AddLinks failed: %v", err)
 	}
 }
 
 func TestStartQueue(t *testing.T) {
+	t.Parallel()
 	email, password := "user@example.com", "secret123"
 	srv := mockCloudServer(t, email, password)
 	defer srv.Close()
 
 	c := newTestClient(t, srv.URL, email, password)
 
-	if err := c.StartQueue(); err != nil {
+	if err := c.StartQueue(context.Background()); err != nil {
 		t.Fatalf("StartQueue failed: %v", err)
 	}
 }
 
 func TestPauseQueue(t *testing.T) {
+	t.Parallel()
 	email, password := "user@example.com", "secret123"
 	srv := mockCloudServer(t, email, password)
 	defer srv.Close()
 
 	c := newTestClient(t, srv.URL, email, password)
 
-	if err := c.PauseQueue(); err != nil {
+	if err := c.PauseQueue(context.Background()); err != nil {
 		t.Fatalf("PauseQueue failed: %v", err)
 	}
 }
 
 func TestEnsureConnectedAutoSelectDevice(t *testing.T) {
+	t.Parallel()
 	email, password := "user@example.com", "secret123"
 	srv := mockCloudServer(t, email, password)
 	defer srv.Close()
 
 	c := newTestClient(t, srv.URL, email, password)
 
-	if err := c.ensureConnected(); err != nil {
+	if err := c.ensureConnected(context.Background()); err != nil {
 		t.Fatalf("ensureConnected failed: %v", err)
 	}
 
@@ -329,14 +341,17 @@ func TestEnsureConnectedAutoSelectDevice(t *testing.T) {
 }
 
 func TestReconnectOnError(t *testing.T) {
+	t.Parallel()
 	email, password := "user@example.com", "secret123"
 	srv := mockCloudServer(t, email, password)
 	defer srv.Close()
 
 	c := newTestClient(t, srv.URL, email, password)
 
+	ctx := context.Background()
+
 	// First call connects and works
-	_, err := c.ListPackages()
+	_, err := c.ListPackages(ctx)
 	if err != nil {
 		t.Fatalf("first ListPackages failed: %v", err)
 	}
@@ -348,13 +363,14 @@ func TestReconnectOnError(t *testing.T) {
 	c.mu.Unlock()
 
 	// callAction should reconnect and succeed
-	_, err = c.ListPackages()
+	_, err = c.ListPackages(ctx)
 	if err != nil {
 		t.Fatalf("ListPackages after invalidation failed: %v", err)
 	}
 }
 
 func TestToPackageInfo(t *testing.T) {
+	t.Parallel()
 	pkg := DownloadPackage{
 		UUID:        1001,
 		Name:        "Test Package",
@@ -379,6 +395,7 @@ func TestToPackageInfo(t *testing.T) {
 }
 
 func TestToPackageInfoFinished(t *testing.T) {
+	t.Parallel()
 	pkg := DownloadPackage{
 		UUID:        1002,
 		Name:        "Done Package",

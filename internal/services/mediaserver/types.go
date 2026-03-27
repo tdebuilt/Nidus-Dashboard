@@ -1,5 +1,7 @@
 package mediaserver
 
+import "context"
+
 // Session represents an active streaming session (unified for Plex/Jellyfin).
 type Session struct {
 	ID        string  `json:"id"`
@@ -36,10 +38,10 @@ type MediaOverview struct {
 
 // Client is the interface for media server API clients.
 type Client interface {
-	GetSessions() ([]Session, error)
-	GetLibraries() ([]Library, error)
-	GetServerName() (string, error)
-	ProxyImage(path string) ([]byte, string, error) // returns body, content-type, error
+	GetSessions(ctx context.Context) ([]Session, error)
+	GetLibraries(ctx context.Context) ([]Library, error)
+	GetServerName(ctx context.Context) (string, error)
+	ProxyImage(ctx context.Context, path string) ([]byte, string, error) // returns body, content-type, error
 }
 
 // --- Plex API response types ---

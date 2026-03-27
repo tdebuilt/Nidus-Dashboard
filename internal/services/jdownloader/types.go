@@ -28,8 +28,6 @@ type DownloadPackage struct {
 	Finished       bool   `json:"finished"`
 	Enabled        bool   `json:"enabled"`
 	ChildCount     int    `json:"childCount"`
-	Comment        string `json:"comment,omitempty"`
-	SaveTo         string `json:"saveTo,omitempty"`
 }
 
 // DownloadLink represents a single download link within a package.

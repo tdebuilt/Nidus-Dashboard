@@ -1,6 +1,7 @@
 package adguard
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -65,13 +66,14 @@ func mockAdGuardServer(t *testing.T) *httptest.Server {
 }
 
 func TestGetStats(t *testing.T) {
+	t.Parallel()
 	srv := mockAdGuardServer(t)
 	defer srv.Close()
 
 	client := NewClient(srv.URL, srv.Client())
 	client.SetCredentials("admin", "secret")
 
-	stats, err := client.GetStats()
+	stats, err := client.GetStats(context.Background())
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -84,12 +86,13 @@ func TestGetStats(t *testing.T) {
 }
 
 func TestGetStatsUnauthorized(t *testing.T) {
+	t.Parallel()
 	srv := mockAdGuardServer(t)
 	defer srv.Close()
 
 	client := NewClient(srv.URL, srv.Client())
 
-	_, err := client.GetStats()
+	_, err := client.GetStats(context.Background())
 	if err == nil {
 		t.Fatal("expected unauthorized error")
 	}
@@ -99,13 +102,14 @@ func TestGetStatsUnauthorized(t *testing.T) {
 }
 
 func TestGetFilteringStatus(t *testing.T) {
+	t.Parallel()
 	srv := mockAdGuardServer(t)
 	defer srv.Close()
 
 	client := NewClient(srv.URL, srv.Client())
 	client.SetCredentials("admin", "secret")
 
-	status, err := client.GetFilteringStatus()
+	status, err := client.GetFilteringStatus(context.Background())
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -121,37 +125,40 @@ func TestGetFilteringStatus(t *testing.T) {
 }
 
 func TestSetFilteringEnabled(t *testing.T) {
+	t.Parallel()
 	srv := mockAdGuardServer(t)
 	defer srv.Close()
 
 	client := NewClient(srv.URL, srv.Client())
 	client.SetCredentials("admin", "secret")
 
-	if err := client.SetFilteringEnabled(false); err != nil {
+	if err := client.SetFilteringEnabled(context.Background(), false); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 }
 
 func TestSetFilteringEnabledUnauthorized(t *testing.T) {
+	t.Parallel()
 	srv := mockAdGuardServer(t)
 	defer srv.Close()
 
 	client := NewClient(srv.URL, srv.Client())
 
-	err := client.SetFilteringEnabled(false)
+	err := client.SetFilteringEnabled(context.Background(), false)
 	if err == nil {
 		t.Fatal("expected unauthorized error")
 	}
 }
 
 func TestTrailingSlash(t *testing.T) {
+	t.Parallel()
 	srv := mockAdGuardServer(t)
 	defer srv.Close()
 
 	client := NewClient(srv.URL+"/", srv.Client())
 	client.SetCredentials("admin", "secret")
 
-	stats, err := client.GetStats()
+	stats, err := client.GetStats(context.Background())
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -161,10 +168,11 @@ func TestTrailingSlash(t *testing.T) {
 }
 
 func TestNetworkError(t *testing.T) {
+	t.Parallel()
 	client := NewClient("http://localhost:1", nil)
 	client.SetCredentials("admin", "secret")
 
-	_, err := client.GetStats()
+	_, err := client.GetStats(context.Background())
 	if err == nil {
 		t.Fatal("expected network error")
 	}

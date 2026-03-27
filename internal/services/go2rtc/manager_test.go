@@ -1,6 +1,7 @@
 package go2rtc
 
 import (
+	"context"
 	"os"
 	"path/filepath"
 	"testing"
@@ -17,7 +18,7 @@ func setupTestDB(t *testing.T) *database.DB {
 	if err != nil {
 		t.Fatalf("open db: %v", err)
 	}
-	if err := db.Migrate(); err != nil {
+	if err := db.Migrate(context.Background()); err != nil {
 		t.Fatalf("migrate db: %v", err)
 	}
 	t.Cleanup(func() { db.Close() })
@@ -25,6 +26,7 @@ func setupTestDB(t *testing.T) *database.DB {
 }
 
 func TestNewManager(t *testing.T) {
+	t.Parallel()
 	db := setupTestDB(t)
 	dataDir := t.TempDir()
 
@@ -39,6 +41,7 @@ func TestNewManager(t *testing.T) {
 }
 
 func TestIsAvailable_NoBinary(t *testing.T) {
+	t.Parallel()
 	db := setupTestDB(t)
 	m := NewManager(db, t.TempDir())
 	// Override binary path to empty (simulates missing binary)
@@ -50,6 +53,7 @@ func TestIsAvailable_NoBinary(t *testing.T) {
 }
 
 func TestIsAvailable_WithBinary(t *testing.T) {
+	t.Parallel()
 	db := setupTestDB(t)
 	m := NewManager(db, t.TempDir())
 	m.binaryPath = "/usr/local/bin/go2rtc"
@@ -60,6 +64,7 @@ func TestIsAvailable_WithBinary(t *testing.T) {
 }
 
 func TestIsRunning_Default(t *testing.T) {
+	t.Parallel()
 	db := setupTestDB(t)
 	m := NewManager(db, t.TempDir())
 
@@ -69,6 +74,7 @@ func TestIsRunning_Default(t *testing.T) {
 }
 
 func TestURL(t *testing.T) {
+	t.Parallel()
 	db := setupTestDB(t)
 	m := NewManager(db, t.TempDir())
 
@@ -79,6 +85,7 @@ func TestURL(t *testing.T) {
 }
 
 func TestStatus_NotRunning(t *testing.T) {
+	t.Parallel()
 	db := setupTestDB(t)
 	m := NewManager(db, t.TempDir())
 	m.binaryPath = ""
@@ -100,6 +107,7 @@ func TestStatus_NotRunning(t *testing.T) {
 }
 
 func TestStatus_Available(t *testing.T) {
+	t.Parallel()
 	db := setupTestDB(t)
 	m := NewManager(db, t.TempDir())
 	m.binaryPath = "/usr/local/bin/go2rtc"
@@ -115,6 +123,7 @@ func TestStatus_Available(t *testing.T) {
 }
 
 func TestStart_NoBinary(t *testing.T) {
+	t.Parallel()
 	db := setupTestDB(t)
 	m := NewManager(db, t.TempDir())
 	m.binaryPath = ""
@@ -129,6 +138,7 @@ func TestStart_NoBinary(t *testing.T) {
 }
 
 func TestStart_AlreadyRunning(t *testing.T) {
+	t.Parallel()
 	db := setupTestDB(t)
 	m := NewManager(db, t.TempDir())
 	m.binaryPath = "/some/path"
@@ -141,6 +151,7 @@ func TestStart_AlreadyRunning(t *testing.T) {
 }
 
 func TestGenerateConfig_Empty(t *testing.T) {
+	t.Parallel()
 	db := setupTestDB(t)
 	dataDir := t.TempDir()
 	m := NewManager(db, dataDir)
@@ -167,18 +178,19 @@ func TestGenerateConfig_Empty(t *testing.T) {
 }
 
 func TestGenerateConfig_WithCameras(t *testing.T) {
+	t.Parallel()
 	db := setupTestDB(t)
 	dataDir := t.TempDir()
 	m := NewManager(db, dataDir)
 
 	// Insert a reolink widget with camera config
-	cat, err := db.CreateCategory("test", "test")
+	cat, err := db.CreateCategory(context.Background(), "test", "test")
 	catID := cat.ID
 	if err != nil {
 		t.Fatalf("create category: %v", err)
 	}
 	config := `{"cameras":[{"name":"FrontDoor","ip":"192.168.1.100","username":"admin","password":"pass","channel":0,"source":"direct"}]}`
-	_, err = db.CreateWidget(catID, "reolink", "Cameras", config, 0, 0, 6, 4)
+	_, err = db.CreateWidget(context.Background(), catID, "reolink", "Cameras", config, 0, 0, 6, 4)
 	if err != nil {
 		t.Fatalf("create widget: %v", err)
 	}
@@ -203,17 +215,18 @@ func TestGenerateConfig_WithCameras(t *testing.T) {
 }
 
 func TestGenerateConfig_SkipsHomeAssistant(t *testing.T) {
+	t.Parallel()
 	db := setupTestDB(t)
 	dataDir := t.TempDir()
 	m := NewManager(db, dataDir)
 
-	cat, err := db.CreateCategory("test", "test")
+	cat, err := db.CreateCategory(context.Background(), "test", "test")
 	catID := cat.ID
 	if err != nil {
 		t.Fatalf("create category: %v", err)
 	}
 	config := `{"cameras":[{"name":"HACam","ip":"","entity_id":"camera.front","channel":0,"source":"homeassistant"}]}`
-	_, err = db.CreateWidget(catID, "reolink", "Cameras", config, 0, 0, 6, 4)
+	_, err = db.CreateWidget(context.Background(), catID, "reolink", "Cameras", config, 0, 0, 6, 4)
 	if err != nil {
 		t.Fatalf("create widget: %v", err)
 	}
@@ -235,10 +248,11 @@ func TestGenerateConfig_SkipsHomeAssistant(t *testing.T) {
 }
 
 func TestGetCameras_DeduplicatesbyIPAndChannel(t *testing.T) {
+	t.Parallel()
 	db := setupTestDB(t)
 	m := NewManager(db, t.TempDir())
 
-	cat, err := db.CreateCategory("test", "test")
+	cat, err := db.CreateCategory(context.Background(), "test", "test")
 	catID := cat.ID
 	if err != nil {
 		t.Fatalf("create category: %v", err)
@@ -246,8 +260,8 @@ func TestGetCameras_DeduplicatesbyIPAndChannel(t *testing.T) {
 
 	// Two widgets with the same camera
 	config := `{"cameras":[{"name":"Cam1","ip":"192.168.1.100","username":"admin","password":"pass","channel":0}]}`
-	_, _ = db.CreateWidget(catID, "reolink", "Widget1", config, 0, 0, 6, 4)
-	_, _ = db.CreateWidget(catID, "reolink", "Widget2", config, 0, 0, 6, 4)
+	_, _ = db.CreateWidget(context.Background(), catID, "reolink", "Widget1", config, 0, 0, 6, 4)
+	_, _ = db.CreateWidget(context.Background(), catID, "reolink", "Widget2", config, 0, 0, 6, 4)
 
 	cameras, err := m.getCameras()
 	if err != nil {
@@ -260,17 +274,18 @@ func TestGetCameras_DeduplicatesbyIPAndChannel(t *testing.T) {
 }
 
 func TestGetCameras_IgnoresNonReolinkWidgets(t *testing.T) {
+	t.Parallel()
 	db := setupTestDB(t)
 	m := NewManager(db, t.TempDir())
 
-	cat, err := db.CreateCategory("test", "test")
+	cat, err := db.CreateCategory(context.Background(), "test", "test")
 	catID := cat.ID
 	if err != nil {
 		t.Fatalf("create category: %v", err)
 	}
 
-	_, _ = db.CreateWidget(catID, "docker", "Docker", `{}`, 0, 0, 6, 4)
-	_, _ = db.CreateWidget(catID, "proxmox", "Proxmox", `{}`, 0, 0, 6, 4)
+	_, _ = db.CreateWidget(context.Background(), catID, "docker", "Docker", `{}`, 0, 0, 6, 4)
+	_, _ = db.CreateWidget(context.Background(), catID, "proxmox", "Proxmox", `{}`, 0, 0, 6, 4)
 
 	cameras, err := m.getCameras()
 	if err != nil {
@@ -283,6 +298,7 @@ func TestGetCameras_IgnoresNonReolinkWidgets(t *testing.T) {
 }
 
 func TestFormatDuration(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name     string
 		d        time.Duration
@@ -296,6 +312,7 @@ func TestFormatDuration(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			result := formatDuration(tt.d)
 			if result != tt.expected {
 				t.Errorf("formatDuration(%v) = %q, want %q", tt.d, result, tt.expected)

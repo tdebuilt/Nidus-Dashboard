@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"sort"
@@ -9,6 +10,7 @@ import (
 
 	"github.com/tdebuilt/nidus/internal/cache"
 	"github.com/tdebuilt/nidus/internal/database"
+	"github.com/tdebuilt/nidus/internal/models"
 	"github.com/tdebuilt/nidus/internal/services/finance"
 )
 
@@ -22,7 +24,7 @@ type FinanceHandler struct {
 
 // GetSymbolCount returns the total number of finance symbols across all widgets.
 func (h *FinanceHandler) GetSymbolCount(w http.ResponseWriter, r *http.Request) {
-	count := h.countGlobalSymbols()
+	count := h.countGlobalSymbols(r.Context())
 	writeJSON(w, http.StatusOK, map[string]int{"count": count})
 }
 
@@ -30,7 +32,7 @@ func (h *FinanceHandler) GetSymbolCount(w http.ResponseWriter, r *http.Request) 
 func (h *FinanceHandler) GetQuotes(w http.ResponseWriter, r *http.Request) {
 	symbolsParam := r.URL.Query().Get("symbols")
 	if symbolsParam == "" {
-		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "missing symbols parameter"})
+		writeJSON(w, http.StatusBadRequest, models.ErrorResponse{Error: "missing symbols parameter"})
 		return
 	}
 
@@ -44,7 +46,7 @@ func (h *FinanceHandler) GetQuotes(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	if len(symbols) == 0 {
-		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "no valid symbols"})
+		writeJSON(w, http.StatusBadRequest, models.ErrorResponse{Error: "no valid symbols"})
 		return
 	}
 	if len(symbols) > maxGlobalSymbols {
@@ -63,9 +65,9 @@ func (h *FinanceHandler) GetQuotes(w http.ResponseWriter, r *http.Request) {
 	}
 
 	client := finance.NewClient(nil)
-	data, err := client.GetQuotes(symbols)
+	data, err := client.GetQuotes(r.Context(), symbols)
 	if err != nil {
-		writeJSON(w, http.StatusBadGateway, map[string]string{"error": "failed to fetch quotes: " + err.Error()})
+		writeJSON(w, http.StatusBadGateway, models.ErrorResponse{Error: "failed to fetch quotes: " + err.Error()})
 		return
 	}
 
@@ -77,7 +79,7 @@ func (h *FinanceHandler) GetQuotes(w http.ResponseWriter, r *http.Request) {
 func (h *FinanceHandler) SearchSymbol(w http.ResponseWriter, r *http.Request) {
 	query := r.URL.Query().Get("q")
 	if query == "" {
-		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "missing q parameter"})
+		writeJSON(w, http.StatusBadRequest, models.ErrorResponse{Error: "missing q parameter"})
 		return
 	}
 
@@ -88,9 +90,9 @@ func (h *FinanceHandler) SearchSymbol(w http.ResponseWriter, r *http.Request) {
 	}
 
 	client := finance.NewClient(nil)
-	results, err := client.Search(query)
+	results, err := client.Search(r.Context(), query)
 	if err != nil {
-		writeJSON(w, http.StatusBadGateway, map[string]string{"error": "failed to search: " + err.Error()})
+		writeJSON(w, http.StatusBadGateway, models.ErrorResponse{Error: "failed to search: " + err.Error()})
 		return
 	}
 
@@ -99,8 +101,8 @@ func (h *FinanceHandler) SearchSymbol(w http.ResponseWriter, r *http.Request) {
 }
 
 // countGlobalSymbols counts unique symbols across all finance widgets.
-func (h *FinanceHandler) countGlobalSymbols() int {
-	rows, err := h.DB.Query(
+func (h *FinanceHandler) countGlobalSymbols(ctx context.Context) int {
+	rows, err := h.DB.QueryContext(ctx,
 		"SELECT config FROM widgets WHERE type = 'finance'",
 	)
 	if err != nil {

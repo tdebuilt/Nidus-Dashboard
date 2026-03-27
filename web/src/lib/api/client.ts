@@ -21,29 +21,42 @@ type RequestOptions = {
   headers?: Record<string, string>
 }
 
-async function request<T>(url: string, options: RequestOptions = {}): Promise<T> {
-  const { method = 'GET', body, headers = {} } = options
+async function parseErrorBody(response: Response, fallback: string): Promise<string> {
+  try {
+    const data = await response.json()
+    if (data.error) return data.error
+  } catch {
+    // ignore parse errors
+  }
+  return fallback
+}
 
+function handleUnauthorizedRedirect() {
+  if (typeof window === 'undefined') return
+  const path = window.location.pathname
+  const authPaths = ['/login', '/setup', '/register', '/reset-password']
+  if (!authPaths.some((p) => path.startsWith(p))) {
+    window.location.href = '/login'
+  }
+}
+
+function buildRequestInit(options: RequestOptions): RequestInit {
+  const { method = 'GET', body, headers = {} } = options
   const config: RequestInit = {
     method,
     credentials: 'include',
-    headers: {
-      'Content-Type': 'application/json',
-      ...headers,
-    },
+    headers: { 'Content-Type': 'application/json', ...headers },
   }
+  if (body !== undefined) config.body = JSON.stringify(body)
+  return config
+}
 
-  if (body !== undefined) {
-    config.body = JSON.stringify(body)
-  }
-
+async function fetchWithTimeout(url: string, config: RequestInit): Promise<Response> {
   const controller = new AbortController()
   const timeoutId = setTimeout(() => controller.abort(), 30_000)
   config.signal = controller.signal
-
-  let response: Response
   try {
-    response = await fetch(url, config)
+    return await fetch(url, config)
   } catch (err) {
     clearTimeout(timeoutId)
     if (err instanceof DOMException && err.name === 'AbortError') {
@@ -53,38 +66,24 @@ async function request<T>(url: string, options: RequestOptions = {}): Promise<T>
   } finally {
     clearTimeout(timeoutId)
   }
+}
+
+async function request<T>(url: string, options: RequestOptions = {}): Promise<T> {
+  const config = buildRequestInit(options)
+  const response = await fetchWithTimeout(url, config)
 
   if (response.status === 401) {
-    let message = 'Unauthorized'
-    try {
-      const data = await response.json()
-      if (data.error) message = data.error
-    } catch {
-      // ignore parse errors
-    }
-    // Redirect to login on auth failure (but not during login/setup/register)
-    if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/login') && !window.location.pathname.startsWith('/setup') && !window.location.pathname.startsWith('/register') && !window.location.pathname.startsWith('/reset-password')) {
-      window.location.href = '/login'
-    }
+    const message = await parseErrorBody(response, 'Unauthorized')
+    handleUnauthorizedRedirect()
     throw new ApiError(401, message)
   }
 
   if (!response.ok) {
-    let message = `HTTP ${response.status}`
-    try {
-      const data = await response.json()
-      if (data.error) message = data.error
-    } catch {
-      // ignore parse errors
-    }
+    const message = await parseErrorBody(response, `HTTP ${response.status}`)
     throw new ApiError(response.status, message)
   }
 
-  // Handle 204 No Content
-  if (response.status === 204) {
-    return undefined as T
-  }
-
+  if (response.status === 204) return undefined as T
   return response.json()
 }
 

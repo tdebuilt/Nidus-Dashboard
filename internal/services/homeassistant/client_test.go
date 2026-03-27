@@ -1,6 +1,7 @@
 package homeassistant
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -97,13 +98,14 @@ func mockHAServer(t *testing.T) *httptest.Server {
 }
 
 func TestListStates(t *testing.T) {
+	t.Parallel()
 	srv := mockHAServer(t)
 	defer srv.Close()
 
 	client := NewClient(srv.URL, srv.Client())
 	client.SetToken("test-ha-token")
 
-	entities, err := client.ListStates()
+	entities, err := client.ListStates(context.Background())
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -119,12 +121,13 @@ func TestListStates(t *testing.T) {
 }
 
 func TestListStatesUnauthorized(t *testing.T) {
+	t.Parallel()
 	srv := mockHAServer(t)
 	defer srv.Close()
 
 	client := NewClient(srv.URL, srv.Client())
 
-	_, err := client.ListStates()
+	_, err := client.ListStates(context.Background())
 	if err == nil {
 		t.Fatal("expected unauthorized error")
 	}
@@ -134,13 +137,14 @@ func TestListStatesUnauthorized(t *testing.T) {
 }
 
 func TestGetState(t *testing.T) {
+	t.Parallel()
 	srv := mockHAServer(t)
 	defer srv.Close()
 
 	client := NewClient(srv.URL, srv.Client())
 	client.SetToken("test-ha-token")
 
-	entity, err := client.GetState("light.living_room")
+	entity, err := client.GetState(context.Background(), "light.living_room")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -153,13 +157,14 @@ func TestGetState(t *testing.T) {
 }
 
 func TestCallService(t *testing.T) {
+	t.Parallel()
 	srv := mockHAServer(t)
 	defer srv.Close()
 
 	client := NewClient(srv.URL, srv.Client())
 	client.SetToken("test-ha-token")
 
-	resp, err := client.CallService("light", "turn_off", ServiceCallRequest{
+	resp, err := client.CallService(context.Background(), "light", "turn_off", ServiceCallRequest{
 		EntityID: "light.living_room",
 	})
 	if err != nil {
@@ -174,13 +179,14 @@ func TestCallService(t *testing.T) {
 }
 
 func TestGetCameraSnapshot(t *testing.T) {
+	t.Parallel()
 	srv := mockHAServer(t)
 	defer srv.Close()
 
 	client := NewClient(srv.URL, srv.Client())
 	client.SetToken("test-ha-token")
 
-	data, contentType, err := client.GetCameraSnapshot("camera.front_door")
+	data, contentType, err := client.GetCameraSnapshot(context.Background(), "camera.front_door")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -193,6 +199,7 @@ func TestGetCameraSnapshot(t *testing.T) {
 }
 
 func TestToEntityInfo(t *testing.T) {
+	t.Parallel()
 	entity := Entity{
 		EntityID: "sensor.temperature",
 		State:    "21.5",
@@ -221,13 +228,14 @@ func TestToEntityInfo(t *testing.T) {
 }
 
 func TestTrailingSlash(t *testing.T) {
+	t.Parallel()
 	srv := mockHAServer(t)
 	defer srv.Close()
 
 	client := NewClient(srv.URL+"/", srv.Client())
 	client.SetToken("test-ha-token")
 
-	entities, err := client.ListStates()
+	entities, err := client.ListStates(context.Background())
 	if err != nil {
 		t.Fatalf("unexpected error with trailing slash: %v", err)
 	}
@@ -237,10 +245,11 @@ func TestTrailingSlash(t *testing.T) {
 }
 
 func TestNetworkError(t *testing.T) {
+	t.Parallel()
 	client := NewClient("http://localhost:1", nil)
 	client.SetToken("test-ha-token")
 
-	_, err := client.ListStates()
+	_, err := client.ListStates(context.Background())
 	if err == nil {
 		t.Fatal("expected network error")
 	}

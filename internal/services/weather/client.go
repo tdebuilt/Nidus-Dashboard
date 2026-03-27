@@ -1,6 +1,7 @@
 package weather
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -39,13 +40,13 @@ func NewClient(apiKey, units, lang string, httpClient *http.Client) *Client {
 
 // GetWeather fetches current weather and 5-day forecast for a location.
 // Location can be "city,country" or "lat,lon".
-func (c *Client) GetWeather(lat, lon string) (*WeatherData, error) {
-	current, err := c.getCurrent(lat, lon)
+func (c *Client) GetWeather(ctx context.Context, lat, lon string) (*WeatherData, error) {
+	current, err := c.getCurrent(ctx, lat, lon)
 	if err != nil {
 		return nil, err
 	}
 
-	forecast, err := c.getForecast(lat, lon)
+	forecast, err := c.getForecast(ctx, lat, lon)
 	if err != nil {
 		return nil, err
 	}
@@ -57,12 +58,12 @@ func (c *Client) GetWeather(lat, lon string) (*WeatherData, error) {
 }
 
 // GetCurrentByCity fetches current weather by city name.
-func (c *Client) GetCurrentByCity(city string) (*WeatherData, error) {
+func (c *Client) GetCurrentByCity(ctx context.Context, city string) (*WeatherData, error) {
 	url := fmt.Sprintf("%s/weather?q=%s&appid=%s&units=%s&lang=%s",
 		baseURL, city, c.apiKey, c.units, c.lang)
 
 	var resp owmCurrentResponse
-	if err := c.get(url, &resp); err != nil {
+	if err := c.get(ctx, url, &resp); err != nil {
 		return nil, fmt.Errorf("fetching current weather: %w", err)
 	}
 
@@ -73,7 +74,7 @@ func (c *Client) GetCurrentByCity(city string) (*WeatherData, error) {
 		baseURL, city, c.apiKey, c.units, c.lang)
 
 	var fResp owmForecastResponse
-	if err := c.get(forecastURL, &fResp); err != nil {
+	if err := c.get(ctx, forecastURL, &fResp); err != nil {
 		// Return current only if forecast fails
 		return &WeatherData{Current: current}, nil
 	}
@@ -84,12 +85,12 @@ func (c *Client) GetCurrentByCity(city string) (*WeatherData, error) {
 	}, nil
 }
 
-func (c *Client) getCurrent(lat, lon string) (*CurrentWeather, error) {
+func (c *Client) getCurrent(ctx context.Context, lat, lon string) (*CurrentWeather, error) {
 	url := fmt.Sprintf("%s/weather?lat=%s&lon=%s&appid=%s&units=%s&lang=%s",
 		baseURL, lat, lon, c.apiKey, c.units, c.lang)
 
 	var resp owmCurrentResponse
-	if err := c.get(url, &resp); err != nil {
+	if err := c.get(ctx, url, &resp); err != nil {
 		return nil, fmt.Errorf("fetching current weather: %w", err)
 	}
 
@@ -97,12 +98,12 @@ func (c *Client) getCurrent(lat, lon string) (*CurrentWeather, error) {
 	return &current, nil
 }
 
-func (c *Client) getForecast(lat, lon string) ([]ForecastDay, error) {
+func (c *Client) getForecast(ctx context.Context, lat, lon string) ([]ForecastDay, error) {
 	url := fmt.Sprintf("%s/forecast?lat=%s&lon=%s&appid=%s&units=%s&lang=%s",
 		baseURL, lat, lon, c.apiKey, c.units, c.lang)
 
 	var resp owmForecastResponse
-	if err := c.get(url, &resp); err != nil {
+	if err := c.get(ctx, url, &resp); err != nil {
 		return nil, fmt.Errorf("fetching forecast: %w", err)
 	}
 
@@ -216,8 +217,13 @@ func aggregateForecast(resp *owmForecastResponse) []ForecastDay {
 	return result
 }
 
-func (c *Client) get(url string, result any) error {
-	resp, err := c.httpClient.Get(url)
+func (c *Client) get(ctx context.Context, url string, result any) error {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	if err != nil {
+		return fmt.Errorf("creating request: %w", err)
+	}
+
+	resp, err := c.httpClient.Do(req)
 	if err != nil {
 		return fmt.Errorf("executing request: %w", err)
 	}

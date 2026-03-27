@@ -2,6 +2,7 @@ package reolink
 
 import (
 	"bytes"
+	"context"
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
@@ -29,13 +30,17 @@ type Client struct {
 const tokenTTL = 30 * time.Minute
 
 // NewClient creates a new Reolink camera client.
-func NewClient(ip, username, password string, channel int, httpClient *http.Client) *Client {
+// When insecureSkipTLS is true and no custom httpClient is provided,
+// TLS certificate verification is skipped (common for camera self-signed certs).
+func NewClient(ip, username, password string, channel int, httpClient *http.Client, insecureSkipTLS bool) *Client {
 	if httpClient == nil {
+		transport := &http.Transport{}
+		if insecureSkipTLS {
+			transport.TLSClientConfig = &tls.Config{InsecureSkipVerify: true} //nolint:gosec // user-configurable
+		}
 		httpClient = &http.Client{
-			Timeout: 10 * time.Second,
-			Transport: &http.Transport{
-				TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
-			},
+			Timeout:   10 * time.Second,
+			Transport: transport,
 		}
 	}
 	return &Client{
@@ -49,7 +54,7 @@ func NewClient(ip, username, password string, channel int, httpClient *http.Clie
 }
 
 // GetSnapshot fetches a JPEG snapshot from the camera.
-func (c *Client) GetSnapshot() ([]byte, string, error) {
+func (c *Client) GetSnapshot(ctx context.Context) ([]byte, string, error) {
 	c.mu.Lock()
 	scheme := c.scheme
 	token := c.token
@@ -60,7 +65,7 @@ func (c *Client) GetSnapshot() ([]byte, string, error) {
 
 	// If we have a cached token that's still fresh, use it directly
 	if token != "" && tokenAge < tokenTTL && scheme != "" {
-		body, err := c.snapWithToken(scheme, rs, token)
+		body, err := c.snapWithToken(ctx, scheme, rs, token)
 		if err == nil && isJPEG(body) {
 			return body, "image/jpeg", nil
 		}
@@ -72,12 +77,12 @@ func (c *Client) GetSnapshot() ([]byte, string, error) {
 
 	// If we know the scheme, try direct auth then token auth
 	if scheme != "" {
-		body, err := c.snapDirect(scheme, rs)
+		body, err := c.snapDirect(ctx, scheme, rs)
 		if err == nil && isJPEG(body) {
 			return body, "image/jpeg", nil
 		}
 		if err == nil {
-			data, ct, loginErr := c.loginAndSnap(scheme, rs)
+			data, ct, loginErr := c.loginAndSnap(ctx, scheme, rs)
 			if loginErr == nil {
 				return data, ct, nil
 			}
@@ -91,7 +96,7 @@ func (c *Client) GetSnapshot() ([]byte, string, error) {
 
 	// Discover working scheme: try direct auth, then token auth per scheme
 	for _, s := range []string{"http", "https"} {
-		body, err := c.snapDirect(s, rs)
+		body, err := c.snapDirect(ctx, s, rs)
 		if err != nil {
 			continue
 		}
@@ -102,7 +107,7 @@ func (c *Client) GetSnapshot() ([]byte, string, error) {
 			return body, "image/jpeg", nil
 		}
 		// Not JPEG — try token auth on this scheme
-		data, ct, loginErr := c.loginAndSnap(s, rs)
+		data, ct, loginErr := c.loginAndSnap(ctx, s, rs)
 		if loginErr == nil {
 			c.mu.Lock()
 			c.scheme = s
@@ -115,25 +120,25 @@ func (c *Client) GetSnapshot() ([]byte, string, error) {
 	return nil, "", fmt.Errorf("snapshot failed: camera at %s unreachable", c.ip)
 }
 
-func (c *Client) snapDirect(scheme string, rs int64) ([]byte, error) {
-	url := fmt.Sprintf("%s://%s/cgi-bin/api.cgi?cmd=Snap&channel=%d&rs=%d&user=%s&password=%s",
+func (c *Client) snapDirect(ctx context.Context, scheme string, rs int64) ([]byte, error) {
+	u := fmt.Sprintf("%s://%s/cgi-bin/api.cgi?cmd=Snap&channel=%d&rs=%d&user=%s&password=%s",
 		scheme, c.ip, c.channel, rs, c.username, c.password)
-	return c.fetchSnapshot(url)
+	return c.fetchSnapshot(ctx, u)
 }
 
-func (c *Client) snapWithToken(scheme string, rs int64, token string) ([]byte, error) {
-	url := fmt.Sprintf("%s://%s/cgi-bin/api.cgi?cmd=Snap&channel=%d&rs=%d&token=%s",
+func (c *Client) snapWithToken(ctx context.Context, scheme string, rs int64, token string) ([]byte, error) {
+	u := fmt.Sprintf("%s://%s/cgi-bin/api.cgi?cmd=Snap&channel=%d&rs=%d&token=%s",
 		scheme, c.ip, c.channel, rs, token)
-	return c.fetchSnapshot(url)
+	return c.fetchSnapshot(ctx, u)
 }
 
-func (c *Client) loginAndSnap(scheme string, rs int64) ([]byte, string, error) {
-	token, err := c.ensureToken(scheme)
+func (c *Client) loginAndSnap(ctx context.Context, scheme string, rs int64) ([]byte, string, error) {
+	token, err := c.ensureToken(ctx, scheme)
 	if err != nil {
 		return nil, "", fmt.Errorf("login failed: %w", err)
 	}
 
-	body, err := c.snapWithToken(scheme, rs, token)
+	body, err := c.snapWithToken(ctx, scheme, rs, token)
 	if err != nil {
 		return nil, "", fmt.Errorf("token snapshot failed: %w", err)
 	}
@@ -144,7 +149,7 @@ func (c *Client) loginAndSnap(scheme string, rs int64) ([]byte, string, error) {
 }
 
 // ensureToken returns a valid token, reusing a cached one or logging in under mutex.
-func (c *Client) ensureToken(scheme string) (string, error) {
+func (c *Client) ensureToken(ctx context.Context, scheme string) (string, error) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
@@ -153,7 +158,7 @@ func (c *Client) ensureToken(scheme string) (string, error) {
 		return c.token, nil
 	}
 
-	token, err := c.login(scheme)
+	token, err := c.login(ctx, scheme)
 	if err != nil {
 		return "", err
 	}
@@ -162,8 +167,12 @@ func (c *Client) ensureToken(scheme string) (string, error) {
 	return token, nil
 }
 
-func (c *Client) fetchSnapshot(url string) ([]byte, error) {
-	resp, err := c.httpClient.Get(url)
+func (c *Client) fetchSnapshot(ctx context.Context, u string) ([]byte, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u, nil)
+	if err != nil {
+		return nil, fmt.Errorf("creating request: %w", err)
+	}
+	resp, err := c.httpClient.Do(req)
 	if err != nil {
 		return nil, err
 	}
@@ -175,12 +184,18 @@ func (c *Client) fetchSnapshot(url string) ([]byte, error) {
 	return io.ReadAll(resp.Body)
 }
 
-func (c *Client) login(scheme string) (string, error) {
+func (c *Client) login(ctx context.Context, scheme string) (string, error) {
 	payload := fmt.Sprintf(`[{"cmd":"Login","action":0,"param":{"User":{"userName":%q,"password":%q}}}]`,
 		c.username, c.password)
 
-	url := fmt.Sprintf("%s://%s/cgi-bin/api.cgi?cmd=Login", scheme, c.ip)
-	resp, err := c.httpClient.Post(url, "application/json", bytes.NewBufferString(payload))
+	u := fmt.Sprintf("%s://%s/cgi-bin/api.cgi?cmd=Login", scheme, c.ip)
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, u, bytes.NewBufferString(payload))
+	if err != nil {
+		return "", fmt.Errorf("creating login request: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := c.httpClient.Do(req)
 	if err != nil {
 		return "", fmt.Errorf("login request: %w", err)
 	}

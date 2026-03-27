@@ -8,6 +8,7 @@ import (
 )
 
 func TestGetSetBasic(t *testing.T) {
+	t.Parallel()
 	c := New(5*time.Minute, time.Hour)
 	defer c.Stop()
 
@@ -23,6 +24,7 @@ func TestGetSetBasic(t *testing.T) {
 }
 
 func TestGetMiss(t *testing.T) {
+	t.Parallel()
 	c := New(5*time.Minute, time.Hour)
 	defer c.Stop()
 
@@ -36,6 +38,7 @@ func TestGetMiss(t *testing.T) {
 }
 
 func TestTTLExpiration(t *testing.T) {
+	t.Parallel()
 	c := New(50*time.Millisecond, time.Hour)
 	defer c.Stop()
 
@@ -58,6 +61,7 @@ func TestTTLExpiration(t *testing.T) {
 }
 
 func TestCustomTTL(t *testing.T) {
+	t.Parallel()
 	c := New(time.Hour, time.Hour)
 	defer c.Stop()
 
@@ -78,6 +82,7 @@ func TestCustomTTL(t *testing.T) {
 }
 
 func TestInvalidateSingleKey(t *testing.T) {
+	t.Parallel()
 	c := New(5*time.Minute, time.Hour)
 	defer c.Stop()
 
@@ -98,6 +103,7 @@ func TestInvalidateSingleKey(t *testing.T) {
 }
 
 func TestInvalidatePrefix(t *testing.T) {
+	t.Parallel()
 	c := New(5*time.Minute, time.Hour)
 	defer c.Stop()
 
@@ -124,6 +130,7 @@ func TestInvalidatePrefix(t *testing.T) {
 }
 
 func TestInvalidateAll(t *testing.T) {
+	t.Parallel()
 	c := New(5*time.Minute, time.Hour)
 	defer c.Stop()
 
@@ -138,6 +145,7 @@ func TestInvalidateAll(t *testing.T) {
 }
 
 func TestStats(t *testing.T) {
+	t.Parallel()
 	c := New(5*time.Minute, time.Hour)
 	defer c.Stop()
 	c.ResetStats()
@@ -158,6 +166,7 @@ func TestStats(t *testing.T) {
 }
 
 func TestResetStats(t *testing.T) {
+	t.Parallel()
 	c := New(5*time.Minute, time.Hour)
 	defer c.Stop()
 
@@ -173,6 +182,7 @@ func TestResetStats(t *testing.T) {
 }
 
 func TestCacheDuplicateCallsOnlyOneFetch(t *testing.T) {
+	t.Parallel()
 	c := New(5*time.Minute, time.Hour)
 	defer c.Stop()
 	c.ResetStats()
@@ -217,6 +227,7 @@ func TestCacheDuplicateCallsOnlyOneFetch(t *testing.T) {
 }
 
 func TestActionInvalidatesCache(t *testing.T) {
+	t.Parallel()
 	c := New(5*time.Minute, time.Hour)
 	defer c.Stop()
 
@@ -256,6 +267,7 @@ func TestActionInvalidatesCache(t *testing.T) {
 }
 
 func TestCleanupRemovesExpired(t *testing.T) {
+	t.Parallel()
 	c := New(50*time.Millisecond, 30*time.Millisecond)
 	defer c.Stop()
 
@@ -275,6 +287,7 @@ func TestCleanupRemovesExpired(t *testing.T) {
 }
 
 func TestConcurrentAccess(t *testing.T) {
+	t.Parallel()
 	c := New(5*time.Minute, time.Hour)
 	defer c.Stop()
 
@@ -330,6 +343,7 @@ func TestConcurrentAccess(t *testing.T) {
 }
 
 func TestLenCountsOnlyStored(t *testing.T) {
+	t.Parallel()
 	c := New(5*time.Minute, time.Hour)
 	defer c.Stop()
 
@@ -350,6 +364,7 @@ func TestLenCountsOnlyStored(t *testing.T) {
 }
 
 func TestOverwriteKey(t *testing.T) {
+	t.Parallel()
 	c := New(5*time.Minute, time.Hour)
 	defer c.Stop()
 

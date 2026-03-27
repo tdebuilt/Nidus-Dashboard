@@ -2,6 +2,7 @@
   import { AlertTriangle } from 'lucide-svelte'
   import { confirmState, resolveConfirm } from '../stores/confirm'
   import { t } from '../i18n'
+  import { focusTrap } from '../actions/focusTrap'
 </script>
 
 {#if $confirmState.open}
@@ -15,7 +16,7 @@
 
   <!-- Dialog -->
   <div class="fixed inset-0 z-50 flex items-center justify-center p-4" data-testid="confirm-dialog">
-    <div class="w-full max-w-md rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-secondary)] p-6 shadow-2xl animate-[dialogIn_0.2s_ease-out]">
+    <div class="w-full max-w-md rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-secondary)] p-6 shadow-2xl animate-[dialogIn_0.2s_ease-out]" role="dialog" aria-modal="true" use:focusTrap={{ onClose: () => resolveConfirm(false) }}>
       <div class="mb-4 flex items-center gap-3">
         {#if $confirmState.options.destructive}
           <div class="flex h-10 w-10 items-center justify-center rounded-full" style="background-color: var(--color-error-bg)">

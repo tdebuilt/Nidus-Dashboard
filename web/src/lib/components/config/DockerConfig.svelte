@@ -17,7 +17,7 @@
 
   const { value = '{}', onchange }: Props = $props()
 
-  let environments = $state<Environment[]>([])
+  let environments = $state.raw<Environment[]>([])
   let loading = $state(true)
   let selectedEnvId = $state<number | null>(null)
 

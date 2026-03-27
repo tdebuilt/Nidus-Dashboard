@@ -17,6 +17,7 @@ func makeContainer(id, name, image, state, status string, labels ContainerLabel)
 }
 
 func TestGroupContainersWithStack(t *testing.T) {
+	t.Parallel()
 	containers := []Container{
 		makeContainer("c1", "web", "nginx", "running", "Up 1h", ContainerLabel{
 			"com.docker.compose.project": "my-stack",
@@ -48,6 +49,7 @@ func TestGroupContainersWithStack(t *testing.T) {
 }
 
 func TestGroupContainersStandalone(t *testing.T) {
+	t.Parallel()
 	containers := []Container{
 		makeContainer("c1", "redis", "redis:7", "running", "Up 1h", ContainerLabel{}),
 		makeContainer("c2", "mongo", "mongo:6", "running", "Up 1h", nil),
@@ -70,6 +72,7 @@ func TestGroupContainersStandalone(t *testing.T) {
 }
 
 func TestGroupContainersMixed(t *testing.T) {
+	t.Parallel()
 	containers := []Container{
 		makeContainer("c1", "web", "nginx", "running", "Up 1h", ContainerLabel{
 			"com.docker.compose.project": "app",
@@ -97,6 +100,7 @@ func TestGroupContainersMixed(t *testing.T) {
 }
 
 func TestGroupContainersMultipleStacks(t *testing.T) {
+	t.Parallel()
 	containers := []Container{
 		makeContainer("c1", "web", "nginx", "running", "Up 1h", ContainerLabel{
 			"com.docker.compose.project": "frontend",
@@ -129,6 +133,7 @@ func TestGroupContainersMultipleStacks(t *testing.T) {
 }
 
 func TestStackStatusPartial(t *testing.T) {
+	t.Parallel()
 	containers := []Container{
 		makeContainer("c1", "web", "nginx", "running", "Up 1h", ContainerLabel{
 			"com.docker.compose.project": "app",
@@ -146,6 +151,7 @@ func TestStackStatusPartial(t *testing.T) {
 }
 
 func TestStackStatusStopped(t *testing.T) {
+	t.Parallel()
 	containers := []Container{
 		makeContainer("c1", "web", "nginx", "exited", "Exited (0)", ContainerLabel{
 			"com.docker.compose.project": "app",
@@ -163,6 +169,7 @@ func TestStackStatusStopped(t *testing.T) {
 }
 
 func TestHealthExtraction(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		status   string
 		expected string
@@ -184,6 +191,7 @@ func TestHealthExtraction(t *testing.T) {
 }
 
 func TestContainerInfoNameTrimsSlash(t *testing.T) {
+	t.Parallel()
 	c := makeContainer("c1", "myapp", "img", "running", "Up 1h", nil)
 	info := toContainerInfo(c, 1)
 
@@ -196,6 +204,7 @@ func TestContainerInfoNameTrimsSlash(t *testing.T) {
 }
 
 func TestMergeWithPortainerStacks(t *testing.T) {
+	t.Parallel()
 	grouped := []StackInfo{
 		{Name: "web-stack", EnvID: 1},
 		{Name: "monitoring", EnvID: 1},
@@ -221,6 +230,7 @@ func TestMergeWithPortainerStacks(t *testing.T) {
 }
 
 func TestGroupMultiEnv(t *testing.T) {
+	t.Parallel()
 	envContainers := map[int][]Container{
 		1: {
 			makeContainer("c1", "web", "nginx", "running", "Up 1h", ContainerLabel{
@@ -255,6 +265,7 @@ func TestGroupMultiEnv(t *testing.T) {
 }
 
 func TestGroupContainersEmpty(t *testing.T) {
+	t.Parallel()
 	stacks, standalone := GroupContainers(nil, 1)
 
 	if stacks != nil {

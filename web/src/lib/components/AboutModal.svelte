@@ -3,6 +3,7 @@
   import { aboutModalOpen, closeAboutModal } from '../stores/aboutModal'
   import { appVersion } from '../stores/version'
   import { t } from '../i18n'
+  import { focusTrap } from '../actions/focusTrap'
 </script>
 
 {#if $aboutModalOpen}
@@ -15,7 +16,7 @@
 
   <!-- Dialog -->
   <div class="fixed inset-0 z-50 flex items-center justify-center p-4">
-    <div class="w-full max-w-sm rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-secondary)] p-6 shadow-2xl animate-[dialogIn_0.2s_ease-out]">
+    <div class="w-full max-w-sm rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-secondary)] p-6 shadow-2xl animate-[dialogIn_0.2s_ease-out]" role="dialog" aria-modal="true" use:focusTrap={{ onClose: closeAboutModal }}>
       <!-- Header -->
       <div class="mb-5 flex items-center justify-between">
         <div class="flex items-center gap-2">

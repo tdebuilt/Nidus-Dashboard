@@ -1,6 +1,7 @@
 package mediaserver
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -29,9 +30,9 @@ func NewPlexClient(baseURL, token string, httpClient *http.Client) *PlexClient {
 }
 
 // GetSessions returns active streaming sessions.
-func (c *PlexClient) GetSessions() ([]Session, error) {
+func (c *PlexClient) GetSessions(ctx context.Context) ([]Session, error) {
 	var resp plexMediaContainer[plexSession]
-	if err := c.get("/status/sessions", &resp); err != nil {
+	if err := c.get(ctx, "/status/sessions", &resp); err != nil {
 		return nil, fmt.Errorf("getting sessions: %w", err)
 	}
 
@@ -70,9 +71,9 @@ func (c *PlexClient) GetSessions() ([]Session, error) {
 }
 
 // GetLibraries returns the list of media libraries.
-func (c *PlexClient) GetLibraries() ([]Library, error) {
+func (c *PlexClient) GetLibraries(ctx context.Context) ([]Library, error) {
 	var resp plexMediaContainer[any]
-	if err := c.get("/library/sections", &resp); err != nil {
+	if err := c.get(ctx, "/library/sections", &resp); err != nil {
 		return nil, fmt.Errorf("getting libraries: %w", err)
 	}
 
@@ -94,17 +95,17 @@ func (c *PlexClient) GetLibraries() ([]Library, error) {
 }
 
 // GetServerName returns the friendly name of the Plex server.
-func (c *PlexClient) GetServerName() (string, error) {
+func (c *PlexClient) GetServerName(ctx context.Context) (string, error) {
 	var resp plexMediaContainer[any]
-	if err := c.get("/", &resp); err != nil {
+	if err := c.get(ctx, "/", &resp); err != nil {
 		return "", fmt.Errorf("getting server info: %w", err)
 	}
 	return resp.MediaContainer.FriendlyName, nil
 }
 
 // ProxyImage fetches an image from the Plex server.
-func (c *PlexClient) ProxyImage(path string) ([]byte, string, error) {
-	req, err := http.NewRequest(http.MethodGet, c.baseURL+path, nil)
+func (c *PlexClient) ProxyImage(ctx context.Context, path string) ([]byte, string, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.baseURL+path, nil)
 	if err != nil {
 		return nil, "", fmt.Errorf("creating request: %w", err)
 	}
@@ -128,8 +129,8 @@ func (c *PlexClient) ProxyImage(path string) ([]byte, string, error) {
 	return body, resp.Header.Get("Content-Type"), nil
 }
 
-func (c *PlexClient) get(path string, result any) error {
-	req, err := http.NewRequest(http.MethodGet, c.baseURL+path, nil)
+func (c *PlexClient) get(ctx context.Context, path string, result any) error {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.baseURL+path, nil)
 	if err != nil {
 		return fmt.Errorf("creating request: %w", err)
 	}

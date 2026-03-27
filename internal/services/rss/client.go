@@ -1,6 +1,7 @@
 package rss
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"net/http"
@@ -22,7 +23,7 @@ func NewClient(httpClient *http.Client) *Client {
 }
 
 // FetchFeeds fetches one or more RSS/Atom feed URLs and returns combined items.
-func (c *Client) FetchFeeds(urls []string, maxItems int) (*FeedData, error) {
+func (c *Client) FetchFeeds(ctx context.Context, urls []string, maxItems int) (*FeedData, error) {
 	if maxItems <= 0 {
 		maxItems = 20
 	}
@@ -30,7 +31,7 @@ func (c *Client) FetchFeeds(urls []string, maxItems int) (*FeedData, error) {
 	var allItems []FeedItem
 
 	for _, url := range urls {
-		items, err := c.fetchURL(url)
+		items, err := c.fetchURL(ctx, url)
 		if err != nil {
 			// Log error but continue with other URLs
 			continue
@@ -51,8 +52,8 @@ func (c *Client) FetchFeeds(urls []string, maxItems int) (*FeedData, error) {
 	return &FeedData{Items: allItems}, nil
 }
 
-func (c *Client) fetchURL(url string) ([]FeedItem, error) {
-	req, err := http.NewRequest(http.MethodGet, url, nil)
+func (c *Client) fetchURL(ctx context.Context, url string) ([]FeedItem, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
 		return nil, fmt.Errorf("creating request for %s: %w", url, err)
 	}

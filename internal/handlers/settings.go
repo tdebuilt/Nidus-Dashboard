@@ -31,7 +31,7 @@ type UserPreferencesHandler struct {
 // @Router /settings [get]
 // @Security BearerAuth
 func (h *SettingsHandler) Get(w http.ResponseWriter, r *http.Request) {
-	settings, err := h.DB.GetSettings()
+	settings, err := h.DB.GetSettings(r.Context())
 	if err != nil {
 		writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "failed to read settings"})
 		return
@@ -66,13 +66,13 @@ func (h *SettingsHandler) Update(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	if err := h.DB.SaveSettings(req); err != nil {
+	if err := h.DB.SaveSettings(r.Context(), req); err != nil {
 		writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "failed to save settings"})
 		return
 	}
 
 	// Return updated settings
-	settings, err := h.DB.GetSettings()
+	settings, err := h.DB.GetSettings(r.Context())
 	if err != nil {
 		writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "failed to read settings"})
 		return
@@ -97,7 +97,7 @@ func (h *UserPreferencesHandler) GetPreferences(w http.ResponseWriter, r *http.R
 		return
 	}
 
-	prefs, err := h.DB.GetUserPreferences(userID)
+	prefs, err := h.DB.GetUserPreferences(r.Context(), userID)
 	if err != nil {
 		writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "failed to read preferences"})
 		return
@@ -139,25 +139,25 @@ func (h *UserPreferencesHandler) UpdatePreferences(w http.ResponseWriter, r *htt
 	}
 
 	if req.Theme != nil {
-		if err := h.DB.SaveUserPreference(userID, "setting_theme", *req.Theme); err != nil {
+		if err := h.DB.SaveUserPreference(r.Context(), userID, "setting_theme", *req.Theme); err != nil {
 			writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "failed to save preference"})
 			return
 		}
 	}
 	if req.Language != nil {
-		if err := h.DB.SaveUserPreference(userID, "setting_language", *req.Language); err != nil {
+		if err := h.DB.SaveUserPreference(r.Context(), userID, "setting_language", *req.Language); err != nil {
 			writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "failed to save preference"})
 			return
 		}
 	}
 	if req.RefreshInterval != nil {
-		if err := h.DB.SaveUserPreference(userID, "setting_refresh_interval", strconv.Itoa(*req.RefreshInterval)); err != nil {
+		if err := h.DB.SaveUserPreference(r.Context(), userID, "setting_refresh_interval", strconv.Itoa(*req.RefreshInterval)); err != nil {
 			writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "failed to save preference"})
 			return
 		}
 	}
 	if req.AccentColor != nil {
-		if err := h.DB.SaveUserPreference(userID, "setting_accent_color", *req.AccentColor); err != nil {
+		if err := h.DB.SaveUserPreference(r.Context(), userID, "setting_accent_color", *req.AccentColor); err != nil {
 			writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "failed to save preference"})
 			return
 		}
@@ -167,13 +167,13 @@ func (h *UserPreferencesHandler) UpdatePreferences(w http.ResponseWriter, r *htt
 		if *req.EnableKeyboardShortcuts {
 			val = "true"
 		}
-		if err := h.DB.SaveUserPreference(userID, "setting_keyboard_shortcuts", val); err != nil {
+		if err := h.DB.SaveUserPreference(r.Context(), userID, "setting_keyboard_shortcuts", val); err != nil {
 			writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "failed to save preference"})
 			return
 		}
 	}
 
-	prefs, err := h.DB.GetUserPreferences(userID)
+	prefs, err := h.DB.GetUserPreferences(r.Context(), userID)
 	if err != nil {
 		writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "failed to read preferences"})
 		return

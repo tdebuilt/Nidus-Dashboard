@@ -8,6 +8,7 @@ import (
 )
 
 func TestRateLimiterAllowsUnderLimit(t *testing.T) {
+	t.Parallel()
 	rl := NewRateLimiter(5, 15*time.Minute)
 
 	for i := 0; i < 5; i++ {
@@ -18,6 +19,7 @@ func TestRateLimiterAllowsUnderLimit(t *testing.T) {
 }
 
 func TestRateLimiterBlocksOverLimit(t *testing.T) {
+	t.Parallel()
 	rl := NewRateLimiter(5, 15*time.Minute)
 
 	// Use up all 5 allowed requests
@@ -32,6 +34,7 @@ func TestRateLimiterBlocksOverLimit(t *testing.T) {
 }
 
 func TestRateLimiterResetsAfterWindow(t *testing.T) {
+	t.Parallel()
 	// Use a very short window for testing
 	rl := NewRateLimiter(2, 50*time.Millisecond)
 
@@ -52,6 +55,7 @@ func TestRateLimiterResetsAfterWindow(t *testing.T) {
 }
 
 func TestRateLimiterTracksIPsSeparately(t *testing.T) {
+	t.Parallel()
 	rl := NewRateLimiter(2, 15*time.Minute)
 
 	// IP1 uses its limit
@@ -68,6 +72,7 @@ func TestRateLimiterTracksIPsSeparately(t *testing.T) {
 }
 
 func TestRateLimiterHTTPMiddleware5RequestsOK(t *testing.T) {
+	t.Parallel()
 	rl := NewRateLimiter(5, 15*time.Minute)
 	handler := rl.Limit(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
@@ -86,6 +91,7 @@ func TestRateLimiterHTTPMiddleware5RequestsOK(t *testing.T) {
 }
 
 func TestRateLimiterHTTPMiddleware6thRequestBlocked(t *testing.T) {
+	t.Parallel()
 	rl := NewRateLimiter(5, 15*time.Minute)
 	handler := rl.Limit(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
@@ -111,6 +117,7 @@ func TestRateLimiterHTTPMiddleware6thRequestBlocked(t *testing.T) {
 }
 
 func TestRateLimiterHTTPMiddlewareResetsAfterWindow(t *testing.T) {
+	t.Parallel()
 	rl := NewRateLimiter(2, 50*time.Millisecond)
 	handler := rl.Limit(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
@@ -147,6 +154,7 @@ func TestRateLimiterHTTPMiddlewareResetsAfterWindow(t *testing.T) {
 }
 
 func TestRateLimiterReset(t *testing.T) {
+	t.Parallel()
 	rl := NewRateLimiter(1, 15*time.Minute)
 
 	rl.Allow("10.0.0.1")

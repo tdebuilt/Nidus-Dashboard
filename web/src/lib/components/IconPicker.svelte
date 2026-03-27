@@ -9,7 +9,7 @@
     onSelect?: (icon: string) => void
   }
 
-  let { selected = 'folder', onSelect }: Props = $props() // eslint-disable-line prefer-const
+  let { selected = 'folder', onSelect }: Props = $props()  
 
   let search = $state('')
 

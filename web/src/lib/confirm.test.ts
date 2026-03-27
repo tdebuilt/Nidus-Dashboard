@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { get } from 'svelte/store';
-import { confirmState, confirm, resolveConfirm } from './confirm';
+import { confirmState, confirm, resolveConfirm } from './stores/confirm';
 
 describe('Confirm', () => {
   beforeEach(() => {
@@ -8,11 +8,11 @@ describe('Confirm', () => {
   });
 
   it('opens confirm dialog with options', () => {
-    confirm({ message: 'Are you sure?' });
+    confirm({ title: 'Confirmation', message: 'Are you sure?' });
     const state = get(confirmState);
     expect(state.open).toBe(true);
-    expect(state.message).toBe('Are you sure?');
-    expect(state.title).toBe('Confirmation');
+    expect(state.options.message).toBe('Are you sure?');
+    expect(state.options.title).toBe('Confirmation');
   });
 
   it('uses custom title and labels', () => {
@@ -24,14 +24,14 @@ describe('Confirm', () => {
       destructive: true,
     });
     const state = get(confirmState);
-    expect(state.title).toBe('Delete item');
-    expect(state.confirmLabel).toBe('Delete');
-    expect(state.cancelLabel).toBe('Keep');
-    expect(state.destructive).toBe(true);
+    expect(state.options.title).toBe('Delete item');
+    expect(state.options.confirmLabel).toBe('Delete');
+    expect(state.options.cancelLabel).toBe('Keep');
+    expect(state.options.destructive).toBe(true);
   });
 
   it('resolves true when confirmed', async () => {
-    const promise = confirm({ message: 'Confirm?' });
+    const promise = confirm({ title: 'Confirm', message: 'Confirm?' });
     resolveConfirm(true);
     const result = await promise;
     expect(result).toBe(true);
@@ -39,7 +39,7 @@ describe('Confirm', () => {
   });
 
   it('resolves false when cancelled', async () => {
-    const promise = confirm({ message: 'Confirm?' });
+    const promise = confirm({ title: 'Confirm', message: 'Confirm?' });
     resolveConfirm(false);
     const result = await promise;
     expect(result).toBe(false);

@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -34,13 +35,13 @@ func (h *ReolinkHandler) getClient(cam *reolink.Camera) *reolink.Client {
 	if c, ok := h.clients[cam.ID]; ok {
 		return c
 	}
-	c := reolink.NewClient(cam.IP, cam.Username, cam.Password, cam.Channel, nil)
+	c := reolink.NewClient(cam.IP, cam.Username, cam.Password, cam.Channel, nil, true)
 	h.clients[cam.ID] = c
 	return c
 }
 
-func (h *ReolinkHandler) getReolinkConfig() (*reolink.CameraConfig, error) {
-	widgets, err := h.DB.GetAllWidgets()
+func (h *ReolinkHandler) getReolinkConfig(ctx context.Context) (*reolink.CameraConfig, error) {
+	widgets, err := h.DB.GetAllWidgets(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -74,8 +75,8 @@ func (h *ReolinkHandler) getReolinkConfig() (*reolink.CameraConfig, error) {
 	return config, nil
 }
 
-func (h *ReolinkHandler) findCamera(id string) (*reolink.Camera, *reolink.CameraConfig, error) {
-	config, err := h.getReolinkConfig()
+func (h *ReolinkHandler) findCamera(ctx context.Context, id string) (*reolink.Camera, *reolink.CameraConfig, error) {
+	config, err := h.getReolinkConfig(ctx)
 	if err != nil || config == nil {
 		return nil, config, err
 	}
@@ -98,7 +99,7 @@ func (h *ReolinkHandler) findCamera(id string) (*reolink.Camera, *reolink.Camera
 // @Router /reolink/cameras [get]
 // @Security BearerAuth
 func (h *ReolinkHandler) ListCameras(w http.ResponseWriter, r *http.Request) {
-	config, err := h.getReolinkConfig()
+	config, err := h.getReolinkConfig(r.Context())
 	if err != nil {
 		writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "failed to load config"})
 		return
@@ -131,7 +132,7 @@ func (h *ReolinkHandler) ListCameras(w http.ResponseWriter, r *http.Request) {
 func (h *ReolinkHandler) GetSnapshot(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 
-	cam, config, err := h.findCamera(id)
+	cam, config, err := h.findCamera(r.Context(), id)
 	if err != nil {
 		writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "failed to load config"})
 		return
@@ -150,7 +151,7 @@ func (h *ReolinkHandler) GetSnapshot(w http.ResponseWriter, r *http.Request) {
 	client := h.getClient(cam)
 	_ = config
 
-	data, contentType, err := client.GetSnapshot()
+	data, contentType, err := client.GetSnapshot(r.Context())
 	if err != nil {
 		writeJSON(w, http.StatusBadGateway, models.ErrorResponse{Error: "snapshot failed: " + err.Error()})
 		return
@@ -163,13 +164,13 @@ func (h *ReolinkHandler) GetSnapshot(w http.ResponseWriter, r *http.Request) {
 
 func (h *ReolinkHandler) proxyHASnapshot(w http.ResponseWriter, r *http.Request, entityID string) {
 	// Reuse HA handler logic
-	svc, err := h.DB.GetServiceByType("homeassistant")
+	svc, err := h.DB.GetServiceByType(r.Context(), "homeassistant")
 	if err != nil || svc == nil {
 		writeJSON(w, http.StatusBadGateway, models.ErrorResponse{Error: "Home Assistant not configured"})
 		return
 	}
 
-	encKey, _ := h.DB.GetSystemSetting("encryption_key")
+	encKey, _ := h.DB.GetSystemSetting(r.Context(), "encryption_key")
 	if encKey == "" {
 		writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "encryption key not found"})
 		return
@@ -182,10 +183,17 @@ func (h *ReolinkHandler) proxyHASnapshot(w http.ResponseWriter, r *http.Request,
 	var authData struct {
 		Token string `json:"token"`
 	}
-	json.Unmarshal([]byte(creds), &authData)
+	if err := json.Unmarshal([]byte(creds), &authData); err != nil {
+		writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "invalid HA credentials format"})
+		return
+	}
 
 	url := fmt.Sprintf("%s/api/camera_proxy/%s", svc.URL, entityID)
-	req, _ := http.NewRequest("GET", url, nil)
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "failed to build HA request"})
+		return
+	}
 	req.Header.Set("Authorization", "Bearer "+authData.Token)
 
 	client := &http.Client{Timeout: 10 * time.Second}
@@ -223,7 +231,7 @@ func (h *ReolinkHandler) proxyHASnapshot(w http.ResponseWriter, r *http.Request,
 func (h *ReolinkHandler) GetStreamURL(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 
-	cam, _, err := h.findCamera(id)
+	cam, _, err := h.findCamera(r.Context(), id)
 	if err != nil || cam == nil {
 		writeJSON(w, http.StatusNotFound, models.ErrorResponse{Error: "camera not found"})
 		return

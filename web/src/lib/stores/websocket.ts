@@ -12,6 +12,7 @@ interface WSState {
 const MAX_RECONNECT_DELAY = 30000
 const INITIAL_RECONNECT_DELAY = 1000
 
+// eslint-disable-next-line max-lines-per-function
 function createWebSocketStore() {
   const { subscribe, set, update } = writable<WSState>({
     status: 'disconnected',

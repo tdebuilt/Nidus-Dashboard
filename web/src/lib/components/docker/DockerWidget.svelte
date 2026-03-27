@@ -53,8 +53,8 @@
   let refreshing = $state(false)
   let checkingUpdates = $state(false)
   let error = $state<string | null>(null)
-  let stacks = $state<StackInfo[]>([])
-  let standalone = $state<ContainerInfo[]>([])
+  let stacks = $state.raw<StackInfo[]>([])
+  let standalone = $state.raw<ContainerInfo[]>([])
   // eslint-disable-next-line svelte/no-unnecessary-state-wrap
   let updates: SvelteMap<string, boolean> = $state(new SvelteMap())
   // eslint-disable-next-line svelte/no-unnecessary-state-wrap
@@ -100,23 +100,43 @@
 
   async function resolveEnvId(): Promise<number | null> {
     if (resolvedEnvId !== null && envHost !== '') return resolvedEnvId
-    try {
-      const envs = await api.get<{ id: number; name: string; status: string; host: string }[]>('/api/docker/environments')
-      if (envs && envs.length > 0) {
-        const targetId = configEnvId ?? envs[0].id
-        const env = envs.find((e) => e.id === targetId) ?? envs[0]
-        resolvedEnvId = env.id
-        envHost = configHost || env.host || ''
-        return resolvedEnvId
-      }
-    } catch {
-      // Will be handled by fetchData
+
+    const envs = await api.get<{ id: number; name: string; status: string; host: string }[]>('/api/docker/environments').catch(() => null)
+    if (envs && envs.length > 0) {
+      const targetId = configEnvId ?? envs[0].id
+      const env = envs.find((e) => e.id === targetId) ?? envs[0]
+      resolvedEnvId = env.id
+      envHost = configHost || env.host || ''
+      return resolvedEnvId
     }
+
     if (configEnvId !== null) {
       resolvedEnvId = configEnvId
       return configEnvId
     }
     return null
+  }
+
+  function handleFetchError(err: unknown) {
+    const status = (err as { status?: number })?.status
+    if (status === 404) { error = 'not_configured'; return }
+    error = 'fetch_error'
+    if (status !== 502) toasts.error(translate('docker.fetchError'))
+  }
+
+  function fetchUpdatesAndStats(envId: number) {
+    if (updates.size === 0) checkingUpdates = true
+    api.get<UpdateInfo[]>(`/api/docker/environments/${envId}/updates`).then((upd) => {
+      const map = new SvelteMap<string, boolean>()
+      for (const u of upd ?? []) map.set(u.container_id, u.has_update)
+      updates = map
+    }).catch(() => {}).finally(() => { checkingUpdates = false })
+
+    api.get<ContainerStatsInfo[]>(`/api/docker/environments/${envId}/stats`).then((st) => {
+      const map = new SvelteMap<string, ContainerStatsInfo>()
+      for (const s of st ?? []) map.set(s.container_id, s)
+      stats = map
+    }).catch(() => {})
   }
 
   async function fetchData() {
@@ -125,43 +145,16 @@
     error = null
     try {
       const envId = await resolveEnvId()
-      if (envId === null) {
-        error = 'not_configured'
-        return
-      }
+      if (envId === null) { error = 'not_configured'; return }
+
       const data = await api.get<{ stacks: StackInfo[]; standalone: ContainerInfo[] }>(
         `/api/docker/environments/${envId}/containers`
       )
       stacks = data.stacks ?? []
       standalone = data.standalone ?? []
-
-      // Fetch updates and stats in background (don't block rendering)
-      if (updates.size === 0) checkingUpdates = true
-      api.get<UpdateInfo[]>(`/api/docker/environments/${envId}/updates`).then((upd) => {
-        const map = new SvelteMap<string, boolean>()
-        for (const u of upd ?? []) {
-          map.set(u.container_id, u.has_update)
-        }
-        updates = map
-      }).catch(() => {}).finally(() => { checkingUpdates = false })
-
-      api.get<ContainerStatsInfo[]>(`/api/docker/environments/${envId}/stats`).then((st) => {
-        const map = new SvelteMap<string, ContainerStatsInfo>()
-        for (const s of st ?? []) {
-          map.set(s.container_id, s)
-        }
-        stats = map
-      }).catch(() => {})
+      fetchUpdatesAndStats(envId)
     } catch (err: unknown) {
-      const e = err as { status?: number }
-      if (e?.status === 404) {
-        error = 'not_configured'
-      } else if (e?.status === 502) {
-        error = 'fetch_error'
-      } else {
-        error = 'fetch_error'
-        toasts.error(translate('docker.fetchError'))
-      }
+      handleFetchError(err)
     } finally {
       loading = false
     }

@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 
@@ -17,8 +18,8 @@ type AdGuardHandler struct {
 	Cache *cache.Cache
 }
 
-func (h *AdGuardHandler) getAdGuardClient() (*adguard.Client, error) {
-	svc, err := h.DB.GetServiceByType("adguard")
+func (h *AdGuardHandler) getAdGuardClient(ctx context.Context) (*adguard.Client, error) {
+	svc, err := h.DB.GetServiceByType(ctx, "adguard")
 	if err != nil {
 		return nil, err
 	}
@@ -29,7 +30,7 @@ func (h *AdGuardHandler) getAdGuardClient() (*adguard.Client, error) {
 	client := adguard.NewClient(svc.URL, nil)
 
 	if svc.Credentials != "" {
-		encKey, err := h.DB.GetSystemSetting("encryption_key")
+		encKey, err := h.DB.GetSystemSetting(ctx, "encryption_key")
 		if err != nil || encKey == "" {
 			return nil, err
 		}
@@ -69,7 +70,7 @@ func (h *AdGuardHandler) GetStats(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	client, err := h.getAdGuardClient()
+	client, err := h.getAdGuardClient(r.Context())
 	if err != nil {
 		writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "failed to connect to AdGuard"})
 		return
@@ -79,13 +80,13 @@ func (h *AdGuardHandler) GetStats(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	stats, err := client.GetStats()
+	stats, err := client.GetStats(r.Context())
 	if err != nil {
 		writeJSON(w, http.StatusBadGateway, models.ErrorResponse{Error: "failed to fetch stats"})
 		return
 	}
 
-	filtering, err := client.GetFilteringStatus()
+	filtering, err := client.GetFilteringStatus(r.Context())
 	if err != nil {
 		writeJSON(w, http.StatusBadGateway, models.ErrorResponse{Error: "failed to fetch filtering status"})
 		return
@@ -139,13 +140,13 @@ func (h *AdGuardHandler) ToggleFiltering(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	client, err := h.getAdGuardClient()
+	client, err := h.getAdGuardClient(r.Context())
 	if err != nil || client == nil {
 		writeJSON(w, http.StatusBadGateway, models.ErrorResponse{Error: "AdGuard not available"})
 		return
 	}
 
-	if err := client.SetFilteringEnabled(body.Enabled); err != nil {
+	if err := client.SetFilteringEnabled(r.Context(), body.Enabled); err != nil {
 		writeJSON(w, http.StatusBadGateway, models.ErrorResponse{Error: "toggle failed: " + err.Error()})
 		return
 	}

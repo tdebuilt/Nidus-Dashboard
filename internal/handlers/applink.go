@@ -99,12 +99,12 @@ var hrefRe = regexp.MustCompile(`(?i)href=["']([^"']+)["']`)
 func (h *AppLinkHandler) Favicon(w http.ResponseWriter, r *http.Request) {
 	rawURL := r.URL.Query().Get("url")
 	if rawURL == "" {
-		http.Error(w, "missing url parameter", http.StatusBadRequest)
+		writeJSON(w, http.StatusBadRequest, models.ErrorResponse{Error: "missing url parameter"})
 		return
 	}
 
 	if err := security.ValidateExternalURL(rawURL); err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		writeJSON(w, http.StatusBadRequest, models.ErrorResponse{Error: err.Error()})
 		return
 	}
 
@@ -120,7 +120,7 @@ func (h *AppLinkHandler) Favicon(w http.ResponseWriter, r *http.Request) {
 	faviconURL, data, contentType := h.fetchFavicon(rawURL)
 	if data == nil {
 		w.Header().Set("Cache-Control", "no-store")
-		http.Error(w, "favicon not found", http.StatusNotFound)
+		writeJSON(w, http.StatusNotFound, models.ErrorResponse{Error: "favicon not found"})
 		return
 	}
 

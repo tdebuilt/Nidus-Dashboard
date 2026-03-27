@@ -23,6 +23,7 @@ func settingsRouter(t *testing.T) *chi.Mux {
 }
 
 func TestSettingsGetDefaults(t *testing.T) {
+	t.Parallel()
 	r := settingsRouter(t)
 
 	req := httptest.NewRequest(http.MethodGet, "/api/settings", nil)
@@ -50,6 +51,7 @@ func TestSettingsGetDefaults(t *testing.T) {
 }
 
 func TestSettingsUpdateTheme(t *testing.T) {
+	t.Parallel()
 	r := settingsRouter(t)
 
 	theme := "light"
@@ -77,6 +79,7 @@ func TestSettingsUpdateTheme(t *testing.T) {
 }
 
 func TestSettingsUpdateLanguage(t *testing.T) {
+	t.Parallel()
 	r := settingsRouter(t)
 
 	lang := "en"
@@ -97,6 +100,7 @@ func TestSettingsUpdateLanguage(t *testing.T) {
 }
 
 func TestSettingsUpdateRefreshInterval(t *testing.T) {
+	t.Parallel()
 	r := settingsRouter(t)
 
 	interval := 60
@@ -117,6 +121,7 @@ func TestSettingsUpdateRefreshInterval(t *testing.T) {
 }
 
 func TestSettingsUpdateMultiple(t *testing.T) {
+	t.Parallel()
 	r := settingsRouter(t)
 
 	theme := "light"
@@ -149,6 +154,7 @@ func TestSettingsUpdateMultiple(t *testing.T) {
 }
 
 func TestSettingsRefreshIntervalTooLow(t *testing.T) {
+	t.Parallel()
 	r := settingsRouter(t)
 
 	interval := 2
@@ -163,6 +169,7 @@ func TestSettingsRefreshIntervalTooLow(t *testing.T) {
 }
 
 func TestSettingsRefreshIntervalTooHigh(t *testing.T) {
+	t.Parallel()
 	r := settingsRouter(t)
 
 	interval := 500
@@ -177,6 +184,7 @@ func TestSettingsRefreshIntervalTooHigh(t *testing.T) {
 }
 
 func TestSettingsInvalidJSON(t *testing.T) {
+	t.Parallel()
 	r := settingsRouter(t)
 
 	req := httptest.NewRequest(http.MethodPut, "/api/settings", bytes.NewReader([]byte("not json")))
@@ -189,6 +197,7 @@ func TestSettingsInvalidJSON(t *testing.T) {
 }
 
 func TestSettingsPersistence(t *testing.T) {
+	t.Parallel()
 	r := settingsRouter(t)
 
 	// Update
@@ -231,6 +240,7 @@ func TestSettingsPersistence(t *testing.T) {
 }
 
 func TestSettingsPartialUpdatePreservesOthers(t *testing.T) {
+	t.Parallel()
 	r := settingsRouter(t)
 
 	// First update all
@@ -271,6 +281,7 @@ func TestSettingsPartialUpdatePreservesOthers(t *testing.T) {
 }
 
 func TestSettingsRefreshIntervalBoundary(t *testing.T) {
+	t.Parallel()
 	r := settingsRouter(t)
 
 	// Min boundary (5) should work

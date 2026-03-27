@@ -1,6 +1,7 @@
 package homeassistant
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -33,36 +34,36 @@ func (c *Client) SetToken(token string) {
 }
 
 // ListStates returns all entity states.
-func (c *Client) ListStates() ([]Entity, error) {
+func (c *Client) ListStates(ctx context.Context) ([]Entity, error) {
 	var entities []Entity
-	if err := c.get("/api/states", &entities); err != nil {
+	if err := c.get(ctx, "/api/states", &entities); err != nil {
 		return nil, fmt.Errorf("listing states: %w", err)
 	}
 	return entities, nil
 }
 
 // GetState returns the state of a single entity.
-func (c *Client) GetState(entityID string) (*Entity, error) {
+func (c *Client) GetState(ctx context.Context, entityID string) (*Entity, error) {
 	var entity Entity
-	if err := c.get("/api/states/"+entityID, &entity); err != nil {
+	if err := c.get(ctx, "/api/states/"+entityID, &entity); err != nil {
 		return nil, fmt.Errorf("getting state: %w", err)
 	}
 	return &entity, nil
 }
 
 // CallService calls a Home Assistant service.
-func (c *Client) CallService(domain, service string, data ServiceCallRequest) (ServiceCallResponse, error) {
+func (c *Client) CallService(ctx context.Context, domain, service string, data ServiceCallRequest) (ServiceCallResponse, error) {
 	var resp ServiceCallResponse
 	path := fmt.Sprintf("/api/services/%s/%s", domain, service)
-	if err := c.post(path, data, &resp); err != nil {
+	if err := c.post(ctx, path, data, &resp); err != nil {
 		return nil, fmt.Errorf("calling service: %w", err)
 	}
 	return resp, nil
 }
 
 // GetCameraSnapshot returns a camera entity snapshot as raw bytes.
-func (c *Client) GetCameraSnapshot(entityID string) ([]byte, string, error) {
-	req, err := http.NewRequest(http.MethodGet, c.baseURL+"/api/camera_proxy/"+entityID, nil)
+func (c *Client) GetCameraSnapshot(ctx context.Context, entityID string) ([]byte, string, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.baseURL+"/api/camera_proxy/"+entityID, nil)
 	if err != nil {
 		return nil, "", fmt.Errorf("creating request: %w", err)
 	}
@@ -126,15 +127,15 @@ func ToEntityInfo(e Entity) EntityInfo {
 	}
 }
 
-func (c *Client) get(path string, result any) error {
-	req, err := http.NewRequest(http.MethodGet, c.baseURL+path, nil)
+func (c *Client) get(ctx context.Context, path string, result any) error {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.baseURL+path, nil)
 	if err != nil {
 		return fmt.Errorf("creating request: %w", err)
 	}
 	return c.doRequest(req, result)
 }
 
-func (c *Client) post(path string, body any, result any) error {
+func (c *Client) post(ctx context.Context, path string, body any, result any) error {
 	var reader io.Reader
 	if body != nil {
 		data, err := json.Marshal(body)
@@ -144,7 +145,7 @@ func (c *Client) post(path string, body any, result any) error {
 		reader = strings.NewReader(string(data))
 	}
 
-	req, err := http.NewRequest(http.MethodPost, c.baseURL+path, reader)
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.baseURL+path, reader)
 	if err != nil {
 		return fmt.Errorf("creating request: %w", err)
 	}

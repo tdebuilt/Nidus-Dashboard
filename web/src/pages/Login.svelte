@@ -12,45 +12,53 @@
   let loading = $state(false)
   let showTotp = $state(false)
 
+  function handleLoginError(err: unknown) {
+    if (err instanceof ApiError) {
+      const msg = err.message.toLowerCase()
+      if (msg.includes('totp') || msg.includes('2fa')) {
+        showTotp = true
+        error = translate('login.totpRequired')
+      } else {
+        error = err.message
+      }
+    } else {
+      error = translate('login.error')
+    }
+  }
+
+  function handleLoginSuccess(result: { user?: { id?: number; username?: string; role?: string; totp_enabled?: boolean } }) {
+    const user = result?.user
+    const userTotpEnabled = user?.totp_enabled ?? false
+    const userRole = (user?.role ?? 'admin') as 'admin' | 'editor' | 'viewer'
+    auth.set({
+      authenticated: true,
+      setupCompleted: true,
+      loading: false,
+      totpEnabled: userTotpEnabled,
+      role: userRole,
+      userId: user?.id,
+      username: user?.username,
+    })
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem('nidus-totp-enabled', String(userTotpEnabled))
+      localStorage.setItem('nidus-role', userRole)
+    }
+    navigate('/')
+  }
+
   async function handleSubmit(e: Event) {
     e.preventDefault()
     error = ''
     loading = true
-
     try {
       const result = await api.post<{ user?: { id?: number; username?: string; role?: string; totp_enabled?: boolean } }>('/api/auth/login', {
         username,
         password,
         totp_code: showTotp ? totpCode : undefined,
       })
-      const user = result?.user
-      const userTotpEnabled = user?.totp_enabled ?? false
-      const userRole = (user?.role ?? 'admin') as 'admin' | 'editor' | 'viewer'
-      auth.set({
-        authenticated: true,
-        setupCompleted: true,
-        loading: false,
-        totpEnabled: userTotpEnabled,
-        role: userRole,
-        userId: user?.id,
-        username: user?.username,
-      })
-      if (typeof localStorage !== 'undefined') {
-        localStorage.setItem('nidus-totp-enabled', String(userTotpEnabled))
-        localStorage.setItem('nidus-role', userRole)
-      }
-      navigate('/')
+      handleLoginSuccess(result)
     } catch (err) {
-      if (err instanceof ApiError) {
-        if (err.message.toLowerCase().includes('totp') || err.message.toLowerCase().includes('2fa')) {
-          showTotp = true
-          error = translate('login.totpRequired')
-        } else {
-          error = err.message
-        }
-      } else {
-        error = translate('login.error')
-      }
+      handleLoginError(err)
     } finally {
       loading = false
     }

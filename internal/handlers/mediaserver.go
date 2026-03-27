@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"strings"
@@ -25,8 +26,8 @@ var validMediaTypes = map[string]bool{
 	"jellyfin": true,
 }
 
-func (h *MediaServerHandler) getMediaClient(serverType string) (mediaserver.Client, error) {
-	svc, err := h.DB.GetServiceByType(serverType)
+func (h *MediaServerHandler) getMediaClient(ctx context.Context, serverType string) (mediaserver.Client, error) {
+	svc, err := h.DB.GetServiceByType(ctx, serverType)
 	if err != nil {
 		return nil, err
 	}
@@ -37,7 +38,7 @@ func (h *MediaServerHandler) getMediaClient(serverType string) (mediaserver.Clie
 	// Decrypt credentials to get the token/API key
 	token := ""
 	if svc.Credentials != "" {
-		encKey, err := h.DB.GetSystemSetting("encryption_key")
+		encKey, err := h.DB.GetSystemSetting(ctx, "encryption_key")
 		if err == nil && encKey != "" {
 			decrypted, err := crypto.Decrypt(svc.Credentials, encKey)
 			if err == nil {
@@ -91,7 +92,7 @@ func (h *MediaServerHandler) GetSessions(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	client, err := h.getMediaClient(serverType)
+	client, err := h.getMediaClient(r.Context(), serverType)
 	if err != nil {
 		writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "failed to connect to media server"})
 		return
@@ -101,13 +102,13 @@ func (h *MediaServerHandler) GetSessions(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	sessions, err := client.GetSessions()
+	sessions, err := client.GetSessions(r.Context())
 	if err != nil {
 		writeJSON(w, http.StatusBadGateway, models.ErrorResponse{Error: "failed to fetch sessions"})
 		return
 	}
 
-	serverName, _ := client.GetServerName()
+	serverName, _ := client.GetServerName(r.Context())
 
 	overview := mediaserver.MediaOverview{
 		Sessions:     sessions,
@@ -145,7 +146,7 @@ func (h *MediaServerHandler) GetLibraries(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	client, err := h.getMediaClient(serverType)
+	client, err := h.getMediaClient(r.Context(), serverType)
 	if err != nil {
 		writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "failed to connect to media server"})
 		return
@@ -155,7 +156,7 @@ func (h *MediaServerHandler) GetLibraries(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	libraries, err := client.GetLibraries()
+	libraries, err := client.GetLibraries(r.Context())
 	if err != nil {
 		writeJSON(w, http.StatusBadGateway, models.ErrorResponse{Error: "failed to fetch libraries"})
 		return
@@ -180,29 +181,29 @@ func (h *MediaServerHandler) GetLibraries(w http.ResponseWriter, r *http.Request
 func (h *MediaServerHandler) ProxyImage(w http.ResponseWriter, r *http.Request) {
 	serverType := chi.URLParam(r, "type")
 	if !validMediaTypes[serverType] {
-		http.Error(w, "invalid media server type", http.StatusBadRequest)
+		writeJSON(w, http.StatusBadRequest, models.ErrorResponse{Error: "invalid media server type"})
 		return
 	}
 
 	path := r.URL.Query().Get("path")
 	if path == "" {
-		http.Error(w, "path parameter required", http.StatusBadRequest)
+		writeJSON(w, http.StatusBadRequest, models.ErrorResponse{Error: "path parameter required"})
 		return
 	}
 	if !strings.HasPrefix(path, "/") || strings.Contains(path, "..") || strings.Contains(path, "@") {
-		http.Error(w, "invalid path", http.StatusBadRequest)
+		writeJSON(w, http.StatusBadRequest, models.ErrorResponse{Error: "invalid path"})
 		return
 	}
 
-	client, err := h.getMediaClient(serverType)
+	client, err := h.getMediaClient(r.Context(), serverType)
 	if err != nil || client == nil {
-		http.Error(w, "media server not available", http.StatusNotFound)
+		writeJSON(w, http.StatusNotFound, models.ErrorResponse{Error: "media server not available"})
 		return
 	}
 
-	body, contentType, err := client.ProxyImage(path)
+	body, contentType, err := client.ProxyImage(r.Context(), path)
 	if err != nil {
-		http.Error(w, "failed to fetch image", http.StatusBadGateway)
+		writeJSON(w, http.StatusBadGateway, models.ErrorResponse{Error: "failed to fetch image"})
 		return
 	}
 

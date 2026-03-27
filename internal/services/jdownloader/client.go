@@ -1,6 +1,7 @@
 package jdownloader
 
 import (
+	"context"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
@@ -50,7 +51,7 @@ func (c *Client) nextRid() int64 {
 }
 
 // Connect authenticates with the MyJDownloader API.
-func (c *Client) Connect() error {
+func (c *Client) Connect(ctx context.Context) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
@@ -58,7 +59,7 @@ func (c *Client) Connect() error {
 		url.QueryEscape(c.email), url.QueryEscape(appKey))
 
 	var resp connectResponse
-	if err := c.callServer(query, c.loginSecret, &resp); err != nil {
+	if err := c.callServer(ctx, query, c.loginSecret, &resp); err != nil {
 		return fmt.Errorf("connect: %w", err)
 	}
 
@@ -79,7 +80,7 @@ func (c *Client) Connect() error {
 }
 
 // Disconnect invalidates the current session.
-func (c *Client) Disconnect() error {
+func (c *Client) Disconnect(ctx context.Context) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
@@ -89,7 +90,7 @@ func (c *Client) Disconnect() error {
 
 	query := fmt.Sprintf("/my/disconnect?sessiontoken=%s",
 		url.QueryEscape(c.sessionToken))
-	_ = c.callServer(query, c.serverEncryptionToken, nil)
+	_ = c.callServer(ctx, query, c.serverEncryptionToken, nil)
 
 	c.sessionToken = ""
 	c.regainToken = ""
@@ -100,7 +101,7 @@ func (c *Client) Disconnect() error {
 }
 
 // ListDevices returns all connected JDownloader devices.
-func (c *Client) ListDevices() ([]Device, error) {
+func (c *Client) ListDevices(ctx context.Context) ([]Device, error) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
@@ -112,14 +113,14 @@ func (c *Client) ListDevices() ([]Device, error) {
 		url.QueryEscape(c.sessionToken))
 
 	var resp listDevicesResponse
-	if err := c.callServer(query, c.serverEncryptionToken, &resp); err != nil {
+	if err := c.callServer(ctx, query, c.serverEncryptionToken, &resp); err != nil {
 		return nil, fmt.Errorf("listing devices: %w", err)
 	}
 	return resp.List, nil
 }
 
 // ensureConnected connects and selects the first available device.
-func (c *Client) ensureConnected() error {
+func (c *Client) ensureConnected(ctx context.Context) error {
 	c.mu.Lock()
 	hasSession := c.sessionToken != "" && c.deviceID != ""
 	c.mu.Unlock()
@@ -128,11 +129,11 @@ func (c *Client) ensureConnected() error {
 		return nil
 	}
 
-	if err := c.Connect(); err != nil {
+	if err := c.Connect(ctx); err != nil {
 		return err
 	}
 
-	devices, err := c.ListDevices()
+	devices, err := c.ListDevices(ctx)
 	if err != nil {
 		return fmt.Errorf("listing devices after connect: %w", err)
 	}
@@ -147,7 +148,7 @@ func (c *Client) ensureConnected() error {
 }
 
 // ListPackages returns all download packages in the queue.
-func (c *Client) ListPackages() ([]DownloadPackage, error) {
+func (c *Client) ListPackages(ctx context.Context) ([]DownloadPackage, error) {
 	queryParams := map[string]any{
 		"bytesTotal":  true,
 		"bytesLoaded": true,
@@ -157,49 +158,47 @@ func (c *Client) ListPackages() ([]DownloadPackage, error) {
 		"enabled":     true,
 		"status":      true,
 		"childCount":  true,
-		"saveTo":      true,
-		"comment":     true,
 	}
 	params := serializeParams(queryParams)
 
 	var packages []DownloadPackage
-	if err := c.callAction("downloadsV2/queryPackages", params, &packages); err != nil {
+	if err := c.callAction(ctx, "downloadsV2/queryPackages", params, &packages); err != nil {
 		return nil, fmt.Errorf("listing packages: %w", err)
 	}
 	return packages, nil
 }
 
 // AddLinks adds download links to the queue.
-func (c *Client) AddLinks(urls []string) error {
+func (c *Client) AddLinks(ctx context.Context, urls []string) error {
 	params := serializeParams(map[string]any{
 		"links": strings.Join(urls, "\n"),
 	})
-	if err := c.callAction("linkgrabberv2/addLinks", params, nil); err != nil {
+	if err := c.callAction(ctx, "linkgrabberv2/addLinks", params, nil); err != nil {
 		return fmt.Errorf("adding links: %w", err)
 	}
 	return nil
 }
 
 // StartQueue starts all downloads.
-func (c *Client) StartQueue() error {
-	if err := c.callAction("downloadcontroller/start", nil, nil); err != nil {
+func (c *Client) StartQueue(ctx context.Context) error {
+	if err := c.callAction(ctx, "downloadcontroller/start", nil, nil); err != nil {
 		return fmt.Errorf("starting queue: %w", err)
 	}
 	return nil
 }
 
 // PauseQueue pauses all downloads.
-func (c *Client) PauseQueue() error {
-	if err := c.callAction("downloadcontroller/pause", serializeParams(true), nil); err != nil {
+func (c *Client) PauseQueue(ctx context.Context) error {
+	if err := c.callAction(ctx, "downloadcontroller/pause", serializeParams(true), nil); err != nil {
 		return fmt.Errorf("pausing queue: %w", err)
 	}
 	return nil
 }
 
 // CleanupFinished removes all finished packages from the download list (keeps files on disk).
-func (c *Client) CleanupFinished() (int, error) {
+func (c *Client) CleanupFinished(ctx context.Context) (int, error) {
 	// First get all packages to find finished ones
-	packages, err := c.ListPackages()
+	packages, err := c.ListPackages(ctx)
 	if err != nil {
 		return 0, fmt.Errorf("listing packages: %w", err)
 	}
@@ -217,25 +216,25 @@ func (c *Client) CleanupFinished() (int, error) {
 
 	linkIDs := make([]int64, 0)
 	params := serializeParams(linkIDs, finishedIDs)
-	if err := c.callAction("downloadsV2/removeLinks", params, nil); err != nil {
+	if err := c.callAction(ctx, "downloadsV2/removeLinks", params, nil); err != nil {
 		return 0, fmt.Errorf("removing finished packages: %w", err)
 	}
 	return len(finishedIDs), nil
 }
 
 // GetSpeed returns the current download speed.
-func (c *Client) GetSpeed() (int64, error) {
+func (c *Client) GetSpeed(ctx context.Context) (int64, error) {
 	var speed int64
-	if err := c.callAction("downloadcontroller/getSpeedInBps", nil, &speed); err != nil {
+	if err := c.callAction(ctx, "downloadcontroller/getSpeedInBps", nil, &speed); err != nil {
 		return 0, fmt.Errorf("getting speed: %w", err)
 	}
 	return speed, nil
 }
 
 // IsRunning checks if the download queue is running.
-func (c *Client) IsRunning() (bool, error) {
+func (c *Client) IsRunning(ctx context.Context) (bool, error) {
 	var state string
-	if err := c.callAction("downloadcontroller/getCurrentState", nil, &state); err != nil {
+	if err := c.callAction(ctx, "downloadcontroller/getCurrentState", nil, &state); err != nil {
 		return false, fmt.Errorf("getting state: %w", err)
 	}
 	return state == "RUNNING", nil
@@ -284,12 +283,12 @@ func ToPackageInfo(p DownloadPackage) PackageInfo {
 
 // callAction calls a device action through the MyJDownloader cloud relay.
 // It auto-connects if no session exists and retries once on auth failure.
-func (c *Client) callAction(action string, params []any, result any) error {
-	if err := c.ensureConnected(); err != nil {
+func (c *Client) callAction(ctx context.Context, action string, params []any, result any) error {
+	if err := c.ensureConnected(ctx); err != nil {
 		return err
 	}
 
-	err := c.doDeviceCall(action, params, result)
+	err := c.doDeviceCall(ctx, action, params, result)
 	if err == nil {
 		return nil
 	}
@@ -300,13 +299,13 @@ func (c *Client) callAction(action string, params []any, result any) error {
 	c.deviceID = ""
 	c.mu.Unlock()
 
-	if err := c.ensureConnected(); err != nil {
+	if err := c.ensureConnected(ctx); err != nil {
 		return fmt.Errorf("reconnect failed: %w", err)
 	}
-	return c.doDeviceCall(action, params, result)
+	return c.doDeviceCall(ctx, action, params, result)
 }
 
-func (c *Client) doDeviceCall(action string, params []any, result any) error {
+func (c *Client) doDeviceCall(ctx context.Context, action string, params []any, result any) error {
 	c.mu.Lock()
 	session := c.sessionToken
 	device := c.deviceID
@@ -340,7 +339,7 @@ func (c *Client) doDeviceCall(action string, params []any, result any) error {
 	b64Body := base64.StdEncoding.EncodeToString(encBody)
 
 	reqURL := apiURL + httpPath
-	req, err := http.NewRequest(http.MethodPost, reqURL, strings.NewReader(b64Body))
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, reqURL, strings.NewReader(b64Body))
 	if err != nil {
 		return fmt.Errorf("creating request: %w", err)
 	}
@@ -402,13 +401,13 @@ func (c *Client) decryptDeviceResponse(respBytes, token []byte, result any) erro
 }
 
 // callServer makes a signed server call (connect, listdevices, disconnect).
-func (c *Client) callServer(query string, secret []byte, result any) error {
+func (c *Client) callServer(ctx context.Context, query string, secret []byte, result any) error {
 	rid := c.nextRid()
 	query += fmt.Sprintf("&rid=%d", rid)
 	signature := sign(secret, query)
 	query += "&signature=" + signature
 
-	req, err := http.NewRequest(http.MethodPost, apiURL+query, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, apiURL+query, nil)
 	if err != nil {
 		return fmt.Errorf("creating request: %w", err)
 	}

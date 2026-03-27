@@ -1,6 +1,7 @@
 package transmission
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -116,6 +117,7 @@ func mockTransmissionServer(t *testing.T) (*httptest.Server, *atomic.Int32) {
 }
 
 func TestSessionIDRetry(t *testing.T) {
+	t.Parallel()
 	srv, requestCount := mockTransmissionServer(t)
 	defer srv.Close()
 
@@ -123,7 +125,7 @@ func TestSessionIDRetry(t *testing.T) {
 	client.SetCredentials("admin", "secret")
 
 	// First call should trigger 409 then retry
-	torrents, err := client.ListTorrents()
+	torrents, err := client.ListTorrents(context.Background())
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -137,6 +139,7 @@ func TestSessionIDRetry(t *testing.T) {
 }
 
 func TestSessionIDReuse(t *testing.T) {
+	t.Parallel()
 	srv, requestCount := mockTransmissionServer(t)
 	defer srv.Close()
 
@@ -144,13 +147,13 @@ func TestSessionIDReuse(t *testing.T) {
 	client.SetCredentials("admin", "secret")
 
 	// First call: 409 + retry = 2 requests
-	_, err := client.ListTorrents()
+	_, err := client.ListTorrents(context.Background())
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
 	// Second call should reuse session ID: only 1 request
-	_, err = client.ListTorrents()
+	_, err = client.ListTorrents(context.Background())
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -160,13 +163,14 @@ func TestSessionIDReuse(t *testing.T) {
 }
 
 func TestListTorrents(t *testing.T) {
+	t.Parallel()
 	srv, _ := mockTransmissionServer(t)
 	defer srv.Close()
 
 	client := NewClient(srv.URL, srv.Client())
 	client.SetCredentials("admin", "secret")
 
-	torrents, err := client.ListTorrents()
+	torrents, err := client.ListTorrents(context.Background())
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -185,74 +189,80 @@ func TestListTorrents(t *testing.T) {
 }
 
 func TestAddTorrent(t *testing.T) {
+	t.Parallel()
 	srv, _ := mockTransmissionServer(t)
 	defer srv.Close()
 
 	client := NewClient(srv.URL, srv.Client())
 	client.SetCredentials("admin", "secret")
 
-	err := client.AddTorrent("magnet:?xt=urn:btih:test")
+	err := client.AddTorrent(context.Background(), "magnet:?xt=urn:btih:test")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 }
 
 func TestStartTorrent(t *testing.T) {
+	t.Parallel()
 	srv, _ := mockTransmissionServer(t)
 	defer srv.Close()
 
 	client := NewClient(srv.URL, srv.Client())
 	client.SetCredentials("admin", "secret")
 
-	if err := client.StartTorrent([]int{1, 2}); err != nil {
+	if err := client.StartTorrent(context.Background(), []int{1, 2}); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 }
 
 func TestStopTorrent(t *testing.T) {
+	t.Parallel()
 	srv, _ := mockTransmissionServer(t)
 	defer srv.Close()
 
 	client := NewClient(srv.URL, srv.Client())
 	client.SetCredentials("admin", "secret")
 
-	if err := client.StopTorrent([]int{1}); err != nil {
+	if err := client.StopTorrent(context.Background(), []int{1}); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 }
 
 func TestStartAll(t *testing.T) {
+	t.Parallel()
 	srv, _ := mockTransmissionServer(t)
 	defer srv.Close()
 
 	client := NewClient(srv.URL, srv.Client())
 	client.SetCredentials("admin", "secret")
 
-	if err := client.StartAll(); err != nil {
+	if err := client.StartAll(context.Background()); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 }
 
 func TestStopAll(t *testing.T) {
+	t.Parallel()
 	srv, _ := mockTransmissionServer(t)
 	defer srv.Close()
 
 	client := NewClient(srv.URL, srv.Client())
 	client.SetCredentials("admin", "secret")
 
-	if err := client.StopAll(); err != nil {
+	if err := client.StopAll(context.Background()); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 }
 
 func TestGetSessionStats(t *testing.T) {
+	t.Parallel()
 	srv, _ := mockTransmissionServer(t)
 	defer srv.Close()
 
 	client := NewClient(srv.URL, srv.Client())
 	client.SetCredentials("admin", "secret")
 
-	stats, err := client.GetSessionStats()
+	stats, err := client.GetSessionStats(context.Background())
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -268,13 +278,14 @@ func TestGetSessionStats(t *testing.T) {
 }
 
 func TestUnauthorized(t *testing.T) {
+	t.Parallel()
 	srv, _ := mockTransmissionServer(t)
 	defer srv.Close()
 
 	client := NewClient(srv.URL, srv.Client())
 	// No credentials
 
-	_, err := client.ListTorrents()
+	_, err := client.ListTorrents(context.Background())
 	if err == nil {
 		t.Fatal("expected unauthorized error")
 	}
@@ -284,6 +295,7 @@ func TestUnauthorized(t *testing.T) {
 }
 
 func TestToTorrentInfo(t *testing.T) {
+	t.Parallel()
 	torrent := Torrent{
 		ID:            1,
 		Name:          "Test Torrent",
@@ -312,6 +324,7 @@ func TestToTorrentInfo(t *testing.T) {
 }
 
 func TestToTorrentInfoStopped(t *testing.T) {
+	t.Parallel()
 	torrent := Torrent{
 		ID:     2,
 		Name:   "Stopped",
@@ -324,6 +337,7 @@ func TestToTorrentInfoStopped(t *testing.T) {
 }
 
 func TestToTorrentInfoSeeding(t *testing.T) {
+	t.Parallel()
 	torrent := Torrent{
 		ID:     3,
 		Name:   "Seeding",
@@ -336,23 +350,25 @@ func TestToTorrentInfoSeeding(t *testing.T) {
 }
 
 func TestNetworkError(t *testing.T) {
+	t.Parallel()
 	client := NewClient("http://localhost:1", nil)
 	client.SetCredentials("admin", "secret")
 
-	_, err := client.ListTorrents()
+	_, err := client.ListTorrents(context.Background())
 	if err == nil {
 		t.Fatal("expected network error")
 	}
 }
 
 func TestTrailingSlash(t *testing.T) {
+	t.Parallel()
 	srv, _ := mockTransmissionServer(t)
 	defer srv.Close()
 
 	client := NewClient(srv.URL+"/", srv.Client())
 	client.SetCredentials("admin", "secret")
 
-	torrents, err := client.ListTorrents()
+	torrents, err := client.ListTorrents(context.Background())
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}

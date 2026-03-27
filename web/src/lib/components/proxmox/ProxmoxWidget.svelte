@@ -30,7 +30,7 @@
   let loading = $state(true)
   let refreshing = $state(false)
   let error = $state<string | null>(null)
-  let vms = $state<VMInfo[]>([])
+  let vms = $state.raw<VMInfo[]>([])
 
   const parsedConfig = $derived((() => {
     try { return JSON.parse(config) } catch { return {} }

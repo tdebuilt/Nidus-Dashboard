@@ -1,6 +1,7 @@
 package arr
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -106,12 +107,13 @@ func checkAPIKey(w http.ResponseWriter, r *http.Request) bool {
 }
 
 func TestGetSystemStatus(t *testing.T) {
+	t.Parallel()
 	srv := mockArrServer(t)
 	defer srv.Close()
 
 	client := NewClient(srv.URL, "test-api-key-123", "v3", srv.Client())
 
-	status, err := client.GetSystemStatus()
+	status, err := client.GetSystemStatus(context.Background())
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -127,12 +129,13 @@ func TestGetSystemStatus(t *testing.T) {
 }
 
 func TestGetQueue(t *testing.T) {
+	t.Parallel()
 	srv := mockArrServer(t)
 	defer srv.Close()
 
 	client := NewClient(srv.URL, "test-api-key-123", "v3", srv.Client())
 
-	queue, err := client.GetQueue(20)
+	queue, err := client.GetQueue(context.Background(), 20)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -154,6 +157,7 @@ func TestGetQueue(t *testing.T) {
 }
 
 func TestGetCalendar(t *testing.T) {
+	t.Parallel()
 	srv := mockArrServer(t)
 	defer srv.Close()
 
@@ -162,7 +166,7 @@ func TestGetCalendar(t *testing.T) {
 	start := time.Date(2026, 3, 23, 0, 0, 0, 0, time.UTC)
 	end := time.Date(2026, 3, 30, 0, 0, 0, 0, time.UTC)
 
-	items, err := client.GetCalendar(start, end)
+	items, err := client.GetCalendar(context.Background(), start, end)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -181,12 +185,13 @@ func TestGetCalendar(t *testing.T) {
 }
 
 func TestGetLibraryCount(t *testing.T) {
+	t.Parallel()
 	srv := mockArrServer(t)
 	defer srv.Close()
 
 	client := NewClient(srv.URL, "test-api-key-123", "v3", srv.Client())
 
-	count, err := client.GetLibraryCount("/series")
+	count, err := client.GetLibraryCount(context.Background(), "/series")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -196,6 +201,7 @@ func TestGetLibraryCount(t *testing.T) {
 }
 
 func TestApiKeyHeader(t *testing.T) {
+	t.Parallel()
 	var receivedKey string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		receivedKey = r.Header.Get("X-Api-Key")
@@ -205,7 +211,7 @@ func TestApiKeyHeader(t *testing.T) {
 
 	client := NewClient(srv.URL, "my-secret-key", "v3", srv.Client())
 
-	_, err := client.GetSystemStatus()
+	_, err := client.GetSystemStatus(context.Background())
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -215,12 +221,13 @@ func TestApiKeyHeader(t *testing.T) {
 }
 
 func TestUnauthorized(t *testing.T) {
+	t.Parallel()
 	srv := mockArrServer(t)
 	defer srv.Close()
 
 	client := NewClient(srv.URL, "wrong-key", "v3", srv.Client())
 
-	_, err := client.GetSystemStatus()
+	_, err := client.GetSystemStatus(context.Background())
 	if err == nil {
 		t.Fatal("expected unauthorized error")
 	}

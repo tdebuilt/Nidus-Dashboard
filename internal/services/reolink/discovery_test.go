@@ -5,6 +5,7 @@ import (
 )
 
 func TestExtractIP(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name   string
 		xaddrs string
@@ -39,6 +40,7 @@ func TestExtractIP(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			got := extractIP(tt.xaddrs)
 			if got != tt.want {
 				t.Errorf("extractIP(%q) = %q, want %q", tt.xaddrs, got, tt.want)
@@ -48,6 +50,7 @@ func TestExtractIP(t *testing.T) {
 }
 
 func TestParseScopes(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name      string
 		scopes    string
@@ -94,6 +97,7 @@ func TestParseScopes(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			gotName, gotModel := parseScopes(tt.scopes)
 			if gotName != tt.wantName {
 				t.Errorf("parseScopes(%q) name = %q, want %q", tt.scopes, gotName, tt.wantName)

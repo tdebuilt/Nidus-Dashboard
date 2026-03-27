@@ -37,7 +37,7 @@ func (h *WidgetsHandler) ListByCategory(w http.ResponseWriter, r *http.Request) 
 	}
 
 	// Check category exists
-	cat, err := h.DB.GetCategory(categoryID)
+	cat, err := h.DB.GetCategory(r.Context(), categoryID)
 	if err != nil {
 		writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "database error"})
 		return
@@ -47,7 +47,7 @@ func (h *WidgetsHandler) ListByCategory(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	widgets, err := h.DB.GetWidgetsByCategory(categoryID)
+	widgets, err := h.DB.GetWidgetsByCategory(r.Context(), categoryID)
 	if err != nil {
 		writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "failed to list widgets"})
 		return
@@ -80,7 +80,7 @@ func (h *WidgetsHandler) Create(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Check category exists
-	cat, err := h.DB.GetCategory(categoryID)
+	cat, err := h.DB.GetCategory(r.Context(), categoryID)
 	if err != nil {
 		writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "database error"})
 		return
@@ -105,7 +105,7 @@ func (h *WidgetsHandler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	widget, err := h.DB.CreateWidget(categoryID, req.Type, req.Title, req.Config, req.PosX, req.PosY, req.Width, req.Height)
+	widget, err := h.DB.CreateWidget(r.Context(), categoryID, req.Type, req.Title, req.Config, req.PosX, req.PosY, req.Width, req.Height)
 	if err != nil {
 		writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "failed to create widget"})
 		return
@@ -157,7 +157,7 @@ func (h *WidgetsHandler) Update(w http.ResponseWriter, r *http.Request) {
 		req.Config = "{}"
 	}
 
-	widget, err := h.DB.UpdateWidget(id, req.Type, req.Title, req.Config)
+	widget, err := h.DB.UpdateWidget(r.Context(), id, req.Type, req.Title, req.Config)
 	if err != nil {
 		writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "failed to update widget"})
 		return
@@ -193,7 +193,7 @@ func (h *WidgetsHandler) Delete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	deleted, err := h.DB.DeleteWidget(id)
+	deleted, err := h.DB.DeleteWidget(r.Context(), id)
 	if err != nil {
 		writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "failed to delete widget"})
 		return
@@ -237,7 +237,7 @@ func (h *WidgetsHandler) ToggleCollapse(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	widget, err := h.DB.SetWidgetCollapsed(id, req.Collapsed)
+	widget, err := h.DB.SetWidgetCollapsed(r.Context(), id, req.Collapsed)
 	if err != nil {
 		writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "failed to update widget"})
 		return
@@ -274,7 +274,7 @@ func (h *WidgetsHandler) SaveLayout(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := h.DB.SaveWidgetLayout(req.Widgets); err != nil {
+	if err := h.DB.SaveWidgetLayout(r.Context(), req.Widgets); err != nil {
 		writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "failed to save layout"})
 		return
 	}
