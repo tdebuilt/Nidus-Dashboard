@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -16,6 +17,7 @@ import (
 
 func configRouter(t *testing.T) (*chi.Mux, *ConfigHandler) {
 	t.Helper()
+	ctx := context.Background()
 	db := setupTestDB(t)
 
 	// Set up encryption key (required for export/import)
@@ -23,7 +25,7 @@ func configRouter(t *testing.T) (*chi.Mux, *ConfigHandler) {
 	if err != nil {
 		t.Fatalf("failed to generate encryption key: %v", err)
 	}
-	if err := db.SetSystemSetting("encryption_key", encKey); err != nil {
+	if err := db.SetSystemSetting(ctx, "encryption_key", encKey); err != nil {
 		t.Fatalf("failed to set encryption key: %v", err)
 	}
 
@@ -81,6 +83,7 @@ func importEncrypted(t *testing.T, r *chi.Mux, password, data string) int {
 }
 
 func TestConfigExportRequiresPassword(t *testing.T) {
+	t.Parallel()
 	r, _ := configRouter(t)
 
 	body, _ := json.Marshal(models.ExportRequest{Password: ""})
@@ -94,6 +97,7 @@ func TestConfigExportRequiresPassword(t *testing.T) {
 }
 
 func TestConfigExportProducesEncryptedData(t *testing.T) {
+	t.Parallel()
 	r, _ := configRouter(t)
 
 	data := exportEncrypted(t, r, "testpass")
@@ -106,6 +110,7 @@ func TestConfigExportProducesEncryptedData(t *testing.T) {
 }
 
 func TestConfigEncryptedRoundTrip(t *testing.T) {
+	t.Parallel()
 	r, h := configRouter(t)
 
 	// Create data: category + widget + settings
@@ -148,23 +153,25 @@ func TestConfigEncryptedRoundTrip(t *testing.T) {
 	}
 
 	// Verify data after round-trip
-	cats, _ := h.DB.GetCategories()
+	ctx := context.Background()
+	cats, _ := h.DB.GetCategories(ctx)
 	if len(cats) != 1 || cats[0].Name != "Infra" {
 		t.Errorf("expected category 'Infra', got %v", cats)
 	}
 
-	widgets, _ := h.DB.GetAllWidgets()
+	widgets, _ := h.DB.GetAllWidgets(ctx)
 	if len(widgets) != 1 || widgets[0].Title != "Containers" {
 		t.Errorf("expected widget 'Containers', got %v", widgets)
 	}
 
-	settings, _ := h.DB.GetSettings()
+	settings, _ := h.DB.GetSettings(ctx)
 	if settings.Theme != "light" || settings.Language != "en" || settings.RefreshInterval != 60 {
 		t.Errorf("settings mismatch: %+v", settings)
 	}
 }
 
 func TestConfigImportWrongPassword(t *testing.T) {
+	t.Parallel()
 	r, _ := configRouter(t)
 
 	data := exportEncrypted(t, r, "correct-password")
@@ -176,6 +183,7 @@ func TestConfigImportWrongPassword(t *testing.T) {
 }
 
 func TestConfigImportWithCredentials(t *testing.T) {
+	t.Parallel()
 	r, h := configRouter(t)
 
 	// Create a service with credentials
@@ -212,7 +220,8 @@ func TestConfigImportWithCredentials(t *testing.T) {
 	}
 
 	// Verify credentials were re-encrypted in DB
-	svc, _ := h.DB.GetServiceByType("portainer")
+	ctx := context.Background()
+	svc, _ := h.DB.GetServiceByType(ctx, "portainer")
 	if svc == nil {
 		t.Fatal("expected portainer service after import")
 	}
@@ -221,7 +230,7 @@ func TestConfigImportWithCredentials(t *testing.T) {
 	}
 
 	// Decrypt and verify
-	encKey, _ := h.DB.GetSystemSetting("encryption_key")
+	encKey, _ := h.DB.GetSystemSetting(ctx, "encryption_key")
 	plainCreds, err := crypto.Decrypt(svc.Credentials, encKey)
 	if err != nil {
 		t.Fatalf("failed to decrypt restored credentials: %v", err)
@@ -232,6 +241,7 @@ func TestConfigImportWithCredentials(t *testing.T) {
 }
 
 func TestConfigImportMissingData(t *testing.T) {
+	t.Parallel()
 	r, _ := configRouter(t)
 
 	body, _ := json.Marshal(models.ImportRequest{Password: "test", Data: ""})
@@ -245,6 +255,7 @@ func TestConfigImportMissingData(t *testing.T) {
 }
 
 func TestConfigImportMissingPassword(t *testing.T) {
+	t.Parallel()
 	r, _ := configRouter(t)
 
 	body, _ := json.Marshal(models.ImportRequest{Password: "", Data: "deadbeef"})
@@ -258,6 +269,7 @@ func TestConfigImportMissingPassword(t *testing.T) {
 }
 
 func TestConfigImportInvalidJSON(t *testing.T) {
+	t.Parallel()
 	r, _ := configRouter(t)
 
 	req := httptest.NewRequest(http.MethodPost, "/api/config/import", bytes.NewReader([]byte("not json")))
@@ -270,6 +282,7 @@ func TestConfigImportInvalidJSON(t *testing.T) {
 }
 
 func TestConfigImportPreservesExistingOnFailure(t *testing.T) {
+	t.Parallel()
 	r, h := configRouter(t)
 
 	// Create a category
@@ -285,13 +298,14 @@ func TestConfigImportPreservesExistingOnFailure(t *testing.T) {
 	}
 
 	// Original data should still be there
-	cats, _ := h.DB.GetCategories()
+	cats, _ := h.DB.GetCategories(context.Background())
 	if len(cats) != 1 || cats[0].Name != "Original" {
 		t.Errorf("existing data should be preserved after failed import, got %d categories", len(cats))
 	}
 }
 
 func TestConfigValidationCategoryEmptyName(t *testing.T) {
+	t.Parallel()
 	r, _ := configRouter(t)
 
 	// Create valid encrypted data with empty category name
@@ -313,6 +327,7 @@ func TestConfigValidationCategoryEmptyName(t *testing.T) {
 }
 
 func TestImportWidgetAnyTypeAccepted(t *testing.T) {
+	t.Parallel()
 	r, _ := configRouter(t)
 
 	// Widget types are not validated server-side (dynamic registry on frontend)
@@ -341,6 +356,7 @@ func TestImportWidgetAnyTypeAccepted(t *testing.T) {
 }
 
 func TestImportWidgetLargeWidth(t *testing.T) {
+	t.Parallel()
 	r, _ := configRouter(t)
 
 	cfg := models.EncryptedExport{
@@ -365,6 +381,7 @@ func TestImportWidgetLargeWidth(t *testing.T) {
 }
 
 func TestImportWidgetZeroHeight(t *testing.T) {
+	t.Parallel()
 	r, _ := configRouter(t)
 
 	cfg := models.EncryptedExport{
@@ -388,6 +405,7 @@ func TestImportWidgetZeroHeight(t *testing.T) {
 }
 
 func TestImportServiceWithoutURL(t *testing.T) {
+	t.Parallel()
 	r, _ := configRouter(t)
 
 	cfg := models.EncryptedExport{
@@ -408,6 +426,7 @@ func TestImportServiceWithoutURL(t *testing.T) {
 }
 
 func TestConfigValidationServiceInvalidType(t *testing.T) {
+	t.Parallel()
 	r, _ := configRouter(t)
 
 	cfg := models.EncryptedExport{
@@ -428,6 +447,7 @@ func TestConfigValidationServiceInvalidType(t *testing.T) {
 }
 
 func TestConfigValidationServiceMissingURL(t *testing.T) {
+	t.Parallel()
 	r, _ := configRouter(t)
 
 	cfg := models.EncryptedExport{
@@ -444,6 +464,186 @@ func TestConfigValidationServiceMissingURL(t *testing.T) {
 	code := importEncrypted(t, r, password, encrypted)
 	if code != http.StatusBadRequest {
 		t.Errorf("expected 400 for missing service URL, got %d", code)
+	}
+}
+
+func TestImportTooManyCategories(t *testing.T) {
+	t.Parallel()
+	r, _ := configRouter(t)
+
+	categories := make([]models.Category, MaxCategories+1)
+	for i := range categories {
+		categories[i] = models.Category{ID: int64(i + 1), Name: "Cat" + strconv.Itoa(i), Icon: "star"}
+	}
+	cfg := models.EncryptedExport{
+		Version:    2,
+		Settings:   models.Settings{Theme: "dark", Language: "fr", RefreshInterval: 30},
+		Categories: categories,
+	}
+	jsonData, _ := json.Marshal(cfg)
+	password := "test"
+	encrypted, _ := crypto.Encrypt(string(jsonData), crypto.DeriveKey(password))
+
+	code := importEncrypted(t, r, password, encrypted)
+	if code != http.StatusBadRequest {
+		t.Errorf("expected 400 for too many categories, got %d", code)
+	}
+}
+
+func TestImportTooManyWidgets(t *testing.T) {
+	t.Parallel()
+	r, _ := configRouter(t)
+
+	widgets := make([]models.Widget, MaxWidgets+1)
+	for i := range widgets {
+		widgets[i] = models.Widget{CategoryID: 1, Type: "applink", Title: "W" + strconv.Itoa(i), Config: "{}", Width: 6, Height: 0}
+	}
+	cfg := models.EncryptedExport{
+		Version:    2,
+		Settings:   models.Settings{Theme: "dark", Language: "fr", RefreshInterval: 30},
+		Categories: []models.Category{{ID: 1, Name: "Cat1", Icon: "star"}},
+		Widgets:    widgets,
+	}
+	jsonData, _ := json.Marshal(cfg)
+	password := "test"
+	encrypted, _ := crypto.Encrypt(string(jsonData), crypto.DeriveKey(password))
+
+	code := importEncrypted(t, r, password, encrypted)
+	if code != http.StatusBadRequest {
+		t.Errorf("expected 400 for too many widgets, got %d", code)
+	}
+}
+
+func TestImportTooManyServices(t *testing.T) {
+	t.Parallel()
+	r, _ := configRouter(t)
+
+	services := make([]models.ServiceExport, MaxServicesImport+1)
+	for i := range services {
+		services[i] = models.ServiceExport{Type: "portainer", Name: "S" + strconv.Itoa(i), URL: "http://example.com", Enabled: true, Config: "{}"}
+	}
+	cfg := models.EncryptedExport{
+		Version:  2,
+		Settings: models.Settings{Theme: "dark", Language: "fr", RefreshInterval: 30},
+		Services: services,
+	}
+	jsonData, _ := json.Marshal(cfg)
+	password := "test"
+	encrypted, _ := crypto.Encrypt(string(jsonData), crypto.DeriveKey(password))
+
+	code := importEncrypted(t, r, password, encrypted)
+	if code != http.StatusBadRequest {
+		t.Errorf("expected 400 for too many services, got %d", code)
+	}
+}
+
+func TestImportCategoryNameTooLong(t *testing.T) {
+	t.Parallel()
+	r, _ := configRouter(t)
+
+	longName := make([]byte, MaxNameLength+1)
+	for i := range longName {
+		longName[i] = 'a'
+	}
+	cfg := models.EncryptedExport{
+		Version:    2,
+		Settings:   models.Settings{Theme: "dark", Language: "fr", RefreshInterval: 30},
+		Categories: []models.Category{{ID: 1, Name: string(longName), Icon: "star"}},
+	}
+	jsonData, _ := json.Marshal(cfg)
+	password := "test"
+	encrypted, _ := crypto.Encrypt(string(jsonData), crypto.DeriveKey(password))
+
+	code := importEncrypted(t, r, password, encrypted)
+	if code != http.StatusBadRequest {
+		t.Errorf("expected 400 for category name too long, got %d", code)
+	}
+}
+
+func TestImportWidgetTitleTooLong(t *testing.T) {
+	t.Parallel()
+	r, _ := configRouter(t)
+
+	longTitle := make([]byte, MaxNameLength+1)
+	for i := range longTitle {
+		longTitle[i] = 'a'
+	}
+	cfg := models.EncryptedExport{
+		Version:    2,
+		Settings:   models.Settings{Theme: "dark", Language: "fr", RefreshInterval: 30},
+		Categories: []models.Category{{ID: 1, Name: "Cat1", Icon: "star"}},
+		Widgets:    []models.Widget{{CategoryID: 1, Type: "applink", Title: string(longTitle), Config: "{}", Width: 6, Height: 0}},
+	}
+	jsonData, _ := json.Marshal(cfg)
+	password := "test"
+	encrypted, _ := crypto.Encrypt(string(jsonData), crypto.DeriveKey(password))
+
+	code := importEncrypted(t, r, password, encrypted)
+	if code != http.StatusBadRequest {
+		t.Errorf("expected 400 for widget title too long, got %d", code)
+	}
+}
+
+func TestImportWidgetHeightTooLarge(t *testing.T) {
+	t.Parallel()
+	r, _ := configRouter(t)
+
+	cfg := models.EncryptedExport{
+		Version:    2,
+		Settings:   models.Settings{Theme: "dark", Language: "fr", RefreshInterval: 30},
+		Categories: []models.Category{{ID: 1, Name: "Cat1", Icon: "star"}},
+		Widgets:    []models.Widget{{CategoryID: 1, Type: "applink", Title: "W1", Config: "{}", Width: 6, Height: MaxWidgetHeight + 1}},
+	}
+	jsonData, _ := json.Marshal(cfg)
+	password := "test"
+	encrypted, _ := crypto.Encrypt(string(jsonData), crypto.DeriveKey(password))
+
+	code := importEncrypted(t, r, password, encrypted)
+	if code != http.StatusBadRequest {
+		t.Errorf("expected 400 for widget height too large, got %d", code)
+	}
+}
+
+func TestImportServiceNameTooLong(t *testing.T) {
+	t.Parallel()
+	r, _ := configRouter(t)
+
+	longName := make([]byte, MaxNameLength+1)
+	for i := range longName {
+		longName[i] = 'a'
+	}
+	cfg := models.EncryptedExport{
+		Version:  2,
+		Settings: models.Settings{Theme: "dark", Language: "fr", RefreshInterval: 30},
+		Services: []models.ServiceExport{{Type: "portainer", Name: string(longName), URL: "http://example.com", Enabled: true, Config: "{}"}},
+	}
+	jsonData, _ := json.Marshal(cfg)
+	password := "test"
+	encrypted, _ := crypto.Encrypt(string(jsonData), crypto.DeriveKey(password))
+
+	code := importEncrypted(t, r, password, encrypted)
+	if code != http.StatusBadRequest {
+		t.Errorf("expected 400 for service name too long, got %d", code)
+	}
+}
+
+func TestImportServiceURLTooLong(t *testing.T) {
+	t.Parallel()
+	r, _ := configRouter(t)
+
+	longURL := "http://" + string(make([]byte, MaxURLLength))
+	cfg := models.EncryptedExport{
+		Version:  2,
+		Settings: models.Settings{Theme: "dark", Language: "fr", RefreshInterval: 30},
+		Services: []models.ServiceExport{{Type: "portainer", Name: "Portainer", URL: longURL, Enabled: true, Config: "{}"}},
+	}
+	jsonData, _ := json.Marshal(cfg)
+	password := "test"
+	encrypted, _ := crypto.Encrypt(string(jsonData), crypto.DeriveKey(password))
+
+	code := importEncrypted(t, r, password, encrypted)
+	if code != http.StatusBadRequest {
+		t.Errorf("expected 400 for service URL too long, got %d", code)
 	}
 }
 

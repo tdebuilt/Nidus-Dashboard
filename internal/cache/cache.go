@@ -23,6 +23,7 @@ type Cache struct {
 	hits       int64
 	misses     int64
 	stopClean  chan struct{}
+	stopOnce   sync.Once
 }
 
 // New creates a cache with the given default TTL.
@@ -134,8 +135,11 @@ func (c *Cache) SetDefaultTTL(ttl time.Duration) {
 }
 
 // Stop terminates the background cleanup goroutine.
+// Safe to call multiple times.
 func (c *Cache) Stop() {
-	close(c.stopClean)
+	c.stopOnce.Do(func() {
+		close(c.stopClean)
+	})
 }
 
 func (c *Cache) cleanupLoop(interval time.Duration) {

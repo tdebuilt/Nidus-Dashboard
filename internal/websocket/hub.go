@@ -29,6 +29,8 @@ type Hub struct {
 	register   chan *Client
 	unregister chan *Client
 	mu         sync.RWMutex
+	done       chan struct{}
+	stopOnce   sync.Once
 }
 
 // Client represents a single WebSocket connection.
@@ -46,6 +48,7 @@ func NewHub() *Hub {
 		broadcast:  make(chan []byte, 256),
 		register:   make(chan *Client),
 		unregister: make(chan *Client),
+		done:       make(chan struct{}),
 	}
 }
 
@@ -53,6 +56,15 @@ func NewHub() *Hub {
 func (h *Hub) Run() {
 	for {
 		select {
+		case <-h.done:
+			h.mu.Lock()
+			for client := range h.clients {
+				close(client.send)
+				delete(h.clients, client)
+			}
+			h.mu.Unlock()
+			return
+
 		case client := <-h.register:
 			h.mu.Lock()
 			h.clients[client] = true
@@ -87,6 +99,14 @@ func (h *Hub) Run() {
 			}
 		}
 	}
+}
+
+// Stop terminates the hub event loop and closes all client connections.
+// Safe to call multiple times.
+func (h *Hub) Stop() {
+	h.stopOnce.Do(func() {
+		close(h.done)
+	})
 }
 
 // BroadcastMessage sends a message to all connected clients.

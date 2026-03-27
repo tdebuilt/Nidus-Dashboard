@@ -79,7 +79,7 @@ func TestSecurityHeaders(t *testing.T) {
 		{"X-Content-Type-Options", "nosniff"},
 		{"X-Frame-Options", "DENY"},
 		{"Referrer-Policy", "strict-origin-when-cross-origin"},
-		{"Content-Security-Policy", "script-src 'self' 'unsafe-inline'"},
+		{"Content-Security-Policy", "script-src 'self' 'nonce-"},
 		{"Content-Security-Policy", "media-src 'self' blob:"},
 		{"Content-Security-Policy", "connect-src 'self' ws: wss:"},
 	}
