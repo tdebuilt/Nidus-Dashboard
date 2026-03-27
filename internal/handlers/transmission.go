@@ -1,7 +1,9 @@
 package handlers
 
 import (
+	"context"
 	"encoding/json"
+	"log/slog"
 	"net/http"
 	"strconv"
 
@@ -20,8 +22,8 @@ type TransmissionHandler struct {
 	Cache *cache.Cache
 }
 
-func (h *TransmissionHandler) getTransmissionClient() (*transmission.Client, error) {
-	svc, err := h.DB.GetServiceByType("transmission")
+func (h *TransmissionHandler) getTransmissionClient(ctx context.Context) (*transmission.Client, error) {
+	svc, err := h.DB.GetServiceByType(ctx, "transmission")
 	if err != nil {
 		return nil, err
 	}
@@ -32,7 +34,7 @@ func (h *TransmissionHandler) getTransmissionClient() (*transmission.Client, err
 	client := transmission.NewClient(svc.URL, nil)
 
 	if svc.Credentials != "" {
-		encKey, err := h.DB.GetSystemSetting("encryption_key")
+		encKey, err := h.DB.GetSystemSetting(ctx, "encryption_key")
 		if err != nil || encKey == "" {
 			return nil, err
 		}
@@ -71,7 +73,7 @@ func (h *TransmissionHandler) ListTorrents(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	client, err := h.getTransmissionClient()
+	client, err := h.getTransmissionClient(r.Context())
 	if err != nil {
 		writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "failed to connect to Transmission"})
 		return
@@ -81,13 +83,16 @@ func (h *TransmissionHandler) ListTorrents(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	torrents, err := client.ListTorrents()
+	torrents, err := client.ListTorrents(r.Context())
 	if err != nil {
 		writeJSON(w, http.StatusBadGateway, models.ErrorResponse{Error: "failed to fetch torrents"})
 		return
 	}
 
-	stats, _ := client.GetSessionStats()
+	stats, err := client.GetSessionStats(r.Context())
+	if err != nil {
+		slog.Warn("failed to get session stats", "error", err)
+	}
 
 	infos := make([]transmission.TorrentInfo, 0, len(torrents))
 	for _, t := range torrents {
@@ -129,16 +134,16 @@ func (h *TransmissionHandler) AddTorrent(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	client, err := h.getTransmissionClient()
+	client, err := h.getTransmissionClient(r.Context())
 	if err != nil || client == nil {
 		writeJSON(w, http.StatusBadGateway, models.ErrorResponse{Error: "Transmission not available"})
 		return
 	}
 
 	if body.Metainfo != "" {
-		err = client.AddTorrentByFile(body.Metainfo)
+		err = client.AddTorrentByFile(r.Context(), body.Metainfo)
 	} else {
-		err = client.AddTorrent(body.URL)
+		err = client.AddTorrent(r.Context(), body.URL)
 	}
 	if err != nil {
 		writeJSON(w, http.StatusBadGateway, models.ErrorResponse{Error: "failed to add torrent: " + err.Error()})
@@ -166,13 +171,13 @@ func (h *TransmissionHandler) StartTorrent(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	client, err := h.getTransmissionClient()
+	client, err := h.getTransmissionClient(r.Context())
 	if err != nil || client == nil {
 		writeJSON(w, http.StatusBadGateway, models.ErrorResponse{Error: "Transmission not available"})
 		return
 	}
 
-	if err := client.StartTorrent([]int{id}); err != nil {
+	if err := client.StartTorrent(r.Context(), []int{id}); err != nil {
 		writeJSON(w, http.StatusBadGateway, models.ErrorResponse{Error: "start failed: " + err.Error()})
 		return
 	}
@@ -198,13 +203,13 @@ func (h *TransmissionHandler) StopTorrent(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	client, err := h.getTransmissionClient()
+	client, err := h.getTransmissionClient(r.Context())
 	if err != nil || client == nil {
 		writeJSON(w, http.StatusBadGateway, models.ErrorResponse{Error: "Transmission not available"})
 		return
 	}
 
-	if err := client.StopTorrent([]int{id}); err != nil {
+	if err := client.StopTorrent(r.Context(), []int{id}); err != nil {
 		writeJSON(w, http.StatusBadGateway, models.ErrorResponse{Error: "stop failed: " + err.Error()})
 		return
 	}
@@ -222,13 +227,13 @@ func (h *TransmissionHandler) StopTorrent(w http.ResponseWriter, r *http.Request
 // @Router /transmission/torrents/start-all [post]
 // @Security BearerAuth
 func (h *TransmissionHandler) StartAllTorrents(w http.ResponseWriter, r *http.Request) {
-	client, err := h.getTransmissionClient()
+	client, err := h.getTransmissionClient(r.Context())
 	if err != nil || client == nil {
 		writeJSON(w, http.StatusBadGateway, models.ErrorResponse{Error: "Transmission not available"})
 		return
 	}
 
-	if err := client.StartAll(); err != nil {
+	if err := client.StartAll(r.Context()); err != nil {
 		writeJSON(w, http.StatusBadGateway, models.ErrorResponse{Error: "start all failed: " + err.Error()})
 		return
 	}
@@ -246,13 +251,13 @@ func (h *TransmissionHandler) StartAllTorrents(w http.ResponseWriter, r *http.Re
 // @Router /transmission/torrents/stop-all [post]
 // @Security BearerAuth
 func (h *TransmissionHandler) StopAllTorrents(w http.ResponseWriter, r *http.Request) {
-	client, err := h.getTransmissionClient()
+	client, err := h.getTransmissionClient(r.Context())
 	if err != nil || client == nil {
 		writeJSON(w, http.StatusBadGateway, models.ErrorResponse{Error: "Transmission not available"})
 		return
 	}
 
-	if err := client.StopAll(); err != nil {
+	if err := client.StopAll(r.Context()); err != nil {
 		writeJSON(w, http.StatusBadGateway, models.ErrorResponse{Error: "stop all failed: " + err.Error()})
 		return
 	}
@@ -270,13 +275,13 @@ func (h *TransmissionHandler) StopAllTorrents(w http.ResponseWriter, r *http.Req
 // @Router /transmission/torrents/cleanup [post]
 // @Security BearerAuth
 func (h *TransmissionHandler) CleanupCompleted(w http.ResponseWriter, r *http.Request) {
-	client, err := h.getTransmissionClient()
+	client, err := h.getTransmissionClient(r.Context())
 	if err != nil || client == nil {
 		writeJSON(w, http.StatusBadGateway, models.ErrorResponse{Error: "Transmission not available"})
 		return
 	}
 
-	count, err := client.RemoveCompleted()
+	count, err := client.RemoveCompleted(r.Context())
 	if err != nil {
 		writeJSON(w, http.StatusBadGateway, models.ErrorResponse{Error: "cleanup failed: " + err.Error()})
 		return

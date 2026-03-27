@@ -1,8 +1,9 @@
 package handlers
 
 import (
+	"context"
 	"encoding/json"
-	"log"
+	"log/slog"
 	"net/http"
 	"sort"
 	"strconv"
@@ -23,8 +24,8 @@ type ProxmoxHandler struct {
 	Cache *cache.Cache
 }
 
-func (h *ProxmoxHandler) getProxmoxClient() (*proxmox.Client, error) {
-	svc, err := h.DB.GetServiceByType("proxmox")
+func (h *ProxmoxHandler) getProxmoxClient(ctx context.Context) (*proxmox.Client, error) {
+	svc, err := h.DB.GetServiceByType(ctx, "proxmox")
 	if err != nil {
 		return nil, err
 	}
@@ -32,18 +33,18 @@ func (h *ProxmoxHandler) getProxmoxClient() (*proxmox.Client, error) {
 		return nil, nil
 	}
 
-	log.Printf("proxmox: connecting to %s", svc.URL)
-	client := proxmox.NewClient(svc.URL, nil)
+	slog.Info("proxmox connecting", "url", svc.URL)
+	client := proxmox.NewClient(svc.URL, nil, true)
 
 	if svc.Credentials != "" {
-		encKey, err := h.DB.GetSystemSetting("encryption_key")
+		encKey, err := h.DB.GetSystemSetting(ctx, "encryption_key")
 		if err != nil || encKey == "" {
-			log.Printf("proxmox: no encryption key found")
+			slog.Warn("proxmox: no encryption key found")
 			return nil, err
 		}
 		creds, err := crypto.Decrypt(svc.Credentials, encKey)
 		if err != nil {
-			log.Printf("proxmox: failed to decrypt credentials: %v", err)
+			slog.Error("proxmox failed to decrypt credentials", "error", err)
 			return nil, err
 		}
 		var authData struct {
@@ -52,22 +53,22 @@ func (h *ProxmoxHandler) getProxmoxClient() (*proxmox.Client, error) {
 			Token    string `json:"token"`
 		}
 		if err := json.Unmarshal([]byte(creds), &authData); err != nil {
-			log.Printf("proxmox: credentials is not JSON, using as raw token")
+			slog.Info("proxmox credentials is not JSON, using as raw token")
 			client.SetAPIToken(creds)
 			return client, nil
 		}
 		switch {
 		case authData.Token != "":
-			log.Printf("proxmox: using API token (len=%d)", len(authData.Token))
+			slog.Info("proxmox using API token", "token_len", len(authData.Token))
 			client.SetAPIToken(authData.Token)
 		case authData.Username != "":
-			log.Printf("proxmox: authenticating as %s", authData.Username)
-			if err := client.Authenticate(authData.Username, authData.Password); err != nil {
-				log.Printf("proxmox: auth failed: %v", err)
+			slog.Info("proxmox authenticating", "username", authData.Username)
+			if err := client.Authenticate(ctx, authData.Username, authData.Password); err != nil {
+				slog.Error("proxmox auth failed", "error", err)
 				return nil, err
 			}
 		default:
-			log.Printf("proxmox: no token or username in credentials")
+			slog.Warn("proxmox: no token or username in credentials")
 		}
 	}
 
@@ -90,7 +91,7 @@ func (h *ProxmoxHandler) ListNodes(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	client, err := h.getProxmoxClient()
+	client, err := h.getProxmoxClient(r.Context())
 	if err != nil {
 		writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "failed to connect to Proxmox"})
 		return
@@ -100,7 +101,7 @@ func (h *ProxmoxHandler) ListNodes(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	nodes, err := client.ListNodes()
+	nodes, err := client.ListNodes(r.Context())
 	if err != nil {
 		writeJSON(w, http.StatusBadGateway, models.ErrorResponse{Error: "failed to fetch nodes"})
 		return
@@ -137,9 +138,9 @@ func (h *ProxmoxHandler) ListVMs(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	client, err := h.getProxmoxClient()
+	client, err := h.getProxmoxClient(r.Context())
 	if err != nil {
-		log.Printf("proxmox: getClient error: %v", err)
+		slog.Error("proxmox getClient failed", "error", err)
 		writeJSON(w, http.StatusBadGateway, models.ErrorResponse{Error: "Proxmox not available"})
 		return
 	}
@@ -148,9 +149,9 @@ func (h *ProxmoxHandler) ListVMs(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	allVMs, err := client.ListAllVMs()
+	allVMs, err := client.ListAllVMs(r.Context())
 	if err != nil {
-		log.Printf("proxmox: ListAllVMs error: %v", err)
+		slog.Error("proxmox ListAllVMs failed", "error", err)
 		writeJSON(w, http.StatusBadGateway, models.ErrorResponse{Error: "failed to fetch VMs"})
 		return
 	}
@@ -217,13 +218,13 @@ func (h *ProxmoxHandler) VMAction(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	client, err := h.getProxmoxClient()
+	client, err := h.getProxmoxClient(r.Context())
 	if err != nil || client == nil {
 		writeJSON(w, http.StatusBadGateway, models.ErrorResponse{Error: "Proxmox not available"})
 		return
 	}
 
-	taskID, err := client.VMAction(node, vmType, vmid, action)
+	taskID, err := client.VMAction(r.Context(), node, vmType, vmid, action)
 	if err != nil {
 		writeJSON(w, http.StatusBadGateway, models.ErrorResponse{Error: "action failed: " + err.Error()})
 		return

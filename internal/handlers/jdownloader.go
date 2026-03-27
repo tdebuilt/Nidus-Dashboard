@@ -1,7 +1,9 @@
 package handlers
 
 import (
+	"context"
 	"encoding/json"
+	"log/slog"
 	"net/http"
 
 	"github.com/tdebuilt/nidus/internal/cache"
@@ -17,7 +19,7 @@ type JDownloaderHandler struct {
 	Cache *cache.Cache
 }
 
-func (h *JDownloaderHandler) getJDClient() (*jdownloader.Client, error) {
+func (h *JDownloaderHandler) getJDClient(ctx context.Context) (*jdownloader.Client, error) {
 	// Return cached client if available
 	if val, ok := h.Cache.Get("jd:client"); ok {
 		if client, ok := val.(*jdownloader.Client); ok {
@@ -25,7 +27,7 @@ func (h *JDownloaderHandler) getJDClient() (*jdownloader.Client, error) {
 		}
 	}
 
-	svc, err := h.DB.GetServiceByType("jdownloader")
+	svc, err := h.DB.GetServiceByType(ctx, "jdownloader")
 	if err != nil {
 		return nil, err
 	}
@@ -33,7 +35,7 @@ func (h *JDownloaderHandler) getJDClient() (*jdownloader.Client, error) {
 		return nil, nil
 	}
 
-	encKey, err := h.DB.GetSystemSetting("encryption_key")
+	encKey, err := h.DB.GetSystemSetting(ctx, "encryption_key")
 	if err != nil || encKey == "" {
 		return nil, err
 	}
@@ -74,7 +76,7 @@ func (h *JDownloaderHandler) GetQueue(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	client, err := h.getJDClient()
+	client, err := h.getJDClient(r.Context())
 	if err != nil {
 		writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "failed to connect to JDownloader"})
 		return
@@ -84,14 +86,20 @@ func (h *JDownloaderHandler) GetQueue(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	packages, err := client.ListPackages()
+	packages, err := client.ListPackages(r.Context())
 	if err != nil {
 		writeJSON(w, http.StatusBadGateway, models.ErrorResponse{Error: "failed to fetch queue: " + err.Error()})
 		return
 	}
 
-	speed, _ := client.GetSpeed()
-	running, _ := client.IsRunning()
+	speed, err := client.GetSpeed(r.Context())
+	if err != nil {
+		slog.Warn("failed to get JDownloader speed", "error", err)
+	}
+	running, err := client.IsRunning(r.Context())
+	if err != nil {
+		slog.Warn("failed to check JDownloader running state", "error", err)
+	}
 
 	infos := make([]jdownloader.PackageInfo, 0, len(packages))
 	for _, p := range packages {
@@ -132,13 +140,13 @@ func (h *JDownloaderHandler) AddLinks(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	client, err := h.getJDClient()
+	client, err := h.getJDClient(r.Context())
 	if err != nil || client == nil {
 		writeJSON(w, http.StatusBadGateway, models.ErrorResponse{Error: "JDownloader not available"})
 		return
 	}
 
-	if err := client.AddLinks(body.Links); err != nil {
+	if err := client.AddLinks(r.Context(), body.Links); err != nil {
 		writeJSON(w, http.StatusBadGateway, models.ErrorResponse{Error: "failed to add links: " + err.Error()})
 		return
 	}
@@ -156,13 +164,13 @@ func (h *JDownloaderHandler) AddLinks(w http.ResponseWriter, r *http.Request) {
 // @Router /jdownloader/queue/start [post]
 // @Security BearerAuth
 func (h *JDownloaderHandler) StartQueue(w http.ResponseWriter, r *http.Request) {
-	client, err := h.getJDClient()
+	client, err := h.getJDClient(r.Context())
 	if err != nil || client == nil {
 		writeJSON(w, http.StatusBadGateway, models.ErrorResponse{Error: "JDownloader not available"})
 		return
 	}
 
-	if err := client.StartQueue(); err != nil {
+	if err := client.StartQueue(r.Context()); err != nil {
 		writeJSON(w, http.StatusBadGateway, models.ErrorResponse{Error: "failed to start queue: " + err.Error()})
 		return
 	}
@@ -180,13 +188,13 @@ func (h *JDownloaderHandler) StartQueue(w http.ResponseWriter, r *http.Request) 
 // @Router /jdownloader/queue/cleanup [post]
 // @Security BearerAuth
 func (h *JDownloaderHandler) CleanupFinished(w http.ResponseWriter, r *http.Request) {
-	client, err := h.getJDClient()
+	client, err := h.getJDClient(r.Context())
 	if err != nil || client == nil {
 		writeJSON(w, http.StatusBadGateway, models.ErrorResponse{Error: "JDownloader not available"})
 		return
 	}
 
-	count, err := client.CleanupFinished()
+	count, err := client.CleanupFinished(r.Context())
 	if err != nil {
 		writeJSON(w, http.StatusBadGateway, models.ErrorResponse{Error: "failed to cleanup: " + err.Error()})
 		return
@@ -205,13 +213,13 @@ func (h *JDownloaderHandler) CleanupFinished(w http.ResponseWriter, r *http.Requ
 // @Router /jdownloader/queue/pause [post]
 // @Security BearerAuth
 func (h *JDownloaderHandler) PauseQueue(w http.ResponseWriter, r *http.Request) {
-	client, err := h.getJDClient()
+	client, err := h.getJDClient(r.Context())
 	if err != nil || client == nil {
 		writeJSON(w, http.StatusBadGateway, models.ErrorResponse{Error: "JDownloader not available"})
 		return
 	}
 
-	if err := client.PauseQueue(); err != nil {
+	if err := client.PauseQueue(r.Context()); err != nil {
 		writeJSON(w, http.StatusBadGateway, models.ErrorResponse{Error: "failed to pause queue: " + err.Error()})
 		return
 	}

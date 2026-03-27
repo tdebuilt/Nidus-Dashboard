@@ -1,8 +1,9 @@
 package handlers
 
 import (
+	"context"
 	"encoding/json"
-	"log"
+	"log/slog"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
@@ -23,8 +24,8 @@ type HomeAssistantHandler struct {
 	wsClient *homeassistant.WSClient
 }
 
-func (h *HomeAssistantHandler) getHAClient() (*homeassistant.Client, string, error) {
-	svc, err := h.DB.GetServiceByType("homeassistant")
+func (h *HomeAssistantHandler) getHAClient(ctx context.Context) (*homeassistant.Client, string, error) {
+	svc, err := h.DB.GetServiceByType(ctx, "homeassistant")
 	if err != nil {
 		return nil, "", err
 	}
@@ -36,7 +37,7 @@ func (h *HomeAssistantHandler) getHAClient() (*homeassistant.Client, string, err
 	token := ""
 
 	if svc.Credentials != "" {
-		encKey, err := h.DB.GetSystemSetting("encryption_key")
+		encKey, err := h.DB.GetSystemSetting(ctx, "encryption_key")
 		if err != nil || encKey == "" {
 			return nil, "", err
 		}
@@ -61,11 +62,11 @@ func (h *HomeAssistantHandler) getHAClient() (*homeassistant.Client, string, err
 	return client, token, nil
 }
 
-func (h *HomeAssistantHandler) ensureWSClient(baseURL, token string) {
+func (h *HomeAssistantHandler) ensureWSClient(ctx context.Context, baseURL, token string) {
 	if h.wsClient != nil || h.Hub == nil || token == "" {
 		return
 	}
-	svc, err := h.DB.GetServiceByType("homeassistant")
+	svc, err := h.DB.GetServiceByType(ctx, "homeassistant")
 	if err != nil || svc == nil {
 		return
 	}
@@ -75,7 +76,7 @@ func (h *HomeAssistantHandler) ensureWSClient(baseURL, token string) {
 	}
 	go func() {
 		if err := h.wsClient.Connect(); err != nil {
-			log.Printf("homeassistant ws: connect failed: %v", err)
+			slog.Error("homeassistant ws connect failed", "error", err)
 		}
 	}()
 }
@@ -93,8 +94,8 @@ func (h *HomeAssistantHandler) ensureWSClient(baseURL, token string) {
 func (h *HomeAssistantHandler) ListEntities(w http.ResponseWriter, r *http.Request) {
 	// Always ensure WS client is connected for real-time updates
 	if h.wsClient == nil {
-		if _, token, err := h.getHAClient(); err == nil && token != "" {
-			h.ensureWSClient("", token)
+		if _, token, err := h.getHAClient(r.Context()); err == nil && token != "" {
+			h.ensureWSClient(r.Context(), "", token)
 		}
 	}
 
@@ -103,7 +104,7 @@ func (h *HomeAssistantHandler) ListEntities(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	client, token, err := h.getHAClient()
+	client, token, err := h.getHAClient(r.Context())
 	if err != nil {
 		writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "failed to connect to Home Assistant"})
 		return
@@ -113,7 +114,7 @@ func (h *HomeAssistantHandler) ListEntities(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	entities, err := client.ListStates()
+	entities, err := client.ListStates(r.Context())
 	if err != nil {
 		writeJSON(w, http.StatusBadGateway, models.ErrorResponse{Error: "failed to fetch entities"})
 		return
@@ -125,7 +126,7 @@ func (h *HomeAssistantHandler) ListEntities(w http.ResponseWriter, r *http.Reque
 	}
 
 	h.Cache.Set("ha:entities", result)
-	h.ensureWSClient("", token)
+	h.ensureWSClient(r.Context(), "", token)
 	writeJSON(w, http.StatusOK, result)
 }
 
@@ -147,13 +148,13 @@ func (h *HomeAssistantHandler) GetEntity(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	client, _, err := h.getHAClient()
+	client, _, err := h.getHAClient(r.Context())
 	if err != nil || client == nil {
 		writeJSON(w, http.StatusBadGateway, models.ErrorResponse{Error: "Home Assistant not available"})
 		return
 	}
 
-	entity, err := client.GetState(entityID)
+	entity, err := client.GetState(r.Context(), entityID)
 	if err != nil {
 		writeJSON(w, http.StatusBadGateway, models.ErrorResponse{Error: "failed to fetch entity"})
 		return
@@ -187,13 +188,13 @@ func (h *HomeAssistantHandler) CallService(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	client, _, err := h.getHAClient()
+	client, _, err := h.getHAClient(r.Context())
 	if err != nil || client == nil {
 		writeJSON(w, http.StatusBadGateway, models.ErrorResponse{Error: "Home Assistant not available"})
 		return
 	}
 
-	if _, err := client.CallService(domain, service, req); err != nil {
+	if _, err := client.CallService(r.Context(), domain, service, req); err != nil {
 		writeJSON(w, http.StatusBadGateway, models.ErrorResponse{Error: "service call failed: " + err.Error()})
 		return
 	}
@@ -214,13 +215,13 @@ func (h *HomeAssistantHandler) CallService(w http.ResponseWriter, r *http.Reques
 func (h *HomeAssistantHandler) CameraSnapshot(w http.ResponseWriter, r *http.Request) {
 	entityID := chi.URLParam(r, "entityId")
 
-	client, _, err := h.getHAClient()
+	client, _, err := h.getHAClient(r.Context())
 	if err != nil || client == nil {
 		writeJSON(w, http.StatusBadGateway, models.ErrorResponse{Error: "Home Assistant not available"})
 		return
 	}
 
-	data, contentType, err := client.GetCameraSnapshot(entityID)
+	data, contentType, err := client.GetCameraSnapshot(r.Context(), entityID)
 	if err != nil {
 		writeJSON(w, http.StatusBadGateway, models.ErrorResponse{Error: "failed to get snapshot"})
 		return

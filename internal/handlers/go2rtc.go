@@ -1,8 +1,7 @@
 package handlers
 
 import (
-	"io"
-	"log"
+	"log/slog"
 	"net/http"
 	"net/url"
 	"strings"
@@ -69,7 +68,7 @@ func (h *Go2RTCHandler) Restart(w http.ResponseWriter, r *http.Request) {
 // ProxyWS proxies a WebSocket connection to the embedded go2rtc instance.
 func (h *Go2RTCHandler) ProxyWS(w http.ResponseWriter, r *http.Request) {
 	if h.Manager == nil || !h.Manager.IsRunning() {
-		http.Error(w, "go2rtc not running", http.StatusBadGateway)
+		writeJSON(w, http.StatusBadGateway, models.ErrorResponse{Error: "go2rtc not running"})
 		return
 	}
 
@@ -80,8 +79,8 @@ func (h *Go2RTCHandler) ProxyWS(w http.ResponseWriter, r *http.Request) {
 	// Connect to go2rtc
 	backendConn, _, err := websocket.DefaultDialer.Dial(target.String(), nil)
 	if err != nil {
-		log.Printf("[go2rtc-proxy] backend dial error: %v", err)
-		http.Error(w, "cannot connect to go2rtc", http.StatusBadGateway)
+		slog.Error("go2rtc-proxy backend dial failed", "error", err)
+		writeJSON(w, http.StatusBadGateway, models.ErrorResponse{Error: "cannot connect to go2rtc"})
 		return
 	}
 	defer backendConn.Close()
@@ -89,7 +88,7 @@ func (h *Go2RTCHandler) ProxyWS(w http.ResponseWriter, r *http.Request) {
 	// Upgrade client connection
 	clientConn, err := wsUpgrader.Upgrade(w, r, nil)
 	if err != nil {
-		log.Printf("[go2rtc-proxy] client upgrade error: %v", err)
+		slog.Error("go2rtc-proxy client upgrade failed", "error", err)
 		return
 	}
 	defer clientConn.Close()
@@ -120,40 +119,5 @@ func (h *Go2RTCHandler) ProxyWS(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	<-done
-}
-
-// ProxyHTTP proxies an HTTP request to the embedded go2rtc API.
-func (h *Go2RTCHandler) ProxyHTTP(w http.ResponseWriter, r *http.Request) {
-	if h.Manager == nil || !h.Manager.IsRunning() {
-		http.Error(w, "go2rtc not running", http.StatusBadGateway)
-		return
-	}
-
-	target := h.Manager.URL() + "/api" + strings.TrimPrefix(r.URL.Path, "/api/go2rtc")
-	if r.URL.RawQuery != "" {
-		target += "?" + r.URL.RawQuery
-	}
-
-	req, err := http.NewRequestWithContext(r.Context(), r.Method, target, r.Body)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	req.Header = r.Header.Clone()
-
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		http.Error(w, "go2rtc unreachable", http.StatusBadGateway)
-		return
-	}
-	defer resp.Body.Close()
-
-	for k, vv := range resp.Header {
-		for _, v := range vv {
-			w.Header().Add(k, v)
-		}
-	}
-	w.WriteHeader(resp.StatusCode)
-	io.Copy(w, resp.Body)
 }
 

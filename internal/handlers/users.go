@@ -4,7 +4,7 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"encoding/json"
-	"log"
+	"log/slog"
 	"net/http"
 	"strconv"
 	"time"
@@ -95,7 +95,7 @@ func (h *UsersHandler) UpdateRole(w http.ResponseWriter, r *http.Request) {
 
 	// Invalidate existing JWTs for this user
 	if err := h.DB.IncrementTokenVersion(r.Context(), userID); err != nil {
-		log.Printf("warning: failed to increment token version for user %d: %v", userID, err)
+		slog.Warn("failed to increment token version", "user_id", userID, "error", err)
 	}
 
 	writeJSON(w, http.StatusOK, map[string]string{"message": "role updated"})
@@ -425,7 +425,7 @@ func (h *UsersHandler) ResetPassword(w http.ResponseWriter, r *http.Request) {
 
 	// Mark reset code as used
 	if err := h.DB.UsePasswordReset(r.Context(), reset.ID); err != nil {
-		log.Printf("warning: failed to mark password reset as used: %v", err)
+		slog.Warn("failed to mark password reset as used", "error", err)
 	}
 
 	writeJSON(w, http.StatusOK, map[string]string{"message": "password reset successful"})

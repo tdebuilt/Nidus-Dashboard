@@ -3,12 +3,9 @@ package handlers
 import (
 	"context"
 	"encoding/json"
-	"log"
-	"net"
+	"log/slog"
 	"net/http"
-	"net/url"
 	"strconv"
-	"strings"
 
 	"github.com/go-chi/chi/v5"
 
@@ -18,33 +15,6 @@ import (
 	"github.com/tdebuilt/nidus/internal/models"
 	"github.com/tdebuilt/nidus/internal/services/portainer"
 )
-
-// extractHost extracts the hostname/IP from a URL.
-func extractHost(rawURL string) string {
-	if strings.HasPrefix(rawURL, "unix://") {
-		return ""
-	}
-	parsed, err := url.Parse(rawURL)
-	if err != nil {
-		return ""
-	}
-	return parsed.Hostname()
-}
-
-// resolveToIP resolves a hostname to an IP address. Returns the hostname as-is if already an IP.
-func resolveToIP(hostname string) string {
-	if hostname == "" {
-		return ""
-	}
-	if ip := net.ParseIP(hostname); ip != nil {
-		return hostname
-	}
-	ips, err := net.LookupHost(hostname)
-	if err != nil || len(ips) == 0 {
-		return hostname
-	}
-	return ips[0]
-}
 
 // DockerHandler handles Docker-related HTTP requests via Portainer.
 type DockerHandler struct {
@@ -85,7 +55,7 @@ func (h *DockerHandler) getPortainerClient(ctx context.Context) (*portainer.Clie
 		if authData.Token != "" {
 			client.SetToken(authData.Token)
 		} else if authData.Username != "" {
-			if err := client.Authenticate(authData.Username, authData.Password); err != nil {
+			if err := client.Authenticate(ctx, authData.Username, authData.Password); err != nil {
 				return nil, err
 			}
 		}
@@ -120,7 +90,7 @@ func (h *DockerHandler) ListEnvironments(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	envs, err := client.ListEnvironments()
+	envs, err := client.ListEnvironments(r.Context())
 	if err != nil {
 		writeJSON(w, http.StatusBadGateway, models.ErrorResponse{Error: "failed to fetch environments"})
 		return
@@ -130,7 +100,7 @@ func (h *DockerHandler) ListEnvironments(w http.ResponseWriter, r *http.Request)
 	portainerHost := ""
 	svc, _ := h.DB.GetServiceByType(r.Context(), "portainer")
 	if svc != nil {
-		portainerHost = resolveToIP(extractHost(svc.URL))
+		portainerHost = portainer.ResolveToIP(portainer.ExtractHost(svc.URL))
 	}
 
 	result := make([]portainer.EnvironmentInfo, 0, len(envs))
@@ -142,13 +112,13 @@ func (h *DockerHandler) ListEnvironments(w http.ResponseWriter, r *http.Request)
 		// Priority: PublicURL > endpoint URL > Portainer server IP
 		host := ""
 		if e.PublicURL != "" {
-			host = extractHost(e.PublicURL)
+			host = portainer.ExtractHost(e.PublicURL)
 			if host == "" {
 				host = e.PublicURL // PublicURL might be just an IP without scheme
 			}
 		}
 		if host == "" {
-			host = extractHost(e.URL)
+			host = portainer.ExtractHost(e.URL)
 		}
 		if host == "" {
 			host = portainerHost
@@ -191,7 +161,7 @@ func (h *DockerHandler) ListContainers(w http.ResponseWriter, r *http.Request) {
 
 	client, err := h.getPortainerClient(r.Context())
 	if err != nil {
-		log.Printf("docker: getPortainerClient error: %v", err)
+		slog.Error("docker getPortainerClient failed", "error", err)
 		writeJSON(w, http.StatusBadGateway, models.ErrorResponse{Error: "Portainer not available"})
 		return
 	}
@@ -200,16 +170,17 @@ func (h *DockerHandler) ListContainers(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	log.Printf("docker: fetching containers for env %d (token prefix: %.10s...)", envID, client.GetTokenPrefix())
-	containers, err := client.ListContainers(envID)
+	slog.Info("docker fetching containers", "env_id", envID, "token_prefix", client.GetTokenPrefix())
+	containers, err := client.ListContainers(r.Context(), envID)
 	if err != nil {
-		log.Printf("docker: ListContainers error: %v", err)
+		slog.Error("docker ListContainers failed", "error", err)
 		writeJSON(w, http.StatusBadGateway, models.ErrorResponse{Error: "failed to fetch containers"})
 		return
 	}
 
-	stacks, err := client.ListStacks(envID)
+	stacks, err := client.ListStacks(r.Context(), envID)
 	if err != nil {
+		slog.Warn("failed to list stacks", "env_id", envID, "error", err)
 		stacks = nil
 	}
 

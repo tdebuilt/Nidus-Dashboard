@@ -2,7 +2,7 @@ package homeassistant
 
 import (
 	"encoding/json"
-	"log"
+	"log/slog"
 	"strings"
 	"sync"
 	"time"
@@ -131,7 +131,7 @@ func (w *WSClient) readLoop() {
 			if !gws.IsUnexpectedCloseError(err, gws.CloseGoingAway, gws.CloseNormalClosure) {
 				return
 			}
-			log.Printf("homeassistant ws: read error: %v", err)
+			slog.Warn("homeassistant ws read error", "error", err)
 			w.scheduleReconnect()
 			return
 		}
@@ -157,7 +157,7 @@ func (w *WSClient) scheduleReconnect() {
 		w.running = false
 		w.mu.Unlock()
 		if err := w.Connect(); err != nil {
-			log.Printf("homeassistant ws: reconnect failed: %v", err)
+			slog.Error("homeassistant ws reconnect failed", "error", err)
 		}
 	}()
 }

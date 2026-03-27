@@ -1,9 +1,11 @@
 package go2rtc
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"log"
+	"log/slog"
 	"net"
 	"os"
 	"os/exec"
@@ -161,15 +163,15 @@ func (m *Manager) Reload() {
 		}
 
 		if err := m.generateConfig(); err != nil {
-			log.Printf("[go2rtc] reload config error: %v", err)
+			slog.Error("go2rtc reload config failed", "error", err)
 			return
 		}
 
 		m.stopLocked()
 		if err := m.startLocked(); err != nil {
-			log.Printf("[go2rtc] restart after reload error: %v", err)
+			slog.Error("go2rtc restart after reload failed", "error", err)
 		} else {
-			log.Printf("[go2rtc] reloaded with updated camera config")
+			slog.Info("go2rtc reloaded with updated camera config")
 		}
 	})
 }
@@ -186,7 +188,7 @@ func (m *Manager) startLocked() error {
 
 	m.running = true
 	m.startedAt = time.Now()
-	log.Printf("[go2rtc] started (pid %d)", m.cmd.Process.Pid)
+	slog.Info("go2rtc started", "pid", m.cmd.Process.Pid)
 
 	// Monitor goroutine: restart on unexpected exit
 	done := m.done
@@ -203,7 +205,7 @@ func (m *Manager) startLocked() error {
 		default:
 		}
 
-		log.Printf("[go2rtc] exited unexpectedly: %v, restarting in 2s", err)
+		slog.Warn("go2rtc exited unexpectedly, restarting in 2s", "error", err)
 		m.running = false
 
 		time.Sleep(2 * time.Second)
@@ -215,7 +217,7 @@ func (m *Manager) startLocked() error {
 		}
 
 		if err := m.startLocked(); err != nil {
-			log.Printf("[go2rtc] restart failed: %v", err)
+			slog.Error("go2rtc restart failed", "error", err)
 		}
 	}()
 
@@ -247,7 +249,7 @@ func (m *Manager) stopLocked() {
 
 	m.running = false
 	m.cmd = nil
-	log.Printf("[go2rtc] stopped")
+	slog.Info("go2rtc stopped")
 
 	// Wait for TCP ports to be released before restarting
 	m.waitForPortFree(":1984", 10*time.Second)
@@ -264,7 +266,7 @@ func (m *Manager) waitForPortFree(addr string, timeout time.Duration) {
 		}
 		time.Sleep(100 * time.Millisecond)
 	}
-	log.Printf("[go2rtc] warning: port %s still in use after %v", addr, timeout)
+	slog.Warn("go2rtc port still in use after timeout", "addr", addr, "timeout", timeout)
 }
 
 func (m *Manager) generateConfig() error {
@@ -299,7 +301,7 @@ func (m *Manager) generateConfig() error {
 }
 
 func (m *Manager) getCameras() ([]reolink.CameraEntry, error) {
-	widgets, err := m.db.GetAllWidgets()
+	widgets, err := m.db.GetAllWidgets(context.Background())
 	if err != nil {
 		return nil, err
 	}

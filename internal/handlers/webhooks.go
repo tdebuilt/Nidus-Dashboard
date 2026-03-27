@@ -1,19 +1,17 @@
 package handlers
 
 import (
-	"crypto/hmac"
-	"crypto/rand"
-	"crypto/sha256"
-	"crypto/subtle"
-	"encoding/hex"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 	"strconv"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/tdebuilt/nidus/internal/cache"
+	"github.com/tdebuilt/nidus/internal/crypto"
 	"github.com/tdebuilt/nidus/internal/database"
 	"github.com/tdebuilt/nidus/internal/models"
 	"github.com/tdebuilt/nidus/internal/services/notifications"
@@ -29,18 +27,11 @@ type WebhooksHandler struct {
 }
 
 func generateSecret() (string, error) {
-	b := make([]byte, 32)
-	if _, err := io.ReadFull(rand.Reader, b); err != nil {
-		return "", err
-	}
-	return hex.EncodeToString(b), nil
+	return crypto.GenerateWebhookSecret()
 }
 
 func validateSignature(body []byte, secret, signature string) bool {
-	mac := hmac.New(sha256.New, []byte(secret))
-	mac.Write(body)
-	expected := hex.EncodeToString(mac.Sum(nil))
-	return subtle.ConstantTimeCompare([]byte(expected), []byte(signature)) == 1
+	return crypto.ValidateWebhookSignature(body, secret, signature)
 }
 
 // List godoc
@@ -52,7 +43,7 @@ func validateSignature(body []byte, secret, signature string) bool {
 // @Router /webhooks [get]
 // @Security BearerAuth
 func (h *WebhooksHandler) List(w http.ResponseWriter, r *http.Request) {
-	webhooks, err := h.DB.ListWebhooks()
+	webhooks, err := h.DB.ListWebhooks(r.Context())
 	if err != nil {
 		writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "failed to list webhooks"})
 		return
@@ -88,7 +79,7 @@ func (h *WebhooksHandler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	webhook, err := h.DB.CreateWebhook(req.Name, secret)
+	webhook, err := h.DB.CreateWebhook(r.Context(), req.Name, secret)
 	if err != nil {
 		writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "failed to create webhook"})
 		return
@@ -127,7 +118,7 @@ func (h *WebhooksHandler) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := h.DB.UpdateWebhook(id, req); err != nil {
+	if err := h.DB.UpdateWebhook(r.Context(), id, req); err != nil {
 		writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "failed to update webhook"})
 		return
 	}
@@ -149,7 +140,7 @@ func (h *WebhooksHandler) Delete(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusBadRequest, models.ErrorResponse{Error: "invalid webhook ID"})
 		return
 	}
-	if err := h.DB.DeleteWebhook(id); err != nil {
+	if err := h.DB.DeleteWebhook(r.Context(), id); err != nil {
 		writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "failed to delete webhook"})
 		return
 	}
@@ -172,7 +163,7 @@ func (h *WebhooksHandler) ListActions(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusBadRequest, models.ErrorResponse{Error: "invalid webhook ID"})
 		return
 	}
-	actions, err := h.DB.ListWebhookActions(id)
+	actions, err := h.DB.ListWebhookActions(r.Context(), id)
 	if err != nil {
 		writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "failed to list actions"})
 		return
@@ -209,7 +200,7 @@ func (h *WebhooksHandler) CreateAction(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	action, err := h.DB.CreateWebhookAction(webhookID, req.ActionType, req.Config)
+	action, err := h.DB.CreateWebhookAction(r.Context(), webhookID, req.ActionType, req.Config)
 	if err != nil {
 		writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "failed to create action"})
 		return
@@ -233,7 +224,7 @@ func (h *WebhooksHandler) DeleteAction(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusBadRequest, models.ErrorResponse{Error: "invalid action ID"})
 		return
 	}
-	if err := h.DB.DeleteWebhookAction(actionID); err != nil {
+	if err := h.DB.DeleteWebhookAction(r.Context(), actionID); err != nil {
 		writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "failed to delete action"})
 		return
 	}
@@ -273,7 +264,7 @@ func (h *WebhooksHandler) Receive(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	webhook, err := h.DB.GetWebhook(id)
+	webhook, err := h.DB.GetWebhook(r.Context(), id)
 	if err != nil {
 		writeJSON(w, http.StatusNotFound, models.ErrorResponse{Error: "webhook not found"})
 		return
@@ -289,23 +280,23 @@ func (h *WebhooksHandler) Receive(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	actions, err := h.DB.ListWebhookActions(id)
+	actions, err := h.DB.ListWebhookActions(r.Context(), id)
 	if err != nil {
 		writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "failed to load actions"})
 		return
 	}
 
 	for _, action := range actions {
-		h.executeAction(action, body)
+		h.executeAction(r.Context(), action, body)
 	}
 
 	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 }
 
-func (h *WebhooksHandler) executeAction(action models.WebhookAction, body []byte) {
+func (h *WebhooksHandler) executeAction(ctx context.Context, action models.WebhookAction, body []byte) {
 	switch action.ActionType {
 	case "notify":
-		h.executeNotify(action.Config)
+		h.executeNotify(ctx, action.Config)
 	case "refresh_widget":
 		h.executeRefreshWidget(action.Config)
 	case "invalidate_cache":
@@ -313,7 +304,7 @@ func (h *WebhooksHandler) executeAction(action models.WebhookAction, body []byte
 	}
 }
 
-func (h *WebhooksHandler) executeNotify(config string) {
+func (h *WebhooksHandler) executeNotify(ctx context.Context, config string) {
 	var cfg struct {
 		ProviderID int64  `json:"provider_id"`
 		Title      string `json:"title"`
@@ -326,7 +317,7 @@ func (h *WebhooksHandler) executeNotify(config string) {
 		return
 	}
 
-	provider, err := h.DB.GetNotificationProvider(cfg.ProviderID)
+	provider, err := h.DB.GetNotificationProvider(ctx, cfg.ProviderID)
 	if err != nil || provider == nil {
 		return
 	}
@@ -340,7 +331,9 @@ func (h *WebhooksHandler) executeNotify(config string) {
 		message = "Webhook event received"
 	}
 
-	h.Sender.Send(provider.Type, provider.URL, provider.Token, provider.Config, title, message)
+	if err := h.Sender.Send(provider.Type, provider.URL, provider.Token, provider.Config, title, message); err != nil {
+		slog.Warn("webhook notification failed", "error", err)
+	}
 }
 
 func (h *WebhooksHandler) executeRefreshWidget(config string) {

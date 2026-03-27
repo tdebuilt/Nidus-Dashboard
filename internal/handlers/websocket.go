@@ -2,13 +2,14 @@ package handlers
 
 import (
 	"encoding/hex"
-	"log"
+	"log/slog"
 	"net/http"
 
 	"github.com/golang-jwt/jwt/v5"
 	ws "github.com/gorilla/websocket"
 
 	"github.com/tdebuilt/nidus/internal/database"
+	"github.com/tdebuilt/nidus/internal/models"
 	nidusws "github.com/tdebuilt/nidus/internal/websocket"
 )
 
@@ -35,13 +36,13 @@ type WebSocketHandler struct {
 func (h *WebSocketHandler) HandleWS(w http.ResponseWriter, r *http.Request) {
 	userID, err := h.authenticateWS(r)
 	if err != nil {
-		http.Error(w, `{"error":"authentication required"}`, http.StatusUnauthorized)
+		writeJSON(w, http.StatusUnauthorized, models.ErrorResponse{Error: "authentication required"})
 		return
 	}
 
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
-		log.Printf("websocket: upgrade error: %v", err)
+		slog.Error("websocket upgrade failed", "error", err)
 		return
 	}
 
@@ -65,7 +66,7 @@ func (h *WebSocketHandler) authenticateWS(r *http.Request) (int64, error) {
 		return 0, jwt.ErrTokenNotValidYet
 	}
 
-	jwtSecretHex, err := h.DB.GetSystemSetting("jwt_secret")
+	jwtSecretHex, err := h.DB.GetSystemSetting(r.Context(), "jwt_secret")
 	if err != nil || jwtSecretHex == "" {
 		return 0, jwt.ErrTokenNotValidYet
 	}
@@ -97,7 +98,7 @@ func (h *WebSocketHandler) authenticateWS(r *http.Request) (int64, error) {
 
 	userID := int64(userIDFloat)
 
-	user, err := h.DB.GetUserByID(userID)
+	user, err := h.DB.GetUserByID(r.Context(), userID)
 	if err != nil || user == nil {
 		return 0, jwt.ErrTokenInvalidClaims
 	}

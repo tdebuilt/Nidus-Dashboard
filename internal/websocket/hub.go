@@ -2,7 +2,7 @@ package websocket
 
 import (
 	"encoding/json"
-	"log"
+	"log/slog"
 	"sync"
 	"time"
 
@@ -113,7 +113,7 @@ func (h *Hub) Stop() {
 func (h *Hub) BroadcastMessage(msg Message) {
 	data, err := json.Marshal(msg)
 	if err != nil {
-		log.Printf("websocket: failed to marshal message: %v", err)
+		slog.Error("websocket failed to marshal message", "error", err)
 		return
 	}
 	h.broadcast <- data
@@ -123,7 +123,7 @@ func (h *Hub) BroadcastMessage(msg Message) {
 func (h *Hub) BroadcastType(msgType string, payload any) {
 	raw, err := json.Marshal(payload)
 	if err != nil {
-		log.Printf("websocket: failed to marshal payload: %v", err)
+		slog.Error("websocket failed to marshal payload", "error", err)
 		return
 	}
 	h.BroadcastMessage(Message{
@@ -177,7 +177,7 @@ func (c *Client) ReadPump() {
 		_, _, err := c.conn.ReadMessage()
 		if err != nil {
 			if ws.IsUnexpectedCloseError(err, ws.CloseGoingAway, ws.CloseNormalClosure) {
-				log.Printf("websocket: read error: %v", err)
+				slog.Warn("websocket read error", "error", err)
 			}
 			break
 		}

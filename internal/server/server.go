@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io/fs"
 	"log"
+	"log/slog"
 	"net/http"
 	"os"
 	"os/signal"
@@ -109,6 +110,10 @@ func Run(srv *Server, cfg config.Config, r http.Handler) error {
 // RunWithContext starts the HTTP server and blocks until the context is cancelled
 // or a shutdown signal is received. Used by tests to stop the server without SIGTERM.
 func RunWithContext(ctx context.Context, srv *Server, cfg config.Config, r http.Handler) error {
+	slog.SetDefault(slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{
+		Level: slog.LevelInfo,
+	})))
+
 	httpSrv := &http.Server{
 		Addr:         fmt.Sprintf("%s:%d", cfg.Server.BindAddress, cfg.Server.Port),
 		Handler:      r,
@@ -119,7 +124,7 @@ func RunWithContext(ctx context.Context, srv *Server, cfg config.Config, r http.
 
 	errCh := make(chan error, 1)
 	go func() {
-		log.Printf("Nidus server starting on :%d", cfg.Server.Port)
+		slog.Info("server starting", "port", cfg.Server.Port)
 		if err := httpSrv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			errCh <- err
 		}
@@ -131,9 +136,9 @@ func RunWithContext(ctx context.Context, srv *Server, cfg config.Config, r http.
 
 	select {
 	case sig := <-quit:
-		log.Printf("Received signal %s, shutting down...", sig)
+		slog.Info("received signal, shutting down", "signal", sig)
 	case <-ctx.Done():
-		log.Println("Context cancelled, shutting down...")
+		slog.Info("context cancelled, shutting down")
 	case err := <-errCh:
 		return fmt.Errorf("server error: %w", err)
 	}
@@ -147,7 +152,7 @@ func RunWithContext(ctx context.Context, srv *Server, cfg config.Config, r http.
 	}
 
 	stopServices(srv)
-	log.Println("Server stopped gracefully")
+	slog.Info("server stopped gracefully")
 	return nil
 }
 

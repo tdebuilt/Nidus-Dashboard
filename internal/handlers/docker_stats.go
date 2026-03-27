@@ -1,7 +1,7 @@
 package handlers
 
 import (
-	"log"
+	"log/slog"
 	"net/http"
 	"strconv"
 	"strings"
@@ -41,7 +41,7 @@ func (h *DockerHandler) ContainerStatsAll(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	containers, err := client.ListContainers(envID)
+	containers, err := client.ListContainers(r.Context(), envID)
 	if err != nil {
 		writeJSON(w, http.StatusBadGateway, models.ErrorResponse{Error: "failed to list containers"})
 		return
@@ -52,9 +52,9 @@ func (h *DockerHandler) ContainerStatsAll(w http.ResponseWriter, r *http.Request
 		if c.State != "running" {
 			continue
 		}
-		stats, err := client.CalculateContainerStats(envID, c.ID)
+		stats, err := client.CalculateContainerStats(r.Context(), envID, c.ID)
 		if err != nil {
-			log.Printf("docker: stats error for %s: %v", c.ID[:12], err)
+			slog.Error("docker stats failed", "container", c.ID[:12], "error", err)
 			continue
 		}
 		results = append(results, *stats)
@@ -94,7 +94,7 @@ func (h *DockerHandler) CheckUpdates(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	containers, err := client.ListContainers(envID)
+	containers, err := client.ListContainers(r.Context(), envID)
 	if err != nil {
 		writeJSON(w, http.StatusBadGateway, models.ErrorResponse{Error: "failed to list containers"})
 		return
@@ -122,14 +122,14 @@ func (h *DockerHandler) CheckUpdates(w http.ResponseWriter, r *http.Request) {
 
 		hasUpdate := false
 
-		localImg, err := client.InspectImage(envID, c.ImageID)
+		localImg, err := client.InspectImage(r.Context(), envID, c.ImageID)
 		if err != nil {
 			imageChecked[imageName] = false
 			results = append(results, UpdateInfo{ContainerID: c.ID, Image: imageName})
 			continue
 		}
 
-		remoteInfo, err := client.GetDistribution(envID, imageName)
+		remoteInfo, err := client.GetDistribution(r.Context(), envID, imageName)
 		if err != nil {
 			imageChecked[imageName] = false
 			results = append(results, UpdateInfo{ContainerID: c.ID, Image: imageName})

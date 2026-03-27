@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"log/slog"
 	"net"
 	"os/exec"
 	"path/filepath"
@@ -66,9 +67,9 @@ func main() {
 		if err == nil && encKey != "" {
 			dashCfg := cfg.DashboardConfig()
 			if importErr := db.ImportYAMLConfig(context.Background(), dashCfg, encKey); importErr != nil {
-				log.Printf("Warning: failed to auto-import dashboard config from config.yaml: %v", importErr)
+				slog.Warn("failed to auto-import dashboard config from config.yaml", "error", importErr)
 			} else {
-				log.Println("Dashboard configuration imported from config.yaml")
+				slog.Info("dashboard configuration imported from config.yaml")
 			}
 		}
 	}
@@ -77,18 +78,18 @@ func main() {
 	if _, lookErr := exec.LookPath("go2rtc"); lookErr == nil {
 		dataDir := filepath.Dir(cfg.Database.Path)
 		srv.Go2RTCManager = go2rtc.NewManager(db, dataDir)
-		log.Println("go2rtc binary found, streaming manager available")
+		slog.Info("go2rtc binary found, streaming manager available")
 
 		// Auto-start go2rtc if cameras are configured
 		if err := srv.Go2RTCManager.Start(); err != nil {
-			log.Printf("go2rtc auto-start failed: %v", err)
+			slog.Error("go2rtc auto-start failed", "error", err)
 		}
 	}
 
 	r := server.NewFromEmbed(srv, cfg, db, web.StaticFS, "static")
 
 	if err := server.Run(srv, cfg, r); err != nil {
-		log.Printf("Server error: %v", err)
+		slog.Error("server error", "error", err)
 	}
 }
 
