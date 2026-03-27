@@ -1,8 +1,9 @@
 import { writable, derived, get } from 'svelte/store'
 import { localeMetadata } from './locales'
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type Messages = Record<string, any>
+type MessageValue = string | MessageNode
+type MessageNode = { [key: string]: MessageValue }
+type Messages = MessageNode
 
 export interface LocaleDefinition {
   code: string
@@ -81,8 +82,7 @@ export function setLocale(l: string) {
 }
 
 function lookup(dict: Messages, parts: string[]): string | undefined {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  let node: any = dict
+  let node: MessageValue = dict
   for (const part of parts) {
     if (node == null || typeof node !== 'object') return undefined
     node = node[part]
@@ -124,4 +124,22 @@ export const t = derived(locale, ($locale) => {
 // Convenience function for use outside Svelte components (e.g. in stores)
 export function translate(key: string, params?: Record<string, string | number>): string {
   return get(t)(key, params)
+}
+
+export const tPlural = derived(locale, () => {
+  return (key: string, count: number, params?: Record<string, string | number>): string => {
+    const $t = get(t)
+    const resolvedParams = { ...params, count }
+    const suffix = count === 0 ? 'zero' : count === 1 ? 'one' : 'other'
+    const specific = $t(`${key}.${suffix}`, resolvedParams)
+    if (specific !== `${key}.${suffix}`) return specific
+    const other = $t(`${key}.other`, resolvedParams)
+    if (other !== `${key}.other`) return other
+    return $t(key, resolvedParams)
+  }
+})
+
+// Convenience function for pluralization outside Svelte components
+export function translatePlural(key: string, count: number, params?: Record<string, string | number>): string {
+  return get(tPlural)(key, count, params)
 }

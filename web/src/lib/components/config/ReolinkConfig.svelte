@@ -1,10 +1,9 @@
 <script lang="ts">
-  import { Plus, Trash2, Search, Loader2, Pencil, Check, X, GripVertical } from 'lucide-svelte'
-  import { api } from '../../api/client'
-  import { toasts } from '../../stores/toast'
-  import { t, translate } from '../../i18n'
-  import { isDocker } from '../../stores/version'
+  import { Trash2, Pencil, GripVertical } from 'lucide-svelte'
+  import { t } from '../../i18n'
   import ResponsiveColumnsConfig from './ResponsiveColumnsConfig.svelte'
+  import CameraForm from './CameraForm.svelte'
+  import CameraDiscoverySection from './CameraDiscoverySection.svelte'
 
   interface CameraEntry {
     name: string
@@ -14,12 +13,6 @@
     channel: number
     source: string
     entity_id: string
-  }
-
-  interface DiscoveredCamera {
-    ip: string
-    name: string
-    model: string
   }
 
   interface Props {
@@ -33,9 +26,6 @@
   let columns = $state(2)
   let columnsTablet = $state(0)
   let columnsMobile = $state(0)
-  let discovering = $state(false)
-  let discovered = $state<DiscoveredCamera[]>([])
-
   // Add form
   let newName = $state('')
   let newIP = $state('')
@@ -81,7 +71,7 @@
     emitChange()
   }
 
-  function addDiscoveredCamera(cam: DiscoveredCamera) {
+  function addDiscoveredCamera(cam: { ip: string; name: string; model: string }) {
     cameras = [...cameras, {
       name: cam.name || cam.model || cam.ip,
       ip: cam.ip,
@@ -169,17 +159,6 @@
     dragOverIndex = null
   }
 
-  async function discover() {
-    discovering = true
-    discovered = []
-    try {
-      discovered = await api.get<DiscoveredCamera[]>('/api/reolink/discover')
-    } catch {
-      toasts.error(translate('reolink.fetchError'))
-    } finally {
-      discovering = false
-    }
-  }
 </script>
 
 <div class="space-y-3">
@@ -193,47 +172,7 @@
 
   <!-- Camera list -->
   <div>
-    <div class="mb-2 flex items-center justify-between">
-      <span class="text-sm font-medium text-[var(--color-text)]">{$t('reolink.cameras')}</span>
-      {#if !$isDocker}
-        <button
-          onclick={discover}
-          disabled={discovering}
-          class="flex items-center gap-1 rounded-lg bg-[var(--color-bg-tertiary)] px-2 py-1 text-xs text-[var(--color-text-secondary)] hover:text-[var(--color-primary)]"
-        >
-          {#if discovering}
-            <Loader2 size={12} class="animate-spin" />
-          {:else}
-            <Search size={12} />
-          {/if}
-          {$t('reolink.discover')}
-        </button>
-      {/if}
-    </div>
-
-    <!-- Discovered cameras -->
-    {#if discovered.length > 0}
-      <div class="mb-2 space-y-1">
-        <span class="text-xs text-[var(--color-text-muted)]">{$t('reolink.discovered')}</span>
-        {#each discovered as cam (cam.ip)}
-          <div class="flex items-center justify-between rounded-lg border border-dashed border-[var(--color-border)] px-3 py-2">
-            <div>
-              <span class="text-sm text-[var(--color-text)]">{cam.name}</span>
-              <span class="ms-2 text-xs text-[var(--color-text-muted)]">{cam.ip}</span>
-              {#if cam.model}
-                <span class="ms-1 text-xs text-[var(--color-text-muted)]">({cam.model})</span>
-              {/if}
-            </div>
-            <button
-              onclick={() => addDiscoveredCamera(cam)}
-              class="rounded bg-[var(--color-primary)] px-2 py-1 text-xs text-white hover:bg-[var(--color-primary-hover)]"
-            >
-              <Plus size={12} />
-            </button>
-          </div>
-        {/each}
-      </div>
-    {/if}
+    <CameraDiscoverySection onAddCamera={addDiscoveredCamera} />
 
     <!-- Configured cameras -->
     {#if cameras.length === 0}
@@ -242,28 +181,15 @@
       <div class="space-y-1">
         {#each cameras as cam, i (i)}
           {#if editingIndex === i}
-            <div class="space-y-2 rounded-lg border border-[var(--color-primary)] p-3">
-              <div class="grid grid-cols-2 gap-2">
-                <input type="text" bind:value={editName} placeholder={$t('reolink.cameraName')}
-                  class="rounded-lg border border-[var(--color-border)] bg-[var(--color-bg)] px-2 py-1.5 text-sm text-[var(--color-text)]" />
-                <input type="text" bind:value={editIP} placeholder={$t('reolink.cameraIP')}
-                  class="rounded-lg border border-[var(--color-border)] bg-[var(--color-bg)] px-2 py-1.5 text-sm text-[var(--color-text)]" />
-                <input type="text" bind:value={editUsername} placeholder={$t('reolink.username')}
-                  class="rounded-lg border border-[var(--color-border)] bg-[var(--color-bg)] px-2 py-1.5 text-sm text-[var(--color-text)]" />
-                <input type="password" bind:value={editPassword} placeholder={$t('reolink.password')}
-                  class="rounded-lg border border-[var(--color-border)] bg-[var(--color-bg)] px-2 py-1.5 text-sm text-[var(--color-text)]" />
-              </div>
-              <div class="flex gap-2">
-                <button onclick={saveEdit}
-                  class="flex items-center gap-1 rounded-lg bg-[var(--color-primary)] px-2 py-1 text-xs text-white hover:bg-[var(--color-primary-hover)]">
-                  <Check size={12} /> {$t('common.save')}
-                </button>
-                <button onclick={cancelEdit}
-                  class="flex items-center gap-1 rounded-lg bg-[var(--color-bg-tertiary)] px-2 py-1 text-xs text-[var(--color-text-secondary)]">
-                  <X size={12} /> {$t('common.cancel')}
-                </button>
-              </div>
-            </div>
+            <CameraForm
+              bind:name={editName}
+              bind:ip={editIP}
+              bind:username={editUsername}
+              bind:password={editPassword}
+              isEdit={true}
+              onSave={saveEdit}
+              onCancel={cancelEdit}
+            />
           {:else}
             <div
               draggable="true"
@@ -304,21 +230,13 @@
   </div>
 
   <!-- Add camera form -->
-  <div class="space-y-2 rounded-lg border border-[var(--color-border)] p-3">
-    <span class="text-xs font-medium text-[var(--color-text-secondary)]">{$t('reolink.addCamera')}</span>
-    <div class="grid grid-cols-2 gap-2">
-      <input type="text" bind:value={newName} placeholder={$t('reolink.cameraName')}
-        class="rounded-lg border border-[var(--color-border)] bg-[var(--color-bg)] px-2 py-1.5 text-sm text-[var(--color-text)]" />
-      <input type="text" bind:value={newIP} placeholder={$t('reolink.cameraIP')}
-        class="rounded-lg border border-[var(--color-border)] bg-[var(--color-bg)] px-2 py-1.5 text-sm text-[var(--color-text)]" />
-      <input type="text" bind:value={newUsername} placeholder={$t('reolink.username')}
-        class="rounded-lg border border-[var(--color-border)] bg-[var(--color-bg)] px-2 py-1.5 text-sm text-[var(--color-text)]" />
-      <input type="password" bind:value={newPassword} placeholder={$t('reolink.password')}
-        class="rounded-lg border border-[var(--color-border)] bg-[var(--color-bg)] px-2 py-1.5 text-sm text-[var(--color-text)]" />
-    </div>
-    <button onclick={addCamera}
-      class="flex items-center gap-1 rounded-lg bg-[var(--color-primary)] px-3 py-1.5 text-xs text-white hover:bg-[var(--color-primary-hover)]">
-      <Plus size={12} /> {$t('reolink.addCamera')}
-    </button>
-  </div>
+  <CameraForm
+    bind:name={newName}
+    bind:ip={newIP}
+    bind:username={newUsername}
+    bind:password={newPassword}
+    isEdit={false}
+    onSave={addCamera}
+    onCancel={() => {}}
+  />
 </div>
