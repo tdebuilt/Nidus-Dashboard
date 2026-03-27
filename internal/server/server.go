@@ -32,18 +32,25 @@ const (
 	authRateLimitWindow  = 15 * time.Minute
 )
 
-// AppVersion is the application version, set from main.go.
-var AppVersion = "dev"
+// Server holds all shared dependencies for the Nidus server.
+type Server struct {
+	AppVersion      string
+	Go2RTCManager   *go2rtc.Manager
+	ServiceCache    *cache.Cache
+	AuthRateLimiter *nidusmw.RateLimiter
+	WSHub           *nidusws.Hub
+	StaticFiles     fs.FS
+}
 
-// Go2RTCManager is the embedded go2rtc process manager (nil if not available).
-var Go2RTCManager *go2rtc.Manager
-
-// ServiceCache is the shared cache for external service responses.
-var ServiceCache = cache.New(defaultCacheTTL, cacheCleanupInterval)
-
-// AuthRateLimiter is the rate limiter for auth endpoints.
-// Exported for testing purposes. Limit is raised via NIDUS_AUTH_RATE_LIMIT env var.
-var AuthRateLimiter = newAuthRateLimiter()
+// NewServer creates a Server with default values for cache, hub, and rate limiter.
+func NewServer(version string) *Server {
+	return &Server{
+		AppVersion:      version,
+		ServiceCache:    cache.New(defaultCacheTTL, cacheCleanupInterval),
+		AuthRateLimiter: newAuthRateLimiter(),
+		WSHub:           nidusws.NewHub(),
+	}
+}
 
 func newAuthRateLimiter() *nidusmw.RateLimiter {
 	limit := 5
@@ -55,34 +62,27 @@ func newAuthRateLimiter() *nidusmw.RateLimiter {
 	return nidusmw.NewRateLimiter(limit, authRateLimitWindow)
 }
 
-// WSHub is the shared WebSocket hub for real-time broadcasts.
-var WSHub = nidusws.NewHub()
-
-// StaticFiles holds the embedded frontend files.
-// It is set from main.go via the web package embed.
-var StaticFiles fs.FS
-
 // New creates a chi router with all routes configured.
-func New(cfg config.Config, db *database.DB) *chi.Mux {
+func New(srv *Server, cfg config.Config, db *database.DB) *chi.Mux {
 	r := chi.NewRouter()
-	registerMiddleware(r, db)
-	go WSHub.Run()
+	registerMiddleware(r, srv, db)
+	go srv.WSHub.Run()
 	registerSwagger(r)
 	r.Route("/api", func(r chi.Router) {
-		registerAPIRoutes(r, db)
+		registerAPIRoutes(r, srv, db)
 	})
-	serveStaticFiles(r)
+	serveStaticFiles(r, srv)
 	return r
 }
 
 // NewFromEmbed creates a router using an embed.FS for static files.
-func NewFromEmbed(cfg config.Config, db *database.DB, staticFS embed.FS, subDir string) *chi.Mux {
+func NewFromEmbed(srv *Server, cfg config.Config, db *database.DB, staticFS embed.FS, subDir string) *chi.Mux {
 	sub, err := fs.Sub(staticFS, subDir)
 	if err != nil {
 		log.Fatalf("failed to get sub filesystem: %v", err)
 	}
-	StaticFiles = sub
-	return New(cfg, db)
+	srv.StaticFiles = sub
+	return New(srv, cfg, db)
 }
 
 func healthHandler(w http.ResponseWriter, r *http.Request) {
@@ -91,24 +91,25 @@ func healthHandler(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte(`{"status":"ok"}`))
 }
 
-func versionHandler(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	_, dockerErr := os.Stat("/.dockerenv")
-	isDocker := dockerErr == nil
-	fmt.Fprintf(w, `{"version":%q,"is_docker":%t}`, AppVersion, isDocker)
+func versionHandler(srv *Server) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		_, dockerErr := os.Stat("/.dockerenv")
+		isDocker := dockerErr == nil
+		fmt.Fprintf(w, `{"version":%q,"is_docker":%t}`, srv.AppVersion, isDocker)
+	}
 }
 
 // Run starts the HTTP server and blocks until a shutdown signal is received.
-// It performs a graceful shutdown with a 10-second timeout.
-func Run(cfg config.Config, r http.Handler) error {
-	return RunWithContext(context.Background(), cfg, r)
+func Run(srv *Server, cfg config.Config, r http.Handler) error {
+	return RunWithContext(context.Background(), srv, cfg, r)
 }
 
 // RunWithContext starts the HTTP server and blocks until the context is cancelled
 // or a shutdown signal is received. Used by tests to stop the server without SIGTERM.
-func RunWithContext(ctx context.Context, cfg config.Config, r http.Handler) error {
-	srv := &http.Server{
+func RunWithContext(ctx context.Context, srv *Server, cfg config.Config, r http.Handler) error {
+	httpSrv := &http.Server{
 		Addr:         fmt.Sprintf("%s:%d", cfg.Server.BindAddress, cfg.Server.Port),
 		Handler:      r,
 		ReadTimeout:  serverReadTimeout,
@@ -116,17 +117,15 @@ func RunWithContext(ctx context.Context, cfg config.Config, r http.Handler) erro
 		IdleTimeout:  serverIdleTimeout,
 	}
 
-	// Channel to capture server errors
 	errCh := make(chan error, 1)
 	go func() {
 		log.Printf("Nidus server starting on :%d", cfg.Server.Port)
-		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+		if err := httpSrv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			errCh <- err
 		}
 		close(errCh)
 	}()
 
-	// Wait for interrupt signal or context cancellation
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 
@@ -140,21 +139,23 @@ func RunWithContext(ctx context.Context, cfg config.Config, r http.Handler) erro
 	}
 	signal.Stop(quit)
 
-	// Graceful shutdown with timeout
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), shutdownTimeout)
 	defer cancel()
 
-	if err := srv.Shutdown(shutdownCtx); err != nil {
+	if err := httpSrv.Shutdown(shutdownCtx); err != nil {
 		return fmt.Errorf("server shutdown: %w", err)
 	}
 
-	if Go2RTCManager != nil {
-		Go2RTCManager.Stop()
-	}
-	WSHub.Stop()
-	ServiceCache.Stop()
-	AuthRateLimiter.Stop()
-
+	stopServices(srv)
 	log.Println("Server stopped gracefully")
 	return nil
+}
+
+func stopServices(srv *Server) {
+	if srv.Go2RTCManager != nil {
+		srv.Go2RTCManager.Stop()
+	}
+	srv.WSHub.Stop()
+	srv.ServiceCache.Stop()
+	srv.AuthRateLimiter.Stop()
 }

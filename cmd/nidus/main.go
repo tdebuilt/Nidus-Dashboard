@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"log"
@@ -37,8 +38,7 @@ func main() {
 		return
 	}
 
-	// Pass version to server for the /api/version endpoint
-	server.AppVersion = Version
+	srv := server.NewServer(Version)
 
 	cfg, err := config.Load("data/config.yaml")
 	if err != nil {
@@ -54,18 +54,18 @@ func main() {
 		log.Fatalf("Failed to open database: %v", err)
 	}
 
-	if err := db.Migrate(); err != nil {
+	if err := db.Migrate(context.Background()); err != nil {
 		db.Close()
 		log.Fatalf("Failed to run migrations: %v", err)
 	}
 	defer db.Close()
 
 	// Auto-import dashboard config from config.yaml on first startup
-	if cfg.HasDashboardConfig() && db.IsEmpty() {
-		encKey, err := db.GetSystemSetting("encryption_key")
+	if cfg.HasDashboardConfig() && db.IsEmpty(context.Background()) {
+		encKey, err := db.GetSystemSetting(context.Background(), "encryption_key")
 		if err == nil && encKey != "" {
 			dashCfg := cfg.DashboardConfig()
-			if importErr := db.ImportYAMLConfig(dashCfg, encKey); importErr != nil {
+			if importErr := db.ImportYAMLConfig(context.Background(), dashCfg, encKey); importErr != nil {
 				log.Printf("Warning: failed to auto-import dashboard config from config.yaml: %v", importErr)
 			} else {
 				log.Println("Dashboard configuration imported from config.yaml")
@@ -76,18 +76,18 @@ func main() {
 	// Initialize go2rtc manager if binary is available
 	if _, lookErr := exec.LookPath("go2rtc"); lookErr == nil {
 		dataDir := filepath.Dir(cfg.Database.Path)
-		server.Go2RTCManager = go2rtc.NewManager(db, dataDir)
+		srv.Go2RTCManager = go2rtc.NewManager(db, dataDir)
 		log.Println("go2rtc binary found, streaming manager available")
 
 		// Auto-start go2rtc if cameras are configured
-		if err := server.Go2RTCManager.Start(); err != nil {
+		if err := srv.Go2RTCManager.Start(); err != nil {
 			log.Printf("go2rtc auto-start failed: %v", err)
 		}
 	}
 
-	r := server.NewFromEmbed(cfg, db, web.StaticFS, "static")
+	r := server.NewFromEmbed(srv, cfg, db, web.StaticFS, "static")
 
-	if err := server.Run(cfg, r); err != nil {
+	if err := server.Run(srv, cfg, r); err != nil {
 		log.Printf("Server error: %v", err)
 	}
 }

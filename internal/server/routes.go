@@ -38,7 +38,7 @@ func getNonce(ctx context.Context) string {
 	return ""
 }
 
-func registerMiddleware(r *chi.Mux, db *database.DB) {
+func registerMiddleware(r *chi.Mux, srv *Server, db *database.DB) {
 	r.Use(middleware.Logger)
 	r.Use(middleware.Recoverer)
 	r.Use(middleware.RealIP)
@@ -54,13 +54,13 @@ func registerMiddleware(r *chi.Mux, db *database.DB) {
 			w.Header().Set("Referrer-Policy", "strict-origin-when-cross-origin")
 			w.Header().Set("X-XSS-Protection", "0")
 			csp := "default-src 'self'; script-src 'self' 'nonce-" + nonce + "'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self' ws: wss:; media-src 'self' blob:; font-src 'self'"
-			if frameSrc, ok := ServiceCache.Get("csp:frame-src"); ok {
+			if frameSrc, ok := srv.ServiceCache.Get("csp:frame-src"); ok {
 				if s, ok := frameSrc.(string); ok {
 					csp += "; frame-src 'self' " + s
 				}
 			} else if db != nil {
 				if svc, _ := db.GetServiceByType(r.Context(), "grafana"); svc != nil && svc.URL != "" {
-					ServiceCache.Set("csp:frame-src", svc.URL)
+					srv.ServiceCache.Set("csp:frame-src", svc.URL)
 					csp += "; frame-src 'self' " + svc.URL
 				}
 			}
@@ -81,37 +81,37 @@ func registerSwagger(r *chi.Mux) {
 	}
 }
 
-func registerAPIRoutes(r chi.Router, db *database.DB) {
+func registerAPIRoutes(r chi.Router, srv *Server, db *database.DB) {
 	r.Use(func(next http.Handler) http.Handler {
 		return http.MaxBytesHandler(next, 10<<20)
 	})
 	r.Get("/health", healthHandler)
-	r.Get("/version", versionHandler)
+	r.Get("/version", versionHandler(srv))
 
 	if db == nil {
 		return
 	}
 
-	registerPublicRoutes(r, db)
+	registerPublicRoutes(r, srv, db)
 	r.Group(func(r chi.Router) {
 		r.Use(nidusmw.Auth(db))
-		registerViewerRoutes(r, db)
+		registerViewerRoutes(r, srv, db)
 		r.Group(func(r chi.Router) {
 			r.Use(nidusmw.RequireRole("editor"))
-			registerEditorRoutes(r, db)
+			registerEditorRoutes(r, srv, db)
 		})
 		r.Group(func(r chi.Router) {
 			r.Use(nidusmw.RequireRole("admin"))
-			registerAdminRoutes(r, db)
+			registerAdminRoutes(r, srv, db)
 		})
 	})
 }
 
-func registerPublicRoutes(r chi.Router, db *database.DB) {
-	wsHandler := &handlers.WebSocketHandler{DB: db, Hub: WSHub}
+func registerPublicRoutes(r chi.Router, srv *Server, db *database.DB) {
+	wsHandler := &handlers.WebSocketHandler{DB: db, Hub: srv.WSHub}
 	r.Get("/ws", wsHandler.HandleWS)
 
-	webhookHandler := &handlers.WebhooksHandler{DB: db, Hub: WSHub, Cache: ServiceCache, Sender: notifications.NewSender()}
+	webhookHandler := &handlers.WebhooksHandler{DB: db, Hub: srv.WSHub, Cache: srv.ServiceCache, Sender: notifications.NewSender()}
 	r.Post("/webhooks/{id}", webhookHandler.Receive)
 
 	authHandler := &handlers.AuthHandler{DB: db}
@@ -120,7 +120,7 @@ func registerPublicRoutes(r chi.Router, db *database.DB) {
 	usersHandler := &handlers.UsersHandler{DB: db}
 
 	r.Group(func(r chi.Router) {
-		r.Use(AuthRateLimiter.Limit)
+		r.Use(srv.AuthRateLimiter.Limit)
 		r.Post("/auth/setup", authHandler.Setup)
 		r.Post("/auth/login", authHandler.Login)
 		r.Post("/auth/register", usersHandler.Register)
@@ -128,7 +128,7 @@ func registerPublicRoutes(r chi.Router, db *database.DB) {
 	})
 }
 
-func registerViewerRoutes(r chi.Router, db *database.DB) {
+func registerViewerRoutes(r chi.Router, srv *Server, db *database.DB) {
 	authHandler := &handlers.AuthHandler{DB: db}
 	r.Post("/auth/logout", authHandler.Logout)
 	r.Post("/auth/totp/generate", authHandler.TOTPGenerate)
@@ -141,12 +141,12 @@ func registerViewerRoutes(r chi.Router, db *database.DB) {
 	r.Get("/categories/{id}", catHandler.Get)
 
 	widgetHandler := &handlers.WidgetsHandler{DB: db}
-	if Go2RTCManager != nil {
-		widgetHandler.OnReolinkChange = func() { Go2RTCManager.Reload() }
+	if srv.Go2RTCManager != nil {
+		widgetHandler.OnReolinkChange = func() { srv.Go2RTCManager.Reload() }
 	}
 	r.Get("/categories/{id}/widgets", widgetHandler.ListByCategory)
 
-	svcHandler := &handlers.ServicesHandler{DB: db, Cache: ServiceCache}
+	svcHandler := &handlers.ServicesHandler{DB: db, Cache: srv.ServiceCache}
 	r.Get("/services", svcHandler.List)
 	r.Get("/services/status", svcHandler.BatchStatus)
 
@@ -160,89 +160,89 @@ func registerViewerRoutes(r chi.Router, db *database.DB) {
 	themeHandler := &handlers.ThemesHandler{DB: db}
 	r.Get("/themes", themeHandler.List)
 
-	searchHandler := &handlers.SearchHandler{DB: db, Cache: ServiceCache}
+	searchHandler := &handlers.SearchHandler{DB: db, Cache: srv.ServiceCache}
 	r.Get("/search", searchHandler.Search)
 
-	registerViewerServiceRoutes(r, db)
+	registerViewerServiceRoutes(r, srv, db)
 }
 
-func registerViewerServiceRoutes(r chi.Router, db *database.DB) {
-	dockerHandler := &handlers.DockerHandler{DB: db, Cache: ServiceCache}
+func registerViewerServiceRoutes(r chi.Router, srv *Server, db *database.DB) {
+	dockerHandler := &handlers.DockerHandler{DB: db, Cache: srv.ServiceCache}
 	r.Get("/docker/environments", dockerHandler.ListEnvironments)
 	r.Get("/docker/environments/{envId}/containers", dockerHandler.ListContainers)
 	r.Get("/docker/environments/{envId}/stats", dockerHandler.ContainerStatsAll)
 	r.Get("/docker/environments/{envId}/updates", dockerHandler.CheckUpdates)
 
-	proxmoxHandler := &handlers.ProxmoxHandler{DB: db, Cache: ServiceCache}
+	proxmoxHandler := &handlers.ProxmoxHandler{DB: db, Cache: srv.ServiceCache}
 	r.Get("/proxmox/nodes", proxmoxHandler.ListNodes)
 	r.Get("/proxmox/vms", proxmoxHandler.ListVMs)
 
-	haHandler := &handlers.HomeAssistantHandler{DB: db, Cache: ServiceCache, Hub: WSHub}
+	haHandler := &handlers.HomeAssistantHandler{DB: db, Cache: srv.ServiceCache, Hub: srv.WSHub}
 	r.Get("/homeassistant/entities", haHandler.ListEntities)
 	r.Get("/homeassistant/entities/{entityId}", haHandler.GetEntity)
 	r.Get("/homeassistant/camera/{entityId}/snapshot", haHandler.CameraSnapshot)
 
-	adguardHandler := &handlers.AdGuardHandler{DB: db, Cache: ServiceCache}
+	adguardHandler := &handlers.AdGuardHandler{DB: db, Cache: srv.ServiceCache}
 	r.Get("/adguard/stats", adguardHandler.GetStats)
 
-	grafanaHandler := &handlers.GrafanaHandler{DB: db, Cache: ServiceCache}
+	grafanaHandler := &handlers.GrafanaHandler{DB: db, Cache: srv.ServiceCache}
 	r.Get("/grafana/dashboards", grafanaHandler.ListDashboards)
 	r.Get("/grafana/dashboards/{uid}/panels", grafanaHandler.GetDashboardPanels)
 	r.Get("/grafana/embed-url", grafanaHandler.GetEmbedURL)
 
-	jdHandler := &handlers.JDownloaderHandler{DB: db, Cache: ServiceCache}
+	jdHandler := &handlers.JDownloaderHandler{DB: db, Cache: srv.ServiceCache}
 	r.Get("/jdownloader/queue", jdHandler.GetQueue)
 
-	txHandler := &handlers.TransmissionHandler{DB: db, Cache: ServiceCache}
+	txHandler := &handlers.TransmissionHandler{DB: db, Cache: srv.ServiceCache}
 	r.Get("/transmission/torrents", txHandler.ListTorrents)
 
-	kumaHandler := &handlers.UptimeKumaHandler{DB: db, Cache: ServiceCache}
+	kumaHandler := &handlers.UptimeKumaHandler{DB: db, Cache: srv.ServiceCache}
 	r.Get("/uptimekuma/monitors/{slug}", kumaHandler.GetMonitors)
 
-	mediaHandler := &handlers.MediaServerHandler{DB: db, Cache: ServiceCache}
+	mediaHandler := &handlers.MediaServerHandler{DB: db, Cache: srv.ServiceCache}
 	r.Get("/mediaserver/{type}/sessions", mediaHandler.GetSessions)
 	r.Get("/mediaserver/{type}/libraries", mediaHandler.GetLibraries)
 	r.Get("/mediaserver/{type}/proxy", mediaHandler.ProxyImage)
 
-	weatherHandler := &handlers.WeatherHandler{Cache: ServiceCache}
+	weatherHandler := &handlers.WeatherHandler{Cache: srv.ServiceCache}
 	r.Get("/weather", weatherHandler.GetWeather)
 
-	calendarHandler := &handlers.CalendarHandler{Cache: ServiceCache}
+	calendarHandler := &handlers.CalendarHandler{Cache: srv.ServiceCache}
 	r.Get("/calendar", calendarHandler.GetEvents)
 
-	rssHandler := &handlers.RSSHandler{Cache: ServiceCache}
+	rssHandler := &handlers.RSSHandler{Cache: srv.ServiceCache}
 	r.Get("/rss", rssHandler.GetFeed)
 
-	financeHandler := &handlers.FinanceHandler{DB: db, Cache: ServiceCache}
+	financeHandler := &handlers.FinanceHandler{DB: db, Cache: srv.ServiceCache}
 	r.Get("/finance/quotes", financeHandler.GetQuotes)
 	r.Get("/finance/search", financeHandler.SearchSymbol)
 	r.Get("/finance/symbol-count", financeHandler.GetSymbolCount)
 
-	systemHandler := &handlers.SystemHandler{Cache: ServiceCache}
+	systemHandler := &handlers.SystemHandler{Cache: srv.ServiceCache}
 	r.Get("/system", systemHandler.GetStats)
 
-	appLinkHandler := &handlers.AppLinkHandler{DB: db, Cache: ServiceCache}
+	appLinkHandler := &handlers.AppLinkHandler{DB: db, Cache: srv.ServiceCache}
 	r.Get("/applinks/health", appLinkHandler.HealthCheck)
 	r.Get("/applinks/favicon", appLinkHandler.Favicon)
 
-	piholeHandler := &handlers.PiholeHandler{DB: db, Cache: ServiceCache}
+	piholeHandler := &handlers.PiholeHandler{DB: db, Cache: srv.ServiceCache}
 	r.Get("/pihole/stats", piholeHandler.GetStats)
 
-	arrHandler := &handlers.ArrHandler{DB: db, Cache: ServiceCache}
+	arrHandler := &handlers.ArrHandler{DB: db, Cache: srv.ServiceCache}
 	r.Get("/arr/overview", arrHandler.GetOverview)
 
-	reolinkHandler := &handlers.ReolinkHandler{DB: db, Cache: ServiceCache, Go2RTC: Go2RTCManager}
+	reolinkHandler := &handlers.ReolinkHandler{DB: db, Cache: srv.ServiceCache, Go2RTC: srv.Go2RTCManager}
 	r.Get("/reolink/cameras", reolinkHandler.ListCameras)
 	r.Get("/reolink/cameras/{id}/snapshot", reolinkHandler.GetSnapshot)
 	r.Get("/reolink/cameras/{id}/stream", reolinkHandler.GetStreamURL)
 	r.Get("/reolink/discover", reolinkHandler.Discover)
 
-	go2rtcHandler := &handlers.Go2RTCHandler{Manager: Go2RTCManager}
+	go2rtcHandler := &handlers.Go2RTCHandler{Manager: srv.Go2RTCManager}
 	r.Get("/go2rtc/status", go2rtcHandler.Status)
 	r.Get("/go2rtc/ws", go2rtcHandler.ProxyWS)
 }
 
-func registerEditorRoutes(r chi.Router, db *database.DB) {
+func registerEditorRoutes(r chi.Router, srv *Server, db *database.DB) {
 	catHandler := &handlers.CategoriesHandler{DB: db}
 	r.Post("/categories", catHandler.Create)
 	r.Put("/categories/reorder", catHandler.Reorder)
@@ -250,8 +250,8 @@ func registerEditorRoutes(r chi.Router, db *database.DB) {
 	r.Delete("/categories/{id}", catHandler.Delete)
 
 	widgetHandler := &handlers.WidgetsHandler{DB: db}
-	if Go2RTCManager != nil {
-		widgetHandler.OnReolinkChange = func() { Go2RTCManager.Reload() }
+	if srv.Go2RTCManager != nil {
+		widgetHandler.OnReolinkChange = func() { srv.Go2RTCManager.Reload() }
 	}
 	r.Post("/categories/{id}/widgets", widgetHandler.Create)
 	r.Put("/widgets/layout", widgetHandler.SaveLayout)
@@ -259,31 +259,31 @@ func registerEditorRoutes(r chi.Router, db *database.DB) {
 	r.Patch("/widgets/{id}/toggle-collapse", widgetHandler.ToggleCollapse)
 	r.Delete("/widgets/{id}", widgetHandler.Delete)
 
-	dockerHandler := &handlers.DockerHandler{DB: db, Cache: ServiceCache}
+	dockerHandler := &handlers.DockerHandler{DB: db, Cache: srv.ServiceCache}
 	r.Post("/docker/environments/{envId}/containers/{containerId}/{action}", dockerHandler.ContainerAction)
 	r.Post("/docker/environments/{envId}/containers/{containerId}/recreate", dockerHandler.RecreateContainer)
 	r.Post("/docker/stacks/{stackId}/update", dockerHandler.UpdateStack)
 	r.Post("/docker/stacks/{stackId}/{action}", dockerHandler.StackAction)
 
-	proxmoxHandler := &handlers.ProxmoxHandler{DB: db, Cache: ServiceCache}
+	proxmoxHandler := &handlers.ProxmoxHandler{DB: db, Cache: srv.ServiceCache}
 	r.Post("/proxmox/vms/{node}/{vmType}/{vmid}/{action}", proxmoxHandler.VMAction)
 
-	haHandler := &handlers.HomeAssistantHandler{DB: db, Cache: ServiceCache, Hub: WSHub}
+	haHandler := &handlers.HomeAssistantHandler{DB: db, Cache: srv.ServiceCache, Hub: srv.WSHub}
 	r.Post("/homeassistant/services/{domain}/{service}", haHandler.CallService)
 
-	adguardHandler := &handlers.AdGuardHandler{DB: db, Cache: ServiceCache}
+	adguardHandler := &handlers.AdGuardHandler{DB: db, Cache: srv.ServiceCache}
 	r.Post("/adguard/filtering/toggle", adguardHandler.ToggleFiltering)
 
-	piholeHandler := &handlers.PiholeHandler{DB: db, Cache: ServiceCache}
+	piholeHandler := &handlers.PiholeHandler{DB: db, Cache: srv.ServiceCache}
 	r.Post("/pihole/blocking", piholeHandler.ToggleBlocking)
 
-	jdHandler := &handlers.JDownloaderHandler{DB: db, Cache: ServiceCache}
+	jdHandler := &handlers.JDownloaderHandler{DB: db, Cache: srv.ServiceCache}
 	r.Post("/jdownloader/links", jdHandler.AddLinks)
 	r.Post("/jdownloader/queue/start", jdHandler.StartQueue)
 	r.Post("/jdownloader/queue/pause", jdHandler.PauseQueue)
 	r.Post("/jdownloader/queue/cleanup", jdHandler.CleanupFinished)
 
-	txHandler := &handlers.TransmissionHandler{DB: db, Cache: ServiceCache}
+	txHandler := &handlers.TransmissionHandler{DB: db, Cache: srv.ServiceCache}
 	r.Post("/transmission/torrents", txHandler.AddTorrent)
 	r.Post("/transmission/torrents/{id}/start", txHandler.StartTorrent)
 	r.Post("/transmission/torrents/{id}/stop", txHandler.StopTorrent)
@@ -292,7 +292,7 @@ func registerEditorRoutes(r chi.Router, db *database.DB) {
 	r.Post("/transmission/torrents/cleanup", txHandler.CleanupCompleted)
 }
 
-func registerAdminRoutes(r chi.Router, db *database.DB) {
+func registerAdminRoutes(r chi.Router, srv *Server, db *database.DB) {
 	settingsHandler := &handlers.SettingsHandler{DB: db}
 	r.Put("/settings", settingsHandler.Update)
 
@@ -301,7 +301,7 @@ func registerAdminRoutes(r chi.Router, db *database.DB) {
 	r.Put("/themes/{id}", themeHandler.Update)
 	r.Delete("/themes/{id}", themeHandler.Delete)
 
-	svcHandler := &handlers.ServicesHandler{DB: db, Cache: ServiceCache}
+	svcHandler := &handlers.ServicesHandler{DB: db, Cache: srv.ServiceCache}
 	r.Put("/services/{type}", svcHandler.Update)
 	r.Delete("/services/{type}", svcHandler.Delete)
 	r.Post("/services/{type}/test", svcHandler.Test)
@@ -321,7 +321,7 @@ func registerAdminRoutes(r chi.Router, db *database.DB) {
 	r.Post("/invites", usersHandler.CreateInvite)
 	r.Delete("/invites/{id}", usersHandler.DeleteInvite)
 
-	webhookHandler := &handlers.WebhooksHandler{DB: db, Hub: WSHub, Cache: ServiceCache, Sender: notifications.NewSender()}
+	webhookHandler := &handlers.WebhooksHandler{DB: db, Hub: srv.WSHub, Cache: srv.ServiceCache, Sender: notifications.NewSender()}
 	r.Get("/webhooks", webhookHandler.List)
 	r.Post("/webhooks", webhookHandler.Create)
 	r.Put("/webhooks/{id}", webhookHandler.Update)
@@ -341,41 +341,41 @@ func registerAdminRoutes(r chi.Router, db *database.DB) {
 	r.Put("/notifications/rules/{id}", notifHandler.UpdateRule)
 	r.Delete("/notifications/rules/{id}", notifHandler.DeleteRule)
 
-	go2rtcHandler := &handlers.Go2RTCHandler{Manager: Go2RTCManager}
+	go2rtcHandler := &handlers.Go2RTCHandler{Manager: srv.Go2RTCManager}
 	r.Post("/go2rtc/start", go2rtcHandler.Start)
 	r.Post("/go2rtc/stop", go2rtcHandler.Stop)
 	r.Post("/go2rtc/restart", go2rtcHandler.Restart)
 }
 
-func serveStaticFiles(r *chi.Mux) {
-	if StaticFiles == nil {
+func serveStaticFiles(r *chi.Mux, srv *Server) {
+	if srv.StaticFiles == nil {
 		return
 	}
-	fileServer := http.FileServer(http.FS(StaticFiles))
+	fileServer := http.FileServer(http.FS(srv.StaticFiles))
 	r.Get("/*", func(w http.ResponseWriter, r *http.Request) {
 		path := r.URL.Path
 		if path == "/" {
 			path = "/index.html"
 		}
-		f, err := StaticFiles.Open(path[1:])
+		f, err := srv.StaticFiles.Open(path[1:])
 		if err != nil {
 			// SPA fallback: serve index.html with nonce injection
-			serveIndexWithNonce(w, r)
+			serveIndexWithNonce(w, r, srv)
 			return
 		}
 		f.Close()
 
 		// Serve index.html with nonce injection
 		if path == "/index.html" {
-			serveIndexWithNonce(w, r)
+			serveIndexWithNonce(w, r, srv)
 			return
 		}
 		fileServer.ServeHTTP(w, r)
 	})
 }
 
-func serveIndexWithNonce(w http.ResponseWriter, r *http.Request) {
-	f, err := StaticFiles.Open("index.html")
+func serveIndexWithNonce(w http.ResponseWriter, r *http.Request, srv *Server) {
+	f, err := srv.StaticFiles.Open("index.html")
 	if err != nil {
 		http.NotFound(w, r)
 		return

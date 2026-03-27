@@ -28,9 +28,14 @@ func testConfig() config.Config {
 	}
 }
 
+func testServer() *Server {
+	return NewServer("test")
+}
+
 func TestHealthEndpoint(t *testing.T) {
 	cfg := testConfig()
-	r := New(cfg, nil)
+	srv := testServer()
+	r := New(srv, cfg, nil)
 
 	ts := httptest.NewServer(r)
 	defer ts.Close()
@@ -61,7 +66,8 @@ func TestHealthEndpoint(t *testing.T) {
 
 func TestSecurityHeaders(t *testing.T) {
 	cfg := testConfig()
-	r := New(cfg, nil)
+	srv := testServer()
+	r := New(srv, cfg, nil)
 
 	ts := httptest.NewServer(r)
 	defer ts.Close()
@@ -96,15 +102,15 @@ func TestSecurityHeaders(t *testing.T) {
 
 func TestStaticFilesServed(t *testing.T) {
 	cfg := testConfig()
+	srv := testServer()
 
 	// Set up in-memory static files
-	StaticFiles = fstest.MapFS{
+	srv.StaticFiles = fstest.MapFS{
 		"index.html": &fstest.MapFile{Data: []byte("<html>Nidus</html>")},
 		"app.js":     &fstest.MapFile{Data: []byte("console.log('hello')")},
 	}
-	defer func() { StaticFiles = nil }()
 
-	r := New(cfg, nil)
+	r := New(srv, cfg, nil)
 	ts := httptest.NewServer(r)
 	defer ts.Close()
 
@@ -133,13 +139,13 @@ func TestStaticFilesServed(t *testing.T) {
 
 func TestSPAFallback(t *testing.T) {
 	cfg := testConfig()
+	srv := testServer()
 
-	StaticFiles = fstest.MapFS{
+	srv.StaticFiles = fstest.MapFS{
 		"index.html": &fstest.MapFile{Data: []byte("<html>SPA</html>")},
 	}
-	defer func() { StaticFiles = nil }()
 
-	r := New(cfg, nil)
+	r := New(srv, cfg, nil)
 	ts := httptest.NewServer(r)
 	defer ts.Close()
 
@@ -157,13 +163,13 @@ func TestSPAFallback(t *testing.T) {
 
 func TestAPIRouteTakesPrecedence(t *testing.T) {
 	cfg := testConfig()
+	srv := testServer()
 
-	StaticFiles = fstest.MapFS{
+	srv.StaticFiles = fstest.MapFS{
 		"index.html": &fstest.MapFile{Data: []byte("<html>SPA</html>")},
 	}
-	defer func() { StaticFiles = nil }()
 
-	r := New(cfg, nil)
+	r := New(srv, cfg, nil)
 	ts := httptest.NewServer(r)
 	defer ts.Close()
 
@@ -202,13 +208,14 @@ func TestGracefulShutdown(t *testing.T) {
 		},
 	}
 
-	r := New(cfg, nil)
+	srv := testServer()
+	r := New(srv, cfg, nil)
 
 	// Run server with cancellable context
 	ctx, cancel := context.WithCancel(context.Background())
 	errCh := make(chan error, 1)
 	go func() {
-		errCh <- RunWithContext(ctx, cfg, r)
+		errCh <- RunWithContext(ctx, srv, cfg, r)
 	}()
 
 	// Wait for server to be ready
@@ -262,18 +269,18 @@ func TestServerStartsAndServesRequests(t *testing.T) {
 		},
 	}
 
-	StaticFiles = fstest.MapFS{
+	srv := testServer()
+	srv.StaticFiles = fstest.MapFS{
 		"index.html": &fstest.MapFile{Data: []byte("<html>Test</html>")},
 	}
-	defer func() { StaticFiles = nil }()
 
-	r := New(cfg, nil)
+	r := New(srv, cfg, nil)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
 	go func() {
-		RunWithContext(ctx, cfg, r)
+		RunWithContext(ctx, srv, cfg, r)
 	}()
 
 	// Wait for server to start
