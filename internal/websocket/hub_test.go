@@ -7,6 +7,7 @@ import (
 )
 
 func TestNewHub(t *testing.T) {
+	t.Parallel()
 	hub := NewHub()
 	if hub == nil {
 		t.Fatal("expected non-nil hub")
@@ -17,6 +18,7 @@ func TestNewHub(t *testing.T) {
 }
 
 func TestHubRegisterUnregister(t *testing.T) {
+	t.Parallel()
 	hub := NewHub()
 	go hub.Run()
 
@@ -41,6 +43,7 @@ func TestHubRegisterUnregister(t *testing.T) {
 }
 
 func TestHubBroadcast(t *testing.T) {
+	t.Parallel()
 	hub := NewHub()
 	go hub.Run()
 
@@ -75,6 +78,7 @@ func TestHubBroadcast(t *testing.T) {
 }
 
 func TestHubBroadcastMessage(t *testing.T) {
+	t.Parallel()
 	hub := NewHub()
 	go hub.Run()
 
@@ -103,6 +107,7 @@ func TestHubBroadcastMessage(t *testing.T) {
 }
 
 func TestHubBroadcastType(t *testing.T) {
+	t.Parallel()
 	hub := NewHub()
 	go hub.Run()
 
@@ -135,6 +140,7 @@ func TestHubBroadcastType(t *testing.T) {
 }
 
 func TestHubUnregisterClosesSend(t *testing.T) {
+	t.Parallel()
 	hub := NewHub()
 	go hub.Run()
 
@@ -153,6 +159,7 @@ func TestHubUnregisterClosesSend(t *testing.T) {
 }
 
 func TestHubMultipleUnregister(t *testing.T) {
+	t.Parallel()
 	hub := NewHub()
 	go hub.Run()
 
@@ -173,6 +180,7 @@ func TestHubMultipleUnregister(t *testing.T) {
 }
 
 func TestNewClient(t *testing.T) {
+	t.Parallel()
 	hub := NewHub()
 	client := NewClient(hub, nil, 42)
 

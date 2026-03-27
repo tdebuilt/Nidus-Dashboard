@@ -76,7 +76,7 @@ func New(cfg config.Config, db *database.DB) *chi.Mux {
 			if frameSrc, ok := ServiceCache.Get("csp:frame-src"); ok {
 				csp += "; frame-src 'self' " + frameSrc.(string)
 			} else if db != nil {
-				if svc, _ := db.GetServiceByType("grafana"); svc != nil && svc.URL != "" {
+				if svc, _ := db.GetServiceByType(r.Context(), "grafana"); svc != nil && svc.URL != "" {
 					ServiceCache.Set("csp:frame-src", svc.URL)
 					csp += "; frame-src 'self' " + svc.URL
 				}
@@ -101,6 +101,10 @@ func New(cfg config.Config, db *database.DB) *chi.Mux {
 
 	// API routes
 	r.Route("/api", func(r chi.Router) {
+		// Limit request body size to 10 MB
+		r.Use(func(next http.Handler) http.Handler {
+			return http.MaxBytesHandler(next, 10<<20)
+		})
 		r.Get("/health", healthHandler)
 		r.Get("/version", versionHandler)
 

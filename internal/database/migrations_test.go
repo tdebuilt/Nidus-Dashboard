@@ -1,6 +1,7 @@
 package database
 
 import (
+	"context"
 	"path/filepath"
 	"testing"
 )
@@ -20,7 +21,7 @@ func TestMigrateCreatesAllTables(t *testing.T) {
 	db := openTestDB(t)
 	defer db.Close()
 
-	if err := db.Migrate(); err != nil {
+	if err := db.Migrate(context.Background()); err != nil {
 		t.Fatalf("migration failed: %v", err)
 	}
 
@@ -39,10 +40,10 @@ func TestMigrateIsIdempotent(t *testing.T) {
 	defer db.Close()
 
 	// Run migration twice — second run should be a no-op
-	if err := db.Migrate(); err != nil {
+	if err := db.Migrate(context.Background()); err != nil {
 		t.Fatalf("first migration failed: %v", err)
 	}
-	if err := db.Migrate(); err != nil {
+	if err := db.Migrate(context.Background()); err != nil {
 		t.Fatalf("second migration failed: %v", err)
 	}
 
@@ -59,7 +60,7 @@ func TestMigrateIsIdempotent(t *testing.T) {
 func TestMigrateUsersTable(t *testing.T) {
 	db := openTestDB(t)
 	defer db.Close()
-	if err := db.Migrate(); err != nil {
+	if err := db.Migrate(context.Background()); err != nil {
 		t.Fatalf("migration failed: %v", err)
 	}
 
@@ -88,7 +89,7 @@ func TestMigrateUsersTable(t *testing.T) {
 func TestMigrateSettingsTable(t *testing.T) {
 	db := openTestDB(t)
 	defer db.Close()
-	if err := db.Migrate(); err != nil {
+	if err := db.Migrate(context.Background()); err != nil {
 		t.Fatalf("migration failed: %v", err)
 	}
 
@@ -114,7 +115,7 @@ func TestMigrateSettingsTable(t *testing.T) {
 func TestMigrateSettingsFKConstraint(t *testing.T) {
 	db := openTestDB(t)
 	defer db.Close()
-	if err := db.Migrate(); err != nil {
+	if err := db.Migrate(context.Background()); err != nil {
 		t.Fatalf("migration failed: %v", err)
 	}
 
@@ -128,7 +129,7 @@ func TestMigrateSettingsFKConstraint(t *testing.T) {
 func TestMigrateCategoriesTable(t *testing.T) {
 	db := openTestDB(t)
 	defer db.Close()
-	if err := db.Migrate(); err != nil {
+	if err := db.Migrate(context.Background()); err != nil {
 		t.Fatalf("migration failed: %v", err)
 	}
 
@@ -149,7 +150,7 @@ func TestMigrateCategoriesTable(t *testing.T) {
 func TestMigrateWidgetsFKConstraint(t *testing.T) {
 	db := openTestDB(t)
 	defer db.Close()
-	if err := db.Migrate(); err != nil {
+	if err := db.Migrate(context.Background()); err != nil {
 		t.Fatalf("migration failed: %v", err)
 	}
 
@@ -173,7 +174,7 @@ func TestMigrateWidgetsFKConstraint(t *testing.T) {
 func TestMigrateWidgetCascadeDelete(t *testing.T) {
 	db := openTestDB(t)
 	defer db.Close()
-	if err := db.Migrate(); err != nil {
+	if err := db.Migrate(context.Background()); err != nil {
 		t.Fatalf("migration failed: %v", err)
 	}
 
@@ -197,7 +198,7 @@ func TestMigrateWidgetCascadeDelete(t *testing.T) {
 func TestMigrateServicesTable(t *testing.T) {
 	db := openTestDB(t)
 	defer db.Close()
-	if err := db.Migrate(); err != nil {
+	if err := db.Migrate(context.Background()); err != nil {
 		t.Fatalf("migration failed: %v", err)
 	}
 
@@ -216,7 +217,7 @@ func TestMigrateServicesTable(t *testing.T) {
 func TestMigrateAppLinksTable(t *testing.T) {
 	db := openTestDB(t)
 	defer db.Close()
-	if err := db.Migrate(); err != nil {
+	if err := db.Migrate(context.Background()); err != nil {
 		t.Fatalf("migration failed: %v", err)
 	}
 
@@ -235,7 +236,7 @@ func TestMigrateAppLinksTable(t *testing.T) {
 func TestMigrateSettingsCascadeDelete(t *testing.T) {
 	db := openTestDB(t)
 	defer db.Close()
-	if err := db.Migrate(); err != nil {
+	if err := db.Migrate(context.Background()); err != nil {
 		t.Fatalf("migration failed: %v", err)
 	}
 

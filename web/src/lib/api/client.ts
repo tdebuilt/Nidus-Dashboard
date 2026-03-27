@@ -37,11 +37,21 @@ async function request<T>(url: string, options: RequestOptions = {}): Promise<T>
     config.body = JSON.stringify(body)
   }
 
+  const controller = new AbortController()
+  const timeoutId = setTimeout(() => controller.abort(), 30_000)
+  config.signal = controller.signal
+
   let response: Response
   try {
     response = await fetch(url, config)
-  } catch {
+  } catch (err) {
+    clearTimeout(timeoutId)
+    if (err instanceof DOMException && err.name === 'AbortError') {
+      throw new NetworkError('Request timeout')
+    }
     throw new NetworkError()
+  } finally {
+    clearTimeout(timeoutId)
   }
 
   if (response.status === 401) {

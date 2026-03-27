@@ -9,19 +9,13 @@
   import AddWidgetDialog from './AddWidgetDialog.svelte'
   import EditWidgetDialog from './EditWidgetDialog.svelte'
   import { getWidget, loadWidgetComponent, type WidgetDefinition } from '../widgetRegistry'
+  import {
+    ROW_UNIT, GRID_COLS, DRAG_THRESHOLD,
+    widgetRowSpan, getColPitch, resolveCollisions, compactWidgets,
+    type GridWidget,
+  } from './widgets/gridEngine'
 
-  interface Widget {
-    id: number
-    category_id: number
-    type: string
-    title: string
-    config: string
-    collapsed: boolean
-    pos_x: number
-    pos_y: number
-    width: number
-    height: number
-  }
+  type Widget = GridWidget
 
   interface Props {
     categoryId: number
@@ -125,95 +119,12 @@
     }
   }
 
-  const ROW_UNIT = 10
-  const GRID_COLS = 24
-  const DRAG_THRESHOLD = 5
-
   // Responsive column count
   const effectiveCols = $derived(
     $breakpoint === 'mobile' ? 1
     : $breakpoint === 'tablet' ? Math.floor(GRID_COLS / 2)
     : GRID_COLS
   )
-
-  // Grid metrics
-  function getColPitch() {
-    if (!gridRef) return 80
-    return gridRef.clientWidth / (effectiveCols > 1 ? effectiveCols : GRID_COLS)
-  }
-
-  // --- Free-placement grid helpers ---
-
-  /** Get the effective height of a widget in row units.
-   *  For auto-height widgets (height=0), measure from the DOM if available. */
-  const ROW_GAP = 16 // vertical spacing between widgets in px
-  const GAP_ROWS = Math.ceil(ROW_GAP / ROW_UNIT) // gap in row units (2 rows = 20px)
-
-  function widgetRowSpan(w: Widget): number {
-    if (w.height > 0) return w.height + GAP_ROWS
-    // Measure content height from DOM (scrollHeight = actual content, not stretched by grid)
-    if (gridRef) {
-      const el = gridRef.querySelector(`[data-widget-id="${w.id}"]`) as HTMLElement | null
-      if (el) {
-        const contentHeight = el.scrollHeight + ROW_GAP
-        return Math.max(1, Math.ceil(contentHeight / ROW_UNIT))
-      }
-    }
-    return 20 // fallback: ~200px
-  }
-
-  /** Check if two widgets overlap in the grid */
-  function overlaps(a: Widget, b: Widget): boolean {
-    if (a.id === b.id) return false
-    const aRight = a.pos_x + a.width
-    const bRight = b.pos_x + b.width
-    const aBottom = a.pos_y + widgetRowSpan(a)
-    const bBottom = b.pos_y + widgetRowSpan(b)
-    return a.pos_x < bRight && aRight > b.pos_x && a.pos_y < bBottom && aBottom > b.pos_y
-  }
-
-  /** Resolve collisions: push overlapping widgets down using a stable top-down sweep. */
-  function resolveCollisions(allWidgets: Widget[], _movedWidget: Widget): Widget[] {
-    // Process widgets top-to-bottom; if any widget overlaps with one above it, push it down.
-    // Repeat until stable (max 100 iterations for safety).
-    for (let iter = 0; iter < 100; iter++) {
-      let moved = false
-      const sorted = [...allWidgets].sort((a, b) => a.pos_y - b.pos_y || a.pos_x - b.pos_x)
-      for (let i = 0; i < sorted.length; i++) {
-        for (let j = i + 1; j < sorted.length; j++) {
-          if (overlaps(sorted[i], sorted[j])) {
-            sorted[j].pos_y = sorted[i].pos_y + widgetRowSpan(sorted[i])
-            moved = true
-          }
-        }
-      }
-      if (!moved) break
-    }
-    return allWidgets
-  }
-
-  /** Compact all widgets vertically: move each widget up as far as possible without overlapping.
-   *  If excludeId is provided, that widget keeps its position (user just placed it there). */
-  function compactWidgets(allWidgets: Widget[], excludeId?: number): void {
-    allWidgets.sort((a, b) => a.pos_y - b.pos_y || a.pos_x - b.pos_x)
-    for (const w of allWidgets) {
-      if (w.id === excludeId) continue
-      for (let y = 0; y <= w.pos_y; y++) {
-        const blocked = allWidgets.some((other) => {
-          if (other.id === w.id) return false
-          const oRight = other.pos_x + other.width
-          const wRight = w.pos_x + w.width
-          const oBottom = other.pos_y + widgetRowSpan(other)
-          const testBottom = y + widgetRowSpan(w)
-          return w.pos_x < oRight && wRight > other.pos_x && y < oBottom && testBottom > other.pos_y
-        })
-        if (!blocked) {
-          w.pos_y = y
-          break
-        }
-      }
-    }
-  }
 
   // Sorted widgets for rendering
   const sortedWidgets = $derived(
@@ -222,7 +133,7 @@
 
   // Compute total grid rows for the preview overlay
   const _totalGridRows = $derived(
-    widgets.reduce((max, w) => Math.max(max, w.pos_y + widgetRowSpan(w)), 1)
+    widgets.reduce((max, w) => Math.max(max, w.pos_y + widgetRowSpan(w, gridRef)), 1)
   )
 
   // --- Drag preview state ---
@@ -244,7 +155,7 @@
     const sourceEl = (e.target as HTMLElement).closest('.widget-card') as HTMLElement | null
 
     previewWidth = widget.width
-    previewHeight = widgetRowSpan(widget)
+    previewHeight = widgetRowSpan(widget, gridRef)
 
     function createGhost() {
       if (!sourceEl) return
@@ -333,8 +244,8 @@
         }
 
         // Resolve any remaining collisions, then compact others (not the placed widget)
-        resolveCollisions(widgets, widget)
-        compactWidgets(widgets, widget.id)
+        resolveCollisions(widgets, widget, gridRef)
+        compactWidgets(widgets, widget.id, gridRef)
 
         // Save all widget positions
         saveAllWidgetLayouts()
@@ -355,7 +266,7 @@
     e.preventDefault()
     e.stopPropagation()
     resizingId = widget.id
-    const colPitch = getColPitch()
+    const colPitch = getColPitch(gridRef, effectiveCols)
     const startX = e.clientX
     const startY = e.clientY
     const startW = widget.width
@@ -376,13 +287,13 @@
       const deltaRows = Math.round(dy / ROW_UNIT)
       widget.height = Math.max(1, startH + deltaRows)
       // Resolve collisions live during resize
-      resolveCollisions(widgets, widget)
+      resolveCollisions(widgets, widget, gridRef)
     }
 
     function onUp() {
       resizingId = null
-      resolveCollisions(widgets, widget)
-      compactWidgets(widgets)
+      resolveCollisions(widgets, widget, gridRef)
+      compactWidgets(widgets, undefined, gridRef)
       saveAllWidgetLayouts()
       document.removeEventListener('pointermove', onMove)
       document.removeEventListener('pointerup', onUp)
@@ -398,8 +309,8 @@
     widget.height = 0
     // Wait for DOM to re-render in auto mode, then resolve layout
     requestAnimationFrame(() => {
-      resolveCollisions(widgets, widget)
-      compactWidgets(widgets)
+      resolveCollisions(widgets, widget, gridRef)
+      compactWidgets(widgets, undefined, gridRef)
       updateGridMinHeight()
       saveAllWidgetLayouts()
     })
@@ -411,31 +322,35 @@
       const el = gridRef?.querySelector(`[data-widget-id="${widget.id}"]`) as HTMLElement | null
       const currentH = el?.clientHeight ?? ROW_UNIT * 3
       widget.height = Math.max(1, Math.round(currentH / ROW_UNIT))
-      compactWidgets(widgets)
+      compactWidgets(widgets, undefined, gridRef)
       saveAllWidgetLayouts()
     } else {
       widget.height = 0
       requestAnimationFrame(() => {
-        resolveCollisions(widgets, widget)
-        compactWidgets(widgets)
+        resolveCollisions(widgets, widget, gridRef)
+        compactWidgets(widgets, undefined, gridRef)
         updateGridMinHeight()
         saveAllWidgetLayouts()
       })
     }
   }
 
-  /** Save positions of ALL widgets (needed after collision resolution) */
+  /** Save positions of ALL widgets (needed after collision resolution), debounced */
+  let _saveTimer: ReturnType<typeof setTimeout> | null = null
   function saveAllWidgetLayouts() {
-    const layouts = widgets.map((w) => ({
-      id: w.id,
-      pos_x: w.pos_x,
-      pos_y: w.pos_y,
-      width: w.width,
-      height: w.height,
-    }))
-    api.put('/api/widgets/layout', { widgets: layouts })
-      .then(() => onUpdate?.())
-      .catch(() => toasts.error(translate('widget.moveError')))
+    if (_saveTimer) clearTimeout(_saveTimer)
+    _saveTimer = setTimeout(() => {
+      const layouts = widgets.map((w) => ({
+        id: w.id,
+        pos_x: w.pos_x,
+        pos_y: w.pos_y,
+        width: w.width,
+        height: w.height,
+      }))
+      api.put('/api/widgets/layout', { widgets: layouts })
+        .then(() => onUpdate?.())
+        .catch(() => toasts.error(translate('widget.moveError')))
+    }, 500)
   }
 
   function _saveWidgetLayout(widget: Widget) {
@@ -448,7 +363,7 @@
 
   // Next free position for new widgets
   const nextFreeY = $derived(
-    widgets.reduce((max, w) => Math.max(max, w.pos_y + widgetRowSpan(w)), 0)
+    widgets.reduce((max, w) => Math.max(max, w.pos_y + widgetRowSpan(w, gridRef)), 0)
   )
 
   function getWidgetProps(widget: Widget, def: WidgetDefinition): Record<string, unknown> {
@@ -515,7 +430,7 @@
     const w = Math.min(widget.width, cols)
     const x = Math.min(widget.pos_x, cols - w)
     const col = `grid-column: ${x + 1} / span ${w}`
-    const span = widgetRowSpan(widget)
+    const span = widgetRowSpan(widget, gridRef)
     const row = `grid-row: ${widget.pos_y + 1} / span ${span}`
     if (widget.height > 0) {
       return `${col}; ${row}; height: ${widget.height * ROW_UNIT}px`
@@ -612,7 +527,7 @@
                   <button onclick={() => openEditDialog(widget)} class="touch-action-btn rounded p-2 sm:p-1 text-[var(--color-text-muted)] hover:text-[var(--color-primary)]" title={translate('widget.edit')} data-testid="widget-edit">
                     <Pencil size={12} />
                   </button>
-                  <button onclick={() => handleDelete(widget)} class="touch-action-btn rounded p-2 sm:p-1 text-[var(--color-text-muted)] hover:text-[var(--color-danger)]" data-testid="widget-delete">
+                  <button onclick={() => handleDelete(widget)} class="touch-action-btn rounded p-2 sm:p-1 text-[var(--color-text-muted)] hover:text-[var(--color-danger)]" title={translate('common.delete')} aria-label={translate('common.delete')} data-testid="widget-delete">
                     <Trash2 size={12} />
                   </button>
                 </div>

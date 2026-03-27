@@ -1,14 +1,15 @@
 package database
 
 import (
+	"context"
 	"fmt"
 )
 
 // migrate runs all database migrations in order.
 // Each migration is idempotent (uses IF NOT EXISTS).
-func (db *DB) Migrate() error {
+func (db *DB) Migrate(ctx context.Context) error {
 	// Create migrations tracking table
-	if _, err := db.Exec(`
+	if _, err := db.ExecContext(ctx, `
 		CREATE TABLE IF NOT EXISTS migrations (
 			id INTEGER PRIMARY KEY AUTOINCREMENT,
 			version INTEGER NOT NULL UNIQUE,
@@ -40,25 +41,25 @@ func (db *DB) Migrate() error {
 
 	for _, m := range migrations {
 		var count int
-		if err := db.QueryRow("SELECT COUNT(*) FROM migrations WHERE version = ?", m.version).Scan(&count); err != nil {
+		if err := db.QueryRowContext(ctx, "SELECT COUNT(*) FROM migrations WHERE version = ?", m.version).Scan(&count); err != nil {
 			return fmt.Errorf("checking migration %d: %w", m.version, err)
 		}
 		if count > 0 {
 			continue
 		}
 
-		if _, err := db.Exec(m.sql); err != nil {
+		if _, err := db.ExecContext(ctx, m.sql); err != nil {
 			return fmt.Errorf("running migration %d: %w", m.version, err)
 		}
 
 		// Post-migration Go logic for V12: generate slugs for existing categories
 		if m.version == 12 {
-			if err := db.migrateV12Slugs(); err != nil {
+			if err := db.migrateV12Slugs(ctx); err != nil {
 				return fmt.Errorf("post-migration V12 slugs: %w", err)
 			}
 		}
 
-		if _, err := db.Exec("INSERT INTO migrations (version) VALUES (?)", m.version); err != nil {
+		if _, err := db.ExecContext(ctx, "INSERT INTO migrations (version) VALUES (?)", m.version); err != nil {
 			return fmt.Errorf("recording migration %d: %w", m.version, err)
 		}
 	}
@@ -67,8 +68,8 @@ func (db *DB) Migrate() error {
 }
 
 // migrateV12Slugs generates slugs for all existing categories and adds a unique index.
-func (db *DB) migrateV12Slugs() error {
-	rows, err := db.Query("SELECT id, name FROM categories WHERE slug IS NULL")
+func (db *DB) migrateV12Slugs(ctx context.Context) error {
+	rows, err := db.QueryContext(ctx, "SELECT id, name FROM categories WHERE slug IS NULL")
 	if err != nil {
 		return fmt.Errorf("querying categories without slug: %w", err)
 	}
@@ -91,16 +92,16 @@ func (db *DB) migrateV12Slugs() error {
 	}
 
 	for _, c := range cats {
-		slug, err := db.generateUniqueSlug(GenerateSlug(c.name))
+		slug, err := db.generateUniqueSlug(ctx, GenerateSlug(c.name))
 		if err != nil {
 			return fmt.Errorf("generating slug for category %d: %w", c.id, err)
 		}
-		if _, err := db.Exec("UPDATE categories SET slug = ? WHERE id = ?", slug, c.id); err != nil {
+		if _, err := db.ExecContext(ctx, "UPDATE categories SET slug = ? WHERE id = ?", slug, c.id); err != nil {
 			return fmt.Errorf("updating slug for category %d: %w", c.id, err)
 		}
 	}
 
-	if _, err := db.Exec("CREATE UNIQUE INDEX IF NOT EXISTS idx_categories_slug ON categories(slug)"); err != nil {
+	if _, err := db.ExecContext(ctx, "CREATE UNIQUE INDEX IF NOT EXISTS idx_categories_slug ON categories(slug)"); err != nil {
 		return fmt.Errorf("creating slug unique index: %w", err)
 	}
 	return nil

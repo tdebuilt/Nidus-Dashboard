@@ -1,10 +1,9 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { api, ApiRequestError, setUnauthorizedHandler } from './api';
+import { api, ApiError, NetworkError } from './api/client';
 
 describe('API client', () => {
   beforeEach(() => {
     vi.restoreAllMocks();
-    setUnauthorizedHandler(null as unknown as () => void);
   });
 
   it('makes GET requests with correct options', async () => {
@@ -15,11 +14,11 @@ describe('API client', () => {
 
     const result = await api.get('/api/test');
     expect(result).toEqual(mockResponse);
-    expect(fetch).toHaveBeenCalledWith('/api/test', {
+    expect(fetch).toHaveBeenCalledWith('/api/test', expect.objectContaining({
       method: 'GET',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
-    });
+    }));
   });
 
   it('makes POST requests with body', async () => {
@@ -29,12 +28,12 @@ describe('API client', () => {
     );
 
     await api.post('/api/auth/login', body);
-    expect(fetch).toHaveBeenCalledWith('/api/auth/login', {
+    expect(fetch).toHaveBeenCalledWith('/api/auth/login', expect.objectContaining({
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
       body: JSON.stringify(body),
-    });
+    }));
   });
 
   it('makes PUT requests with body', async () => {
@@ -60,19 +59,16 @@ describe('API client', () => {
     }));
   });
 
-  it('throws ApiRequestError on 401 and calls unauthorized handler', async () => {
-    const handler = vi.fn();
-    setUnauthorizedHandler(handler);
+  it('throws ApiError on 401', async () => {
     vi.spyOn(globalThis, 'fetch').mockResolvedValue(
       new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 })
     );
 
-    await expect(api.get('/api/settings')).rejects.toThrow(ApiRequestError);
+    await expect(api.get('/api/settings')).rejects.toThrow(ApiError);
     await expect(api.get('/api/settings')).rejects.toThrow('Unauthorized');
-    expect(handler).toHaveBeenCalled();
   });
 
-  it('throws ApiRequestError with server error message', async () => {
+  it('throws ApiError with server error message', async () => {
     vi.spyOn(globalThis, 'fetch').mockResolvedValue(
       new Response(JSON.stringify({ error: 'name is required' }), { status: 400 })
     );
@@ -81,24 +77,16 @@ describe('API client', () => {
       await api.post('/api/categories', {});
       expect.fail('should have thrown');
     } catch (e) {
-      expect(e).toBeInstanceOf(ApiRequestError);
-      expect((e as ApiRequestError).message).toBe('name is required');
-      expect((e as ApiRequestError).status).toBe(400);
-      expect((e as ApiRequestError).isNetwork).toBe(false);
+      expect(e).toBeInstanceOf(ApiError);
+      expect((e as ApiError).message).toBe('name is required');
+      expect((e as ApiError).status).toBe(400);
     }
   });
 
-  it('throws network error when fetch fails', async () => {
+  it('throws NetworkError when fetch fails', async () => {
     vi.spyOn(globalThis, 'fetch').mockRejectedValue(new TypeError('Failed to fetch'));
 
-    try {
-      await api.get('/api/health');
-      expect.fail('should have thrown');
-    } catch (e) {
-      expect(e).toBeInstanceOf(ApiRequestError);
-      expect((e as ApiRequestError).isNetwork).toBe(true);
-      expect((e as ApiRequestError).status).toBe(0);
-    }
+    await expect(api.get('/api/health')).rejects.toThrow(NetworkError);
   });
 
   it('includes credentials for cookie-based auth', async () => {

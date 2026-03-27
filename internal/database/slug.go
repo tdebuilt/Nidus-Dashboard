@@ -1,6 +1,7 @@
 package database
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"strings"
@@ -75,11 +76,11 @@ func GenerateSlug(name string) string {
 }
 
 // generateUniqueSlug returns a slug that doesn't exist in the categories table.
-func (db *DB) generateUniqueSlug(base string) (string, error) {
+func (db *DB) generateUniqueSlug(ctx context.Context, base string) (string, error) {
 	slug := base
 	for i := 2; i <= 99; i++ {
 		var count int
-		if err := db.QueryRow("SELECT COUNT(*) FROM categories WHERE slug = ?", slug).Scan(&count); err != nil {
+		if err := db.QueryRowContext(ctx, "SELECT COUNT(*) FROM categories WHERE slug = ?", slug).Scan(&count); err != nil {
 			return "", fmt.Errorf("checking slug uniqueness: %w", err)
 		}
 		if count == 0 {
@@ -91,11 +92,11 @@ func (db *DB) generateUniqueSlug(base string) (string, error) {
 }
 
 // generateUniqueSlugTx returns a unique slug within a transaction context.
-func generateUniqueSlugTx(tx *sql.Tx, base string) (string, error) {
+func generateUniqueSlugTx(ctx context.Context, tx *sql.Tx, base string) (string, error) {
 	slug := base
 	for i := 2; i <= 99; i++ {
 		var count int
-		if err := tx.QueryRow("SELECT COUNT(*) FROM categories WHERE slug = ?", slug).Scan(&count); err != nil {
+		if err := tx.QueryRowContext(ctx, "SELECT COUNT(*) FROM categories WHERE slug = ?", slug).Scan(&count); err != nil {
 			return "", fmt.Errorf("checking slug uniqueness: %w", err)
 		}
 		if count == 0 {

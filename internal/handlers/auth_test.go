@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"bytes"
+	"context"
 	"encoding/hex"
 	"encoding/json"
 	"net/http"
@@ -22,13 +23,14 @@ import (
 
 func setupTestDB(t *testing.T) *database.DB {
 	t.Helper()
+	ctx := context.Background()
 	dir := t.TempDir()
 	dbPath := filepath.Join(dir, "test.db")
 	db, err := database.Open(dbPath)
 	if err != nil {
 		t.Fatalf("failed to open test db: %v", err)
 	}
-	if err := db.Migrate(); err != nil {
+	if err := db.Migrate(ctx); err != nil {
 		t.Fatalf("failed to migrate: %v", err)
 	}
 	t.Cleanup(func() { db.Close() })
@@ -45,6 +47,7 @@ func setupRequest(t *testing.T, body interface{}) *http.Request {
 }
 
 func TestSetupCreatesUser(t *testing.T) {
+	t.Parallel()
 	db := setupTestDB(t)
 	h := &AuthHandler{DB: db}
 
@@ -72,7 +75,8 @@ func TestSetupCreatesUser(t *testing.T) {
 	}
 
 	// Verify user exists in DB
-	user, err := db.GetUserByUsername("admin")
+	ctx := context.Background()
+	user, err := db.GetUserByUsername(ctx, "admin")
 	if err != nil {
 		t.Fatalf("failed to get user: %v", err)
 	}
@@ -85,6 +89,7 @@ func TestSetupCreatesUser(t *testing.T) {
 }
 
 func TestSetupPasswordIsHashed(t *testing.T) {
+	t.Parallel()
 	db := setupTestDB(t)
 	h := &AuthHandler{DB: db}
 
@@ -101,7 +106,8 @@ func TestSetupPasswordIsHashed(t *testing.T) {
 		t.Fatalf("expected 201, got %d", w.Code)
 	}
 
-	user, err := db.GetUserByUsername("admin")
+	ctx := context.Background()
+	user, err := db.GetUserByUsername(ctx, "admin")
 	if err != nil {
 		t.Fatalf("failed to get user: %v", err)
 	}
@@ -118,6 +124,7 @@ func TestSetupPasswordIsHashed(t *testing.T) {
 }
 
 func TestSetupRejectedIfAdminExists(t *testing.T) {
+	t.Parallel()
 	db := setupTestDB(t)
 	h := &AuthHandler{DB: db}
 
@@ -152,7 +159,8 @@ func TestSetupRejectedIfAdminExists(t *testing.T) {
 	}
 
 	// Only one user should exist
-	count, err := db.CountUsers()
+	ctx := context.Background()
+	count, err := db.CountUsers(ctx)
 	if err != nil {
 		t.Fatalf("failed to count users: %v", err)
 	}
@@ -162,6 +170,7 @@ func TestSetupRejectedIfAdminExists(t *testing.T) {
 }
 
 func TestSetupGeneratesJWTSecret(t *testing.T) {
+	t.Parallel()
 	db := setupTestDB(t)
 	h := &AuthHandler{DB: db}
 
@@ -177,7 +186,8 @@ func TestSetupGeneratesJWTSecret(t *testing.T) {
 	}
 
 	// JWT secret should be stored
-	secret, err := db.GetSystemSetting("jwt_secret")
+	ctx := context.Background()
+	secret, err := db.GetSystemSetting(ctx, "jwt_secret")
 	if err != nil {
 		t.Fatalf("failed to get jwt_secret: %v", err)
 	}
@@ -191,6 +201,7 @@ func TestSetupGeneratesJWTSecret(t *testing.T) {
 }
 
 func TestSetupGeneratesEncryptionKey(t *testing.T) {
+	t.Parallel()
 	db := setupTestDB(t)
 	h := &AuthHandler{DB: db}
 
@@ -206,7 +217,8 @@ func TestSetupGeneratesEncryptionKey(t *testing.T) {
 	}
 
 	// Encryption key should be stored
-	key, err := db.GetSystemSetting("encryption_key")
+	ctx := context.Background()
+	key, err := db.GetSystemSetting(ctx, "encryption_key")
 	if err != nil {
 		t.Fatalf("failed to get encryption_key: %v", err)
 	}
@@ -219,6 +231,7 @@ func TestSetupGeneratesEncryptionKey(t *testing.T) {
 }
 
 func TestSetupEmptyUsername(t *testing.T) {
+	t.Parallel()
 	db := setupTestDB(t)
 	h := &AuthHandler{DB: db}
 
@@ -235,6 +248,7 @@ func TestSetupEmptyUsername(t *testing.T) {
 }
 
 func TestSetupShortPassword(t *testing.T) {
+	t.Parallel()
 	db := setupTestDB(t)
 	h := &AuthHandler{DB: db}
 
@@ -251,6 +265,7 @@ func TestSetupShortPassword(t *testing.T) {
 }
 
 func TestSetupInvalidJSON(t *testing.T) {
+	t.Parallel()
 	db := setupTestDB(t)
 	h := &AuthHandler{DB: db}
 
@@ -264,6 +279,7 @@ func TestSetupInvalidJSON(t *testing.T) {
 }
 
 func TestSetupPasswordNotInResponse(t *testing.T) {
+	t.Parallel()
 	db := setupTestDB(t)
 	h := &AuthHandler{DB: db}
 
@@ -314,6 +330,7 @@ func loginRequest(t *testing.T, body interface{}) *http.Request {
 }
 
 func TestLoginSuccess(t *testing.T) {
+	t.Parallel()
 	db := setupTestDB(t)
 	h := setupAdminUser(t, db, "admin", "securepassword123")
 
@@ -341,6 +358,7 @@ func TestLoginSuccess(t *testing.T) {
 }
 
 func TestLoginSetsJWTCookie(t *testing.T) {
+	t.Parallel()
 	db := setupTestDB(t)
 	h := setupAdminUser(t, db, "admin", "securepassword123")
 
@@ -381,7 +399,8 @@ func TestLoginSetsJWTCookie(t *testing.T) {
 	}
 
 	// Verify JWT is valid and contains correct claims
-	jwtSecretHex, _ := db.GetSystemSetting("jwt_secret")
+	ctx := context.Background()
+	jwtSecretHex, _ := db.GetSystemSetting(ctx, "jwt_secret")
 	jwtSecret := make([]byte, 32)
 	_, _ = hex.Decode(jwtSecret, []byte(jwtSecretHex))
 
@@ -406,6 +425,7 @@ func TestLoginSetsJWTCookie(t *testing.T) {
 }
 
 func TestLoginWrongPassword(t *testing.T) {
+	t.Parallel()
 	db := setupTestDB(t)
 	h := setupAdminUser(t, db, "admin", "securepassword123")
 
@@ -428,6 +448,7 @@ func TestLoginWrongPassword(t *testing.T) {
 }
 
 func TestLoginNonexistentUser(t *testing.T) {
+	t.Parallel()
 	db := setupTestDB(t)
 	h := setupAdminUser(t, db, "admin", "securepassword123")
 
@@ -444,6 +465,7 @@ func TestLoginNonexistentUser(t *testing.T) {
 }
 
 func TestLoginEmptyFields(t *testing.T) {
+	t.Parallel()
 	db := setupTestDB(t)
 	h := setupAdminUser(t, db, "admin", "securepassword123")
 
@@ -473,6 +495,7 @@ func TestLoginEmptyFields(t *testing.T) {
 }
 
 func TestLoginInvalidJSON(t *testing.T) {
+	t.Parallel()
 	db := setupTestDB(t)
 	h := setupAdminUser(t, db, "admin", "securepassword123")
 
@@ -486,6 +509,7 @@ func TestLoginInvalidJSON(t *testing.T) {
 }
 
 func TestLoginTOTPRequiredWhenEnabled(t *testing.T) {
+	t.Parallel()
 	db := setupTestDB(t)
 	h := setupAdminUser(t, db, "admin", "securepassword123")
 
@@ -515,6 +539,7 @@ func TestLoginTOTPRequiredWhenEnabled(t *testing.T) {
 }
 
 func TestLoginPasswordNotInResponse(t *testing.T) {
+	t.Parallel()
 	db := setupTestDB(t)
 	h := setupAdminUser(t, db, "admin", "securepassword123")
 
@@ -535,6 +560,7 @@ func TestLoginPasswordNotInResponse(t *testing.T) {
 }
 
 func TestLoginNoCookieOnFailure(t *testing.T) {
+	t.Parallel()
 	db := setupTestDB(t)
 	h := setupAdminUser(t, db, "admin", "securepassword123")
 
@@ -579,6 +605,7 @@ func loginAndGetCookie(t *testing.T, h *AuthHandler, username, password string) 
 }
 
 func TestTOTPGenerateReturnsSecretAndQR(t *testing.T) {
+	t.Parallel()
 	db := setupTestDB(t)
 	h := setupAdminUser(t, db, "admin", "securepassword123")
 	cookie := loginAndGetCookie(t, h, "admin", "securepassword123")
@@ -611,6 +638,7 @@ func TestTOTPGenerateReturnsSecretAndQR(t *testing.T) {
 }
 
 func TestTOTPEnableWithValidCode(t *testing.T) {
+	t.Parallel()
 	db := setupTestDB(t)
 	h := setupAdminUser(t, db, "admin", "securepassword123")
 	cookie := loginAndGetCookie(t, h, "admin", "securepassword123")
@@ -642,13 +670,15 @@ func TestTOTPEnableWithValidCode(t *testing.T) {
 	}
 
 	// Verify TOTP is enabled in DB
-	user, _ := db.GetUserByUsername("admin")
+	ctx := context.Background()
+	user, _ := db.GetUserByUsername(ctx, "admin")
 	if !user.TOTPEnabled {
 		t.Error("TOTP should be enabled")
 	}
 }
 
 func TestTOTPEnableWithInvalidCode(t *testing.T) {
+	t.Parallel()
 	db := setupTestDB(t)
 	h := setupAdminUser(t, db, "admin", "securepassword123")
 	cookie := loginAndGetCookie(t, h, "admin", "securepassword123")
@@ -671,13 +701,15 @@ func TestTOTPEnableWithInvalidCode(t *testing.T) {
 	}
 
 	// Verify TOTP is NOT enabled
-	user, _ := db.GetUserByUsername("admin")
+	ctx := context.Background()
+	user, _ := db.GetUserByUsername(ctx, "admin")
 	if user.TOTPEnabled {
 		t.Error("TOTP should not be enabled with invalid code")
 	}
 }
 
 func TestTOTPDisable(t *testing.T) {
+	t.Parallel()
 	db := setupTestDB(t)
 	h := setupAdminUser(t, db, "admin", "securepassword123")
 	cookie := loginAndGetCookie(t, h, "admin", "securepassword123")
@@ -713,7 +745,8 @@ func TestTOTPDisable(t *testing.T) {
 	}
 
 	// Verify TOTP is disabled and secret cleared
-	user, _ := db.GetUserByUsername("admin")
+	ctx := context.Background()
+	user, _ := db.GetUserByUsername(ctx, "admin")
 	if user.TOTPEnabled {
 		t.Error("TOTP should be disabled")
 	}
@@ -723,6 +756,7 @@ func TestTOTPDisable(t *testing.T) {
 }
 
 func TestTOTPGenerateRequiresAuth(t *testing.T) {
+	t.Parallel()
 	db := setupTestDB(t)
 	h := setupAdminUser(t, db, "admin", "securepassword123")
 
@@ -737,6 +771,7 @@ func TestTOTPGenerateRequiresAuth(t *testing.T) {
 }
 
 func TestTOTPGenerateRejectsIfAlreadyEnabled(t *testing.T) {
+	t.Parallel()
 	db := setupTestDB(t)
 	h := setupAdminUser(t, db, "admin", "securepassword123")
 	cookie := loginAndGetCookie(t, h, "admin", "securepassword123")
@@ -769,6 +804,7 @@ func TestTOTPGenerateRejectsIfAlreadyEnabled(t *testing.T) {
 }
 
 func TestLoginRequiresTOTPAfterEnable(t *testing.T) {
+	t.Parallel()
 	db := setupTestDB(t)
 	h := setupAdminUser(t, db, "admin", "securepassword123")
 	cookie := loginAndGetCookie(t, h, "admin", "securepassword123")
@@ -836,6 +872,7 @@ func TestLoginRequiresTOTPAfterEnable(t *testing.T) {
 }
 
 func TestTOTPDisableNotEnabledReturnsError(t *testing.T) {
+	t.Parallel()
 	db := setupTestDB(t)
 	h := setupAdminUser(t, db, "admin", "securepassword123")
 	cookie := loginAndGetCookie(t, h, "admin", "securepassword123")
@@ -853,6 +890,7 @@ func TestTOTPDisableNotEnabledReturnsError(t *testing.T) {
 // --- Auth status tests ---
 
 func TestStatusNoAdmin(t *testing.T) {
+	t.Parallel()
 	db := setupTestDB(t)
 	h := &AuthHandler{DB: db}
 
@@ -874,6 +912,7 @@ func TestStatusNoAdmin(t *testing.T) {
 }
 
 func TestStatusAfterSetup(t *testing.T) {
+	t.Parallel()
 	db := setupTestDB(t)
 	h := setupAdminUser(t, db, "admin", "securepassword123")
 
@@ -895,6 +934,7 @@ func TestStatusAfterSetup(t *testing.T) {
 }
 
 func TestStatusIsPublic(t *testing.T) {
+	t.Parallel()
 	db := setupTestDB(t)
 	h := &AuthHandler{DB: db}
 
@@ -911,6 +951,7 @@ func TestStatusIsPublic(t *testing.T) {
 // --- Logout tests ---
 
 func TestLogoutClearsCookie(t *testing.T) {
+	t.Parallel()
 	db := setupTestDB(t)
 	h := setupAdminUser(t, db, "admin", "securepassword123")
 	cookie := loginAndGetCookie(t, h, "admin", "securepassword123")
@@ -945,6 +986,7 @@ func TestLogoutClearsCookie(t *testing.T) {
 }
 
 func TestLogoutThenRequestUnauthorized(t *testing.T) {
+	t.Parallel()
 	db := setupTestDB(t)
 	h := setupAdminUser(t, db, "admin", "securepassword123")
 	cookie := loginAndGetCookie(t, h, "admin", "securepassword123")

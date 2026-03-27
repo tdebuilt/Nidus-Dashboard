@@ -1,21 +1,16 @@
 package handlers
 
 import (
-	"bytes"
-	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"image/png"
 	"net/http"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
-	"github.com/pquerna/otp"
 	"github.com/pquerna/otp/totp"
 	"golang.org/x/crypto/bcrypt"
 
-	"github.com/tdebuilt/nidus/internal/crypto"
 	"github.com/tdebuilt/nidus/internal/database"
 	"github.com/tdebuilt/nidus/internal/models"
 )
@@ -23,112 +18,6 @@ import (
 // AuthHandler handles authentication-related HTTP requests.
 type AuthHandler struct {
 	DB *database.DB
-}
-
-// decryptTOTPSecret decrypts an encrypted TOTP secret.
-// Falls back to using the value as-is if decryption fails (legacy unencrypted secrets).
-func (h *AuthHandler) decryptTOTPSecret(secret string) (string, error) {
-	encKey, err := h.DB.GetSystemSetting("encryption_key")
-	if err != nil || encKey == "" {
-		return secret, nil
-	}
-	decrypted, err := crypto.Decrypt(secret, encKey)
-	if err != nil {
-		return secret, nil
-	}
-	return decrypted, nil
-}
-
-// Setup godoc
-// @Summary Create the first admin account
-// @Description Creates the first admin user and generates JWT secret + encryption key. Only works when no users exist.
-// @Tags auth
-// @Accept json
-// @Produce json
-// @Param request body models.SetupRequest true "Admin credentials"
-// @Success 201 {object} models.SetupResponse "Admin account created"
-// @Failure 400 {object} models.ErrorResponse "Invalid request body"
-// @Failure 409 {object} models.ErrorResponse "Admin account already exists"
-// @Failure 500 {object} models.ErrorResponse "Server error"
-// @Router /auth/setup [post]
-func (h *AuthHandler) Setup(w http.ResponseWriter, r *http.Request) {
-	// Check if admin already exists
-	count, err := h.DB.CountUsers()
-	if err != nil {
-		writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "database error"})
-		return
-	}
-	if count > 0 {
-		writeJSON(w, http.StatusConflict, models.ErrorResponse{Error: "admin account already exists"})
-		return
-	}
-
-	// Parse request
-	var req models.SetupRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeJSON(w, http.StatusBadRequest, models.ErrorResponse{Error: "invalid request body"})
-		return
-	}
-
-	// Validate
-	if req.Username == "" {
-		writeJSON(w, http.StatusBadRequest, models.ErrorResponse{Error: "username is required"})
-		return
-	}
-	if len(req.Password) < 8 {
-		writeJSON(w, http.StatusBadRequest, models.ErrorResponse{Error: "password must be at least 8 characters"})
-		return
-	}
-
-	// Hash password with bcrypt
-	hash, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
-	if err != nil {
-		writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "failed to hash password"})
-		return
-	}
-
-	// Create user
-	userID, err := h.DB.CreateUser(req.Username, string(hash), models.RoleAdmin)
-	if err != nil {
-		writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "failed to create user"})
-		return
-	}
-
-	// Generate JWT secret if not already set
-	if existing, _ := h.DB.GetSystemSetting("jwt_secret"); existing == "" {
-		jwtSecret, err := crypto.GenerateKey()
-		if err != nil {
-			writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "failed to generate JWT secret"})
-			return
-		}
-		if err := h.DB.SetSystemSetting("jwt_secret", jwtSecret); err != nil {
-			writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "failed to store JWT secret"})
-			return
-		}
-	}
-
-	// Generate encryption key if not already set
-	if existing, _ := h.DB.GetSystemSetting("encryption_key"); existing == "" {
-		encKey, err := crypto.GenerateKey()
-		if err != nil {
-			writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "failed to generate encryption key"})
-			return
-		}
-		if err := h.DB.SetSystemSetting("encryption_key", encKey); err != nil {
-			writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "failed to store encryption key"})
-			return
-		}
-	}
-
-	user := models.User{
-		ID:       userID,
-		Username: req.Username,
-	}
-
-	writeJSON(w, http.StatusCreated, models.SetupResponse{
-		Message: "admin account created",
-		User:    user,
-	})
 }
 
 // Login godoc
@@ -156,7 +45,7 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Fetch user
-	user, err := h.DB.GetUserByUsername(req.Username)
+	user, err := h.DB.GetUserByUsername(r.Context(), req.Username)
 	if err != nil {
 		writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "database error"})
 		return
@@ -182,7 +71,7 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 			writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "TOTP secret not found"})
 			return
 		}
-		decryptedSecret, err := h.decryptTOTPSecret(*user.TOTPSecret)
+		decryptedSecret, err := h.decryptTOTPSecret(r.Context(), *user.TOTPSecret)
 		if err != nil {
 			writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "failed to decrypt TOTP secret"})
 			return
@@ -218,7 +107,7 @@ func (h *AuthHandler) getUserFromJWT(r *http.Request) (*models.User, error) {
 		return nil, err
 	}
 
-	jwtSecretHex, err := h.DB.GetSystemSetting("jwt_secret")
+	jwtSecretHex, err := h.DB.GetSystemSetting(r.Context(), "jwt_secret")
 	if err != nil || jwtSecretHex == "" {
 		return nil, err
 	}
@@ -248,12 +137,12 @@ func (h *AuthHandler) getUserFromJWT(r *http.Request) (*models.User, error) {
 		return nil, jwt.ErrSignatureInvalid
 	}
 
-	return h.DB.GetUserByID(int64(userIDFloat))
+	return h.DB.GetUserByID(r.Context(), int64(userIDFloat))
 }
 
 // issueJWTCookie creates a JWT token for the user and sets it as an HTTP-only cookie.
 func (h *AuthHandler) issueJWTCookie(w http.ResponseWriter, r *http.Request, user *models.User) error {
-	jwtSecretHex, err := h.DB.GetSystemSetting("jwt_secret")
+	jwtSecretHex, err := h.DB.GetSystemSetting(r.Context(), "jwt_secret")
 	if err != nil || jwtSecretHex == "" {
 		return fmt.Errorf("JWT secret not configured")
 	}
@@ -294,273 +183,6 @@ func (h *AuthHandler) issueJWTCookie(w http.ResponseWriter, r *http.Request, use
 	return nil
 }
 
-// UpdateAccount allows the authenticated user to change their username and/or password.
-func (h *AuthHandler) UpdateAccount(w http.ResponseWriter, r *http.Request) {
-	user, err := h.getUserFromJWT(r)
-	if err != nil || user == nil {
-		writeJSON(w, http.StatusUnauthorized, models.ErrorResponse{Error: "authentication required"})
-		return
-	}
-
-	var req models.UpdateAccountRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeJSON(w, http.StatusBadRequest, models.ErrorResponse{Error: "invalid request body"})
-		return
-	}
-
-	if req.CurrentPassword == "" {
-		writeJSON(w, http.StatusBadRequest, models.ErrorResponse{Error: "current password is required"})
-		return
-	}
-
-	// Verify current password
-	if err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(req.CurrentPassword)); err != nil {
-		writeJSON(w, http.StatusUnauthorized, models.ErrorResponse{Error: "incorrect current password"})
-		return
-	}
-
-	hasChanges := false
-	newUsername := user.Username
-
-	// Update username if provided
-	if req.Username != nil && *req.Username != user.Username {
-		if *req.Username == "" {
-			writeJSON(w, http.StatusBadRequest, models.ErrorResponse{Error: "username cannot be empty"})
-			return
-		}
-		existing, err := h.DB.GetUserByUsername(*req.Username)
-		if err != nil {
-			writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "database error"})
-			return
-		}
-		if existing != nil {
-			writeJSON(w, http.StatusConflict, models.ErrorResponse{Error: "username already taken"})
-			return
-		}
-		if err := h.DB.UpdateUserUsername(user.ID, *req.Username); err != nil {
-			writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "failed to update username"})
-			return
-		}
-		newUsername = *req.Username
-		hasChanges = true
-	}
-
-	// Update password if provided
-	if req.NewPassword != nil {
-		if len(*req.NewPassword) < 8 {
-			writeJSON(w, http.StatusBadRequest, models.ErrorResponse{Error: "password must be at least 8 characters"})
-			return
-		}
-		hash, err := bcrypt.GenerateFromPassword([]byte(*req.NewPassword), bcrypt.DefaultCost)
-		if err != nil {
-			writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "failed to hash password"})
-			return
-		}
-		if err := h.DB.UpdateUserPassword(user.ID, string(hash)); err != nil {
-			writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "failed to update password"})
-			return
-		}
-		hasChanges = true
-	}
-
-	if !hasChanges {
-		writeJSON(w, http.StatusBadRequest, models.ErrorResponse{Error: "no changes provided"})
-		return
-	}
-
-	// Invalidate old JWTs and re-issue a new one
-	h.DB.IncrementTokenVersion(user.ID)
-	updatedUser, err := h.DB.GetUserByID(user.ID)
-	if err != nil || updatedUser == nil {
-		writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "failed to refresh user"})
-		return
-	}
-
-	if err := h.issueJWTCookie(w, r, updatedUser); err != nil {
-		writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "failed to generate token"})
-		return
-	}
-
-	writeJSON(w, http.StatusOK, models.UpdateAccountResponse{
-		Message: "account updated",
-		User: models.User{
-			ID:          updatedUser.ID,
-			Username:    newUsername,
-			Role:        updatedUser.Role,
-			TOTPEnabled: updatedUser.TOTPEnabled,
-		},
-	})
-}
-
-// TOTPGenerate godoc
-// @Summary Generate a TOTP secret
-// @Description Generates a new TOTP secret and returns it with a QR code for authenticator setup.
-// @Tags auth
-// @Produce json
-// @Success 200 {object} models.TOTPGenerateResponse "TOTP secret and QR code"
-// @Failure 401 {object} models.ErrorResponse "Authentication required"
-// @Failure 409 {object} models.ErrorResponse "TOTP is already enabled"
-// @Failure 500 {object} models.ErrorResponse "Server error"
-// @Router /auth/totp/generate [post]
-// @Security BearerAuth
-func (h *AuthHandler) TOTPGenerate(w http.ResponseWriter, r *http.Request) {
-	user, err := h.getUserFromJWT(r)
-	if err != nil || user == nil {
-		writeJSON(w, http.StatusUnauthorized, models.ErrorResponse{Error: "authentication required"})
-		return
-	}
-
-	if user.TOTPEnabled {
-		writeJSON(w, http.StatusConflict, models.ErrorResponse{Error: "TOTP is already enabled"})
-		return
-	}
-
-	key, err := totp.Generate(totp.GenerateOpts{
-		Issuer:      "Nidus",
-		AccountName: user.Username,
-	})
-	if err != nil {
-		writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "failed to generate TOTP secret"})
-		return
-	}
-
-	// Encrypt and store the secret (not yet enabled)
-	encKey, err := h.DB.GetSystemSetting("encryption_key")
-	if err != nil || encKey == "" {
-		writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "encryption key not configured"})
-		return
-	}
-	encryptedSecret, err := crypto.Encrypt(key.Secret(), encKey)
-	if err != nil {
-		writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "failed to encrypt TOTP secret"})
-		return
-	}
-	if err := h.DB.SetUserTOTPSecret(user.ID, encryptedSecret); err != nil {
-		writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "failed to store TOTP secret"})
-		return
-	}
-
-	// Generate QR code as base64 PNG
-	img, err := key.Image(200, 200)
-	if err != nil {
-		writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "failed to generate QR code"})
-		return
-	}
-
-	var buf bytes.Buffer
-	if err := png.Encode(&buf, img); err != nil {
-		writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "failed to encode QR code"})
-		return
-	}
-
-	qrBase64 := base64.StdEncoding.EncodeToString(buf.Bytes())
-
-	writeJSON(w, http.StatusOK, models.TOTPGenerateResponse{
-		Secret: key.Secret(),
-		URL:    key.URL(),
-		QR:     "data:image/png;base64," + qrBase64,
-	})
-}
-
-// TOTPEnable godoc
-// @Summary Enable TOTP for the current user
-// @Description Verifies a TOTP code against the stored secret and enables TOTP two-factor authentication.
-// @Tags auth
-// @Accept json
-// @Produce json
-// @Param request body models.TOTPEnableRequest true "TOTP verification code"
-// @Success 200 {object} map[string]string "TOTP enabled"
-// @Failure 400 {object} models.ErrorResponse "Invalid request or secret not generated"
-// @Failure 401 {object} models.ErrorResponse "Authentication required or invalid TOTP code"
-// @Failure 409 {object} models.ErrorResponse "TOTP is already enabled"
-// @Failure 500 {object} models.ErrorResponse "Server error"
-// @Router /auth/totp/enable [post]
-// @Security BearerAuth
-func (h *AuthHandler) TOTPEnable(w http.ResponseWriter, r *http.Request) {
-	user, err := h.getUserFromJWT(r)
-	if err != nil || user == nil {
-		writeJSON(w, http.StatusUnauthorized, models.ErrorResponse{Error: "authentication required"})
-		return
-	}
-
-	if user.TOTPEnabled {
-		writeJSON(w, http.StatusConflict, models.ErrorResponse{Error: "TOTP is already enabled"})
-		return
-	}
-
-	if user.TOTPSecret == nil {
-		writeJSON(w, http.StatusBadRequest, models.ErrorResponse{Error: "TOTP secret not generated, call generate first"})
-		return
-	}
-
-	var req models.TOTPEnableRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeJSON(w, http.StatusBadRequest, models.ErrorResponse{Error: "invalid request body"})
-		return
-	}
-
-	if req.Code == "" {
-		writeJSON(w, http.StatusBadRequest, models.ErrorResponse{Error: "code is required"})
-		return
-	}
-
-	// Decrypt and validate the code against the stored secret
-	decryptedSecret, err := h.decryptTOTPSecret(*user.TOTPSecret)
-	if err != nil {
-		writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "failed to decrypt TOTP secret"})
-		return
-	}
-	valid, err := totp.ValidateCustom(req.Code, decryptedSecret, time.Now(), totp.ValidateOpts{
-		Period:    30,
-		Skew:     1,
-		Digits:   otp.DigitsSix,
-		Algorithm: otp.AlgorithmSHA1,
-	})
-	if err != nil || !valid {
-		writeJSON(w, http.StatusUnauthorized, models.ErrorResponse{Error: "invalid TOTP code"})
-		return
-	}
-
-	// Enable TOTP
-	if err := h.DB.EnableUserTOTP(user.ID); err != nil {
-		writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "failed to enable TOTP"})
-		return
-	}
-
-	writeJSON(w, http.StatusOK, map[string]string{"message": "TOTP enabled"})
-}
-
-// TOTPDisable godoc
-// @Summary Disable TOTP for the current user
-// @Description Disables TOTP two-factor authentication and clears the stored secret.
-// @Tags auth
-// @Produce json
-// @Success 200 {object} map[string]string "TOTP disabled"
-// @Failure 400 {object} models.ErrorResponse "TOTP is not enabled"
-// @Failure 401 {object} models.ErrorResponse "Authentication required"
-// @Failure 500 {object} models.ErrorResponse "Server error"
-// @Router /auth/totp [delete]
-// @Security BearerAuth
-func (h *AuthHandler) TOTPDisable(w http.ResponseWriter, r *http.Request) {
-	user, err := h.getUserFromJWT(r)
-	if err != nil || user == nil {
-		writeJSON(w, http.StatusUnauthorized, models.ErrorResponse{Error: "authentication required"})
-		return
-	}
-
-	if !user.TOTPEnabled {
-		writeJSON(w, http.StatusBadRequest, models.ErrorResponse{Error: "TOTP is not enabled"})
-		return
-	}
-
-	if err := h.DB.DisableUserTOTP(user.ID); err != nil {
-		writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "failed to disable TOTP"})
-		return
-	}
-
-	writeJSON(w, http.StatusOK, map[string]string{"message": "TOTP disabled"})
-}
-
 // Status godoc
 // @Summary Check setup status
 // @Description Returns whether the initial setup has been completed (whether any users exist).
@@ -570,7 +192,7 @@ func (h *AuthHandler) TOTPDisable(w http.ResponseWriter, r *http.Request) {
 // @Failure 500 {object} models.ErrorResponse "Server error"
 // @Router /auth/status [get]
 func (h *AuthHandler) Status(w http.ResponseWriter, r *http.Request) {
-	count, err := h.DB.CountUsers()
+	count, err := h.DB.CountUsers(r.Context())
 	if err != nil {
 		writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "database error"})
 		return
