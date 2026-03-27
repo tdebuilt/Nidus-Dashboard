@@ -1,6 +1,5 @@
 <script lang="ts">
   import { api } from '../lib/api/client'
-  import { onMount } from 'svelte'
   import { get } from 'svelte/store'
   import WidgetGrid from '../lib/components/WidgetGrid.svelte'
   import CategoryTabBar from '../lib/components/CategoryTabBar.svelte'
@@ -86,7 +85,7 @@
     loading = false
   }
 
-  onMount(() => {
+  $effect(() => {
     loadAll()
   })
 

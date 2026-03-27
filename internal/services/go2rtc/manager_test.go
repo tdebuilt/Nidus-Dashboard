@@ -8,21 +8,12 @@ import (
 	"time"
 
 	"github.com/tdebuilt/nidus/internal/database"
+	"github.com/tdebuilt/nidus/internal/testutil"
 )
 
 func setupTestDB(t *testing.T) *database.DB {
 	t.Helper()
-	dir := t.TempDir()
-	dbPath := filepath.Join(dir, "test.db")
-	db, err := database.Open(dbPath)
-	if err != nil {
-		t.Fatalf("open db: %v", err)
-	}
-	if err := db.Migrate(context.Background()); err != nil {
-		t.Fatalf("migrate db: %v", err)
-	}
-	t.Cleanup(func() { db.Close() })
-	return db
+	return testutil.SetupTestDB(t)
 }
 
 func TestNewManager(t *testing.T) {

@@ -25,7 +25,8 @@
     "desktop": "Desktop",
     "tablet": "Tablet",
     "mobile": "Móvel",
-    "moreActions": "Mais ações"
+    "moreActions": "Mais ações",
+    "copy": "Copiar"
   },
   "theme": {
     "switchToLight": "Mudar para modo claro",

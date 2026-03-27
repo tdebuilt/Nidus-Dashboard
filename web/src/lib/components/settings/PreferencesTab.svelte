@@ -5,7 +5,6 @@
   import { pollingInterval } from '../../stores/polling'
   import { setKeyboardShortcutsEnabled } from '../../stores/keyboardShortcuts'
   import { t, translate, setLocale, getAvailableLocales } from '../../i18n'
-  import { onMount } from 'svelte'
 
   const refreshOptions = [10, 15, 30, 60, 120, 300]
 
@@ -13,7 +12,7 @@
   let refreshInterval = $state(30)
   let enableShortcuts = $state(true)
 
-  onMount(async () => {
+  async function loadPreferences() {
     try {
       const prefs = await api.get<{ language: string; refresh_interval: number; enable_keyboard_shortcuts: boolean }>('/api/preferences')
       currentLanguage = prefs.language
@@ -24,6 +23,10 @@
     } catch {
       toasts.error(translate('settings.loadError'))
     }
+  }
+
+  $effect(() => {
+    loadPreferences()
   })
 
   async function updatePreference(key: string, value: unknown) {

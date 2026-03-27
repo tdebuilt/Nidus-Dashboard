@@ -25,7 +25,8 @@
     "desktop": "Desktop",
     "tablet": "Tablet",
     "mobile": "Mobiel",
-    "moreActions": "Meer acties"
+    "moreActions": "Meer acties",
+    "copy": "Kopiëren"
   },
   "theme": {
     "switchToLight": "Overschakelen naar lichte modus",

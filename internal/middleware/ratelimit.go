@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"net"
 	"net/http"
 	"sync"
 	"time"
@@ -90,7 +91,10 @@ func (rl *RateLimiter) Reset(ip string) {
 // Limit returns an HTTP middleware that rate-limits requests by client IP.
 func (rl *RateLimiter) Limit(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		ip := r.RemoteAddr
+		ip, _, err := net.SplitHostPort(r.RemoteAddr)
+		if err != nil {
+			ip = r.RemoteAddr
+		}
 
 		if !rl.Allow(ip) {
 			http.Error(w, `{"error":"too many requests"}`, http.StatusTooManyRequests)

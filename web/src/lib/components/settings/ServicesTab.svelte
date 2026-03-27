@@ -4,7 +4,6 @@
   import { toasts } from '../../stores/toast'
   import { confirm } from '../../stores/confirm'
   import { t, translate } from '../../i18n'
-  import { onMount, onDestroy } from 'svelte'
   import ServiceCard from './ServiceCard.svelte'
   import ServiceAuthFields from './ServiceAuthFields.svelte'
   import { serviceStatuses, startServiceStatusPolling, stopServiceStatusPolling } from '../../stores/serviceStatus'
@@ -46,13 +45,10 @@
     })
   )
 
-  onMount(() => {
+  $effect(() => {
     loadServiceTypes()
     loadServices()
-  })
-
-  onDestroy(() => {
-    stopServiceStatusPolling()
+    return () => stopServiceStatusPolling()
   })
 
   async function loadServiceTypes() {

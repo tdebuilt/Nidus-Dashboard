@@ -1,5 +1,4 @@
 <script lang="ts">
-  import { onMount } from 'svelte'
   import { Loader2 } from 'lucide-svelte'
   import { api } from '../../api/client'
   import { t } from '../../i18n'
@@ -38,7 +37,7 @@
     onchange?.(JSON.stringify(config))
   }
 
-  onMount(async () => {
+  async function loadEnvironments() {
     try {
       const data = await api.get<Environment[]>('/api/docker/environments')
       environments = data ?? []
@@ -47,6 +46,10 @@
     } finally {
       loading = false
     }
+  }
+
+  $effect(() => {
+    loadEnvironments()
   })
 </script>
 

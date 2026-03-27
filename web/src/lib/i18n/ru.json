@@ -25,7 +25,8 @@
     "desktop": "ПК",
     "tablet": "Планшет",
     "mobile": "Мобильный",
-    "moreActions": "Другие действия"
+    "moreActions": "Другие действия",
+    "copy": "Копировать"
   },
   "theme": {
     "switchToLight": "Переключить на светлую тему",

@@ -180,7 +180,7 @@ func (h *NotificationsHandler) TestProvider(w http.ResponseWriter, r *http.Reque
 		"Nidus — Test",
 		"Notification de test depuis Nidus Dashboard",
 	); err != nil {
-		writeJSON(w, http.StatusBadGateway, models.ErrorResponse{Error: fmt.Sprintf("notification failed: %v", err)})
+		writeJSON(w, http.StatusBadGateway, models.ErrorResponse{Error: "notification failed: " + sanitizeError(err)})
 		return
 	}
 

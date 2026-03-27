@@ -4,7 +4,6 @@
   import { toasts } from '../../stores/toast'
   import { confirm } from '../../stores/confirm'
   import { t, translate } from '../../i18n'
-  import { onMount } from 'svelte'
 
   let webhooks = $state<Array<{id: number; name: string; has_secret: boolean; enabled: boolean; url: string}>>([])
   let _webhooksLoading = $state(true)
@@ -16,7 +15,7 @@
   let newActionType = $state('notify')
   let newActionConfig = $state('{}')
 
-  onMount(() => { loadWebhooks() })
+  $effect(() => { loadWebhooks() })
 
   async function loadWebhooks() {
     try { webhooks = await api.get('/api/webhooks') }
@@ -108,7 +107,8 @@
         <div class="flex items-center gap-2">
           <code class="flex-1 rounded bg-[var(--color-bg)] px-2 py-1 text-xs text-[var(--color-text)]">{createdWebhookSecret}</code>
           <button onclick={() => { copyToClipboard(createdWebhookSecret!, 'webhooks.secretCopied'); createdWebhookSecret = null }}
-            class="rounded border border-[var(--color-border)] p-1 text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-tertiary)]">
+            class="rounded border border-[var(--color-border)] p-1 text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-tertiary)]"
+            aria-label={$t('common.copy')}>
             <Copy size={14} />
           </button>
         </div>
@@ -140,7 +140,8 @@
                   <Link size={10} />
                   <code>{window.location.origin}{wh.url}</code>
                   <button onclick={() => copyToClipboard(window.location.origin + wh.url, 'webhooks.urlCopied')}
-                    class="text-[var(--color-text-secondary)] hover:text-[var(--color-primary)]">
+                    class="text-[var(--color-text-secondary)] hover:text-[var(--color-primary)]"
+                    aria-label={$t('common.copy')}>
                     <Copy size={10} />
                   </button>
                 </div>
@@ -151,7 +152,8 @@
                   {$t('webhooks.actions')}
                 </button>
                 <button onclick={() => toggleWebhook(wh.id, wh.enabled)}
-                  class="text-[var(--color-text-secondary)] hover:text-[var(--color-primary)]">
+                  class="text-[var(--color-text-secondary)] hover:text-[var(--color-primary)]"
+                  aria-label={wh.enabled ? $t('common.disable') : $t('common.enable')}>
                   {#if wh.enabled}
                     <ToggleRight size={24} class="text-[var(--color-primary)]" />
                   {:else}
@@ -159,7 +161,8 @@
                   {/if}
                 </button>
                 <button onclick={() => deleteWebhook(wh.id)}
-                  class="text-[var(--color-text-muted)] hover:text-[var(--color-danger)]">
+                  class="text-[var(--color-text-muted)] hover:text-[var(--color-danger)]"
+                  aria-label={$t('common.delete')}>
                   <Trash2 size={16} />
                 </button>
               </div>
@@ -176,7 +179,8 @@
                         <div class="flex items-center gap-2">
                           <code class="text-[var(--color-text-muted)]">{action.config}</code>
                           <button onclick={() => deleteAction(action.id, wh.id)}
-                            class="text-[var(--color-text-muted)] hover:text-[var(--color-danger)]">
+                            class="text-[var(--color-text-muted)] hover:text-[var(--color-danger)]"
+                            aria-label={$t('common.delete')}>
                             <Trash2 size={12} />
                           </button>
                         </div>
@@ -194,7 +198,8 @@
                   <input type="text" bind:value={newActionConfig} placeholder={'{"provider_id": 1}'}
                     class="flex-1 rounded border border-[var(--color-border)] bg-[var(--color-bg)] px-2 py-1 text-xs text-[var(--color-text)]" />
                   <button onclick={() => addAction(wh.id)}
-                    class="rounded bg-[var(--color-primary)] px-2 py-1 text-xs text-white hover:bg-[var(--color-primary-hover)]">
+                    class="rounded bg-[var(--color-primary)] px-2 py-1 text-xs text-white hover:bg-[var(--color-primary-hover)]"
+                    aria-label={$t('common.add')}>
                     <Plus size={12} />
                   </button>
                 </div>

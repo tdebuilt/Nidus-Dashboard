@@ -4,7 +4,7 @@
   import { toasts } from '../../stores/toast'
   import { auth } from '../../stores/auth'
   import { t, translate } from '../../i18n'
-  import { onMount } from 'svelte'
+  import { get } from 'svelte/store'
 
   let totpEnabled = $state(false)
   let totpQR = $state('')
@@ -12,16 +12,10 @@
   let totpCode = $state('')
   let showTotpSetup = $state(false)
 
-  onMount(() => {
-    const unsub = auth.subscribe((s) => {
-      if (s.totpEnabled !== undefined) totpEnabled = s.totpEnabled
-    })
-    unsub()
-    const stored = typeof localStorage !== 'undefined'
-      ? localStorage.getItem('nidus-totp-enabled')
-      : null
-    if (stored !== null) totpEnabled = stored === 'true'
-  })
+  const initialAuth = get(auth)
+  if (initialAuth.totpEnabled !== undefined) totpEnabled = initialAuth.totpEnabled
+  const stored = typeof localStorage !== 'undefined' ? localStorage.getItem('nidus-totp-enabled') : null
+  if (stored !== null) totpEnabled = stored === 'true'
 
   async function handleTotpGenerate() {
     try {

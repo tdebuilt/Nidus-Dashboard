@@ -25,7 +25,8 @@
     "desktop": "سطح المكتب",
     "tablet": "جهاز لوحي",
     "mobile": "جوال",
-    "moreActions": "إجراءات أخرى"
+    "moreActions": "إجراءات أخرى",
+    "copy": "نسخ"
   },
   "theme": {
     "switchToLight": "التبديل إلى الوضع الفاتح",

@@ -1,6 +1,5 @@
 <script lang="ts">
   import { api } from '../lib/api/client'
-  import { onMount, onDestroy } from 'svelte'
   import { get } from 'svelte/store'
   import WidgetGrid from '../lib/components/WidgetGrid.svelte'
   import DynamicIcon from '../lib/components/DynamicIcon.svelte'
@@ -121,7 +120,7 @@
     }
   }
 
-  onMount(() => {
+  $effect(() => {
     editMode.set(false)
     rotationInterval = getRotationFromURL()
     loadAll().then(() => {
@@ -134,12 +133,12 @@
     if (typeof window !== 'undefined') {
       window.addEventListener('keydown', handleKeydown)
     }
-  })
 
-  onDestroy(() => {
-    stopRotation()
-    if (typeof window !== 'undefined') {
-      window.removeEventListener('keydown', handleKeydown)
+    return () => {
+      stopRotation()
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('keydown', handleKeydown)
+      }
     }
   })
 </script>

@@ -3,7 +3,6 @@
   import { api } from '../../api/client'
   import { toasts } from '../../stores/toast'
   import { t, translate } from '../../i18n'
-  import { onMount, onDestroy } from 'svelte'
 
   interface Go2RTCStatus {
     available: boolean
@@ -14,15 +13,11 @@
 
   let go2rtcStatus = $state<Go2RTCStatus>({ available: false, running: false, cameras: 0 })
   let go2rtcLoading = $state(false)
-  let go2rtcPollTimer: ReturnType<typeof setInterval> | null = null
 
-  onMount(() => {
+  $effect(() => {
     loadGo2rtcStatus()
-    go2rtcPollTimer = setInterval(loadGo2rtcStatus, 10000)
-  })
-
-  onDestroy(() => {
-    if (go2rtcPollTimer) clearInterval(go2rtcPollTimer)
+    const timer = setInterval(loadGo2rtcStatus, 10000)
+    return () => clearInterval(timer)
   })
 
   async function loadGo2rtcStatus() {

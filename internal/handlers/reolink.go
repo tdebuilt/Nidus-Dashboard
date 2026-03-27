@@ -153,7 +153,7 @@ func (h *ReolinkHandler) GetSnapshot(w http.ResponseWriter, r *http.Request) {
 
 	data, contentType, err := client.GetSnapshot(r.Context())
 	if err != nil {
-		writeJSON(w, http.StatusBadGateway, models.ErrorResponse{Error: "snapshot failed: " + err.Error()})
+		writeJSON(w, http.StatusBadGateway, models.ErrorResponse{Error: "snapshot failed: " + sanitizeError(err)})
 		return
 	}
 
@@ -264,7 +264,7 @@ func (h *ReolinkHandler) GetStreamURL(w http.ResponseWriter, r *http.Request) {
 func (h *ReolinkHandler) Discover(w http.ResponseWriter, r *http.Request) {
 	cameras, err := reolink.DiscoverCameras(3 * time.Second)
 	if err != nil {
-		writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "discovery failed: " + err.Error()})
+		writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "discovery failed: " + sanitizeError(err)})
 		return
 	}
 	writeJSON(w, http.StatusOK, cameras)

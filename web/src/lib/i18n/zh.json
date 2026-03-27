@@ -25,7 +25,8 @@
     "desktop": "桌面",
     "tablet": "平板",
     "mobile": "手机",
-    "moreActions": "更多操作"
+    "moreActions": "更多操作",
+    "copy": "复制"
   },
   "theme": {
     "switchToLight": "切换到浅色模式",

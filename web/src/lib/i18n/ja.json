@@ -25,7 +25,8 @@
     "desktop": "デスクトップ",
     "tablet": "タブレット",
     "mobile": "モバイル",
-    "moreActions": "その他のアクション"
+    "moreActions": "その他のアクション",
+    "copy": "コピー"
   },
   "theme": {
     "switchToLight": "ライトモードに切り替え",

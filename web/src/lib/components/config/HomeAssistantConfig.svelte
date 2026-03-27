@@ -1,5 +1,4 @@
 <script lang="ts">
-  import { onMount } from 'svelte'
   import { Loader2, X, GripVertical } from 'lucide-svelte'
   import { api } from '../../api/client'
   import { t } from '../../i18n'
@@ -46,9 +45,9 @@
     if (typeof parsed.columnsMobile === 'number') columnsMobile = parsed.columnsMobile
   }
 
-  function parseConfig() {
+  function parseConfig(configValue: string) {
     try {
-      const parsed = JSON.parse(value)
+      const parsed = JSON.parse(configValue)
       parseFilterMode(parsed)
       parseLayoutOptions(parsed)
     } catch {
@@ -56,7 +55,7 @@
     }
   }
 
-  $effect(() => { parseConfig() })
+  $effect(() => { parseConfig(value) })
 
   const availableDomains = $derived(
     [...new Set(allEntities.map((e) => e.domain))].sort()
@@ -150,7 +149,7 @@
     emitChange()
   }
 
-  onMount(async () => {
+  async function loadEntities() {
     try {
       const data = await api.get<EntityInfo[]>('/api/homeassistant/entities')
       allEntities = data ?? []
@@ -159,6 +158,10 @@
     } finally {
       loading = false
     }
+  }
+
+  $effect(() => {
+    loadEntities()
   })
 </script>
 
@@ -235,7 +238,8 @@
             >
               <span class="cursor-grab text-[var(--color-text-muted)]"><GripVertical size={12} /></span>
               <span class="flex-1 truncate text-[var(--color-text)]">{entityId}</span>
-              <button onclick={() => toggleEntity(entityId)} class="text-[var(--color-text-muted)] hover:text-[var(--color-danger)]">
+              <button onclick={() => toggleEntity(entityId)} class="text-[var(--color-text-muted)] hover:text-[var(--color-danger)]"
+                aria-label={$t('common.delete')}>
                 <X size={12} />
               </button>
             </div>

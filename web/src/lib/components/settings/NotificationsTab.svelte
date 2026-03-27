@@ -4,7 +4,6 @@
   import { toasts } from '../../stores/toast'
   import { confirm } from '../../stores/confirm'
   import { t, translate } from '../../i18n'
-  import { onMount } from 'svelte'
   import NotificationProvidersSection from './NotificationProvidersSection.svelte'
   import NotificationRulesSection from './NotificationRulesSection.svelte'
 
@@ -29,7 +28,7 @@
   let notifProviders = $state.raw<NotifProvider[]>([])
   let notifRules = $state.raw<NotifRule[]>([])
 
-  onMount(() => { loadNotifications() })
+  $effect(() => { loadNotifications() })
 
   async function loadNotifications() {
     try {

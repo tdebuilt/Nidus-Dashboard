@@ -1,5 +1,4 @@
 <script lang="ts">
-  import { onMount, onDestroy } from 'svelte'
   import { Loader2, AlertCircle, Settings } from 'lucide-svelte'
   import { api } from '../../api/client'
   import { toasts } from '../../stores/toast'
@@ -115,16 +114,10 @@
     }
   }
 
-  let unsubWS: (() => void) | null = null
-
   // WebSocket: always active (even on hidden tabs)
-  onMount(() => {
-    unsubWS = ws.on('ha:state_changed', handleStateChanged)
-    return () => { unsubWS?.() }
-  })
-
-  onDestroy(() => {
-    unsubWS?.()
+  $effect(() => {
+    const unsub = ws.on('ha:state_changed', handleStateChanged)
+    return () => unsub?.()
   })
 
   // Polling: controlled by active prop

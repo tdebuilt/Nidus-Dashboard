@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -71,14 +72,23 @@ func (h *ConfigHandler) Export(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	derivedKey := crypto.DeriveKey(req.Password)
+	derivedKey, salt, err := crypto.DeriveKeyArgon2(req.Password)
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "failed to derive key"})
+		return
+	}
+
 	encrypted, err := crypto.Encrypt(string(jsonData), derivedKey)
 	if err != nil {
 		writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "failed to encrypt config"})
 		return
 	}
 
-	writeJSON(w, http.StatusOK, map[string]string{"data": encrypted})
+	writeJSON(w, http.StatusOK, map[string]string{
+		"data": encrypted,
+		"salt": hex.EncodeToString(salt),
+		"kdf":  "argon2id",
+	})
 }
 
 // Import godoc
@@ -107,7 +117,18 @@ func (h *ConfigHandler) Import(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	derivedKey := crypto.DeriveKey(req.Password)
+	var derivedKey string
+	if req.KDF == "argon2id" && req.Salt != "" {
+		salt, err := hex.DecodeString(req.Salt)
+		if err != nil {
+			writeJSON(w, http.StatusBadRequest, models.ErrorResponse{Error: "invalid salt"})
+			return
+		}
+		derivedKey = crypto.DeriveKeyWithSalt(req.Password, salt)
+	} else {
+		derivedKey = crypto.DeriveKey(req.Password) //nolint:staticcheck // backward compat for old exports
+	}
+
 	decrypted, err := crypto.Decrypt(req.Data, derivedKey)
 	if err != nil {
 		writeJSON(w, http.StatusBadRequest, models.ErrorResponse{Error: "invalid password or corrupted file"})

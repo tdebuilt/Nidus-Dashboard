@@ -8,7 +8,6 @@
   import { openThemeEditor } from '../../stores/themeEditor'
   import { customThemes } from '../../stores/customThemes'
   import { t, translate } from '../../i18n'
-  import { onMount } from 'svelte'
   import ThemeSelector from './ThemeSelector.svelte'
   import AccentColorPicker from './AccentColorPicker.svelte'
   import CustomCSSEditor from './CustomCSSEditor.svelte'
@@ -67,7 +66,7 @@
   let accentColor = $state('')
   let customCSS = $state('')
 
-  onMount(async () => {
+  async function loadAppearance() {
     try {
       const prefs = await api.get<{ theme: string; accent_color: string }>('/api/preferences')
       currentTheme = prefs.theme
@@ -80,6 +79,10 @@
     } catch {
       toasts.error(translate('settings.loadError'))
     }
+  }
+
+  $effect(() => {
+    loadAppearance()
   })
 
   async function updatePreference(key: string, value: unknown) {

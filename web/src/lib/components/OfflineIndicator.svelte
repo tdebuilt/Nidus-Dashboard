@@ -1,11 +1,10 @@
 <script lang="ts">
-  import { onMount } from 'svelte'
   import { WifiOff } from 'lucide-svelte'
   import { t } from '../i18n'
 
   let offline = $state(false)
 
-  onMount(() => {
+  $effect(() => {
     offline = !navigator.onLine
     const handleOnline = () => { offline = false }
     const handleOffline = () => { offline = true }

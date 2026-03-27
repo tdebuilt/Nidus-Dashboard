@@ -1,5 +1,4 @@
 <script lang="ts">
-  import { onMount } from 'svelte'
   import { Plus, Trash2, Loader2, GripVertical } from 'lucide-svelte'
   import { api } from '../../api/client'
   import { t } from '../../i18n'
@@ -128,11 +127,15 @@
     dragOverIndex = null
   }
 
-  onMount(async () => {
+  async function loadDashboards() {
     try {
       dashboards = await api.get<DashboardItem[]>('/api/grafana/dashboards') ?? []
     } catch { dashboards = [] }
     finally { loading = false }
+  }
+
+  $effect(() => {
+    loadDashboards()
   })
 </script>
 
@@ -215,6 +218,7 @@
             <button
               onclick={() => removePanel(i)}
               class="text-[var(--color-text-muted)] hover:text-[var(--color-danger)]"
+              aria-label={$t('common.delete')}
             >
               <Trash2 size={14} />
             </button>

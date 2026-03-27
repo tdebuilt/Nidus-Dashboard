@@ -87,4 +87,6 @@ type ExportRequest struct {
 type ImportRequest struct {
 	Password string `json:"password"`
 	Data     string `json:"data"`
+	Salt     string `json:"salt,omitempty"`
+	KDF      string `json:"kdf,omitempty"`
 }

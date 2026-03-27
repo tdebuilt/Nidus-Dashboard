@@ -1,5 +1,4 @@
 <script lang="ts">
-  import { onMount } from 'svelte'
   import { Plus, Trash2, Search } from 'lucide-svelte'
   import { t } from '../../i18n'
   import { api } from '../../api/client'
@@ -50,13 +49,17 @@
     }
   })
 
-  onMount(async () => {
+  async function loadSymbolCount() {
     try {
       const resp = await api.get<{ count: number }>('/api/finance/symbol-count')
       globalCount = resp?.count ?? 0
     } catch {
       globalCount = 0
     }
+  }
+
+  $effect(() => {
+    loadSymbolCount()
   })
 
   function emitChange() {
@@ -155,6 +158,7 @@
             onclick={() => removeSymbol(i)}
             class="ms-0.5 rounded-full p-0.5 text-[var(--color-text-muted)] hover:text-[var(--color-danger)]"
             title={$t('finance.removeSymbol')}
+            aria-label={$t('finance.removeSymbol')}
           >
             <Trash2 size={12} />
           </button>

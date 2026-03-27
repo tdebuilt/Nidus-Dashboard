@@ -9,6 +9,8 @@ import (
 	"errors"
 	"fmt"
 	"io"
+
+	"golang.org/x/crypto/argon2"
 )
 
 // ErrInvalidKey is returned when the encryption key is not 32 bytes (AES-256).
@@ -89,11 +91,40 @@ func GenerateKey() (string, error) {
 	return hex.EncodeToString(key), nil
 }
 
+// Argon2id parameters for key derivation.
+const (
+	argon2Time    = 1
+	argon2Memory  = 64 * 1024 // 64 MB
+	argon2Threads = 4
+	argon2KeyLen  = 32
+	argon2SaltLen = 16
+)
+
 // DeriveKey derives a 32-byte AES-256 key from a password using SHA-256.
 // Returns the key as a 64-char hex string compatible with Encrypt/Decrypt.
+//
+// Deprecated: Use DeriveKeyArgon2 for new exports. Kept for backward-compatible import of old config backups.
 func DeriveKey(password string) string {
 	hash := sha256.Sum256([]byte(password))
 	return hex.EncodeToString(hash[:])
+}
+
+// DeriveKeyArgon2 derives a 32-byte AES-256 key from a password using Argon2id.
+// Returns the hex-encoded key and the random salt used.
+func DeriveKeyArgon2(password string) (hexKey string, salt []byte, err error) {
+	salt = make([]byte, argon2SaltLen)
+	if _, err := io.ReadFull(rand.Reader, salt); err != nil {
+		return "", nil, fmt.Errorf("generating salt: %w", err)
+	}
+	key := argon2.IDKey([]byte(password), salt, argon2Time, argon2Memory, argon2Threads, argon2KeyLen)
+	return hex.EncodeToString(key), salt, nil
+}
+
+// DeriveKeyWithSalt derives a 32-byte AES-256 key from a password and a known salt using Argon2id.
+// Returns the hex-encoded key.
+func DeriveKeyWithSalt(password string, salt []byte) string {
+	key := argon2.IDKey([]byte(password), salt, argon2Time, argon2Memory, argon2Threads, argon2KeyLen)
+	return hex.EncodeToString(key)
 }
 
 func decodeKey(hexKey string) ([]byte, error) {

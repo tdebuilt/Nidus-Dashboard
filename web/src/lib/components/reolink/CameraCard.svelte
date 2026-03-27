@@ -1,5 +1,4 @@
 <script lang="ts">
-  import { onMount } from 'svelte'
   import { Video, Camera, Maximize2, X } from 'lucide-svelte'
   import { api } from '../../api/client'
   import { t } from '../../i18n'
@@ -36,7 +35,7 @@
   let videoEl: HTMLVideoElement | undefined = $state()
   let player: MsePlayer | null = null
 
-  onMount(() => {
+  $effect(() => {
     api
       .get<{ go2rtc?: string }>(`/api/reolink/cameras/${id}/stream`)
       .then((info) => { go2rtcWsUrl = info.go2rtc || null })
@@ -202,6 +201,7 @@
       onclick={toggleLive}
       class="absolute end-2 top-2 rounded-full p-1.5 text-white transition-colors {live ? 'bg-red-600 hover:bg-red-700' : 'bg-black/50 hover:bg-black/70'}"
       title={live ? $t('reolink.snapshot') : (go2rtcWsUrl ? $t('reolink.liveStream') : $t('reolink.liveFast'))}
+      aria-label={live ? $t('reolink.snapshot') : (go2rtcWsUrl ? $t('reolink.liveStream') : $t('reolink.liveFast'))}
     >
       {#if live}
         <Camera size={fullscreen ? 18 : 14} />
@@ -217,6 +217,7 @@
       onclick={toggleFullscreen}
       class="absolute bottom-2 end-2 rounded-full bg-black/50 p-1.5 text-white opacity-0 transition-opacity hover:bg-black/70 group-hover:opacity-100"
       title={$t('reolink.fullscreen')}
+      aria-label={$t('reolink.fullscreen')}
     >
       <Maximize2 size={14} />
     </button>
@@ -227,6 +228,7 @@
     <button
       onclick={() => fullscreen = false}
       class="absolute start-4 top-4 rounded-full bg-black/60 p-2 text-white hover:bg-black/80"
+      aria-label={$t('common.close')}
     >
       <X size={20} />
     </button>

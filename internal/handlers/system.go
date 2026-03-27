@@ -30,7 +30,7 @@ func (h *SystemHandler) GetStats(w http.ResponseWriter, r *http.Request) {
 
 	stats, err := system.GetStats()
 	if err != nil {
-		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed to read system stats: " + err.Error()})
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed to read system stats: " + sanitizeError(err)})
 		return
 	}
 

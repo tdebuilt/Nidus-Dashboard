@@ -4,7 +4,6 @@
   import { toasts } from '../../stores/toast'
   import { confirm } from '../../stores/confirm'
   import { t, translate } from '../../i18n'
-  import { onMount } from 'svelte'
   import UsersSection from './UsersSection.svelte'
   import InvitesSection from './InvitesSection.svelte'
 
@@ -30,7 +29,7 @@
   let generatedResetCode = $state('')
   let resetUsername = $state('')
 
-  onMount(() => {
+  $effect(() => {
     loadUsers()
   })
 

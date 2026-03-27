@@ -3,6 +3,7 @@ package handlers
 import (
 	"bytes"
 	"context"
+	"encoding/hex"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -52,7 +53,13 @@ func configRouter(t *testing.T) (*chi.Mux, *ConfigHandler) {
 }
 
 // exportEncrypted calls POST /api/config/export with a password and returns the encrypted data.
-func exportEncrypted(t *testing.T, r *chi.Mux, password string) string {
+type exportResult struct {
+	Data string
+	Salt string
+	KDF  string
+}
+
+func exportEncrypted(t *testing.T, r *chi.Mux, password string) exportResult {
 	t.Helper()
 	body, _ := json.Marshal(models.ExportRequest{Password: password})
 	req := httptest.NewRequest(http.MethodPost, "/api/config/export", bytes.NewReader(body))
@@ -69,13 +76,13 @@ func exportEncrypted(t *testing.T, r *chi.Mux, password string) string {
 	if !ok || data == "" {
 		t.Fatal("export: expected non-empty 'data' field")
 	}
-	return data
+	return exportResult{Data: data, Salt: resp["salt"], KDF: resp["kdf"]}
 }
 
 // importEncrypted calls POST /api/config/import with encrypted data and password.
-func importEncrypted(t *testing.T, r *chi.Mux, password, data string) int {
+func importEncrypted(t *testing.T, r *chi.Mux, password string, exp exportResult) int {
 	t.Helper()
-	body, _ := json.Marshal(models.ImportRequest{Password: password, Data: data})
+	body, _ := json.Marshal(models.ImportRequest{Password: password, Data: exp.Data, Salt: exp.Salt, KDF: exp.KDF})
 	req := httptest.NewRequest(http.MethodPost, "/api/config/import", bytes.NewReader(body))
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
@@ -100,12 +107,20 @@ func TestConfigExportProducesEncryptedData(t *testing.T) {
 	t.Parallel()
 	r, _ := configRouter(t)
 
-	data := exportEncrypted(t, r, "testpass")
+	result := exportEncrypted(t, r, "testpass")
 
 	// Data should be hex-encoded (not valid JSON)
 	var raw json.RawMessage
-	if json.Unmarshal([]byte(data), &raw) == nil {
+	if json.Unmarshal([]byte(result.Data), &raw) == nil {
 		t.Error("exported data should not be valid JSON (it should be encrypted hex)")
+	}
+
+	// Should include Argon2id salt and KDF marker
+	if result.KDF != "argon2id" {
+		t.Errorf("expected kdf 'argon2id', got %q", result.KDF)
+	}
+	if result.Salt == "" {
+		t.Error("expected non-empty salt")
 	}
 }
 
@@ -204,8 +219,9 @@ func TestConfigImportWithCredentials(t *testing.T) {
 	data := exportEncrypted(t, r, password)
 
 	// Verify the encrypted data contains the credential when decrypted
-	derivedKey := crypto.DeriveKey(password)
-	decrypted, err := crypto.Decrypt(data, derivedKey)
+	salt, _ := hex.DecodeString(data.Salt)
+	derivedKey := crypto.DeriveKeyWithSalt(password, salt)
+	decrypted, err := crypto.Decrypt(data.Data, derivedKey)
 	if err != nil {
 		t.Fatalf("manual decrypt failed: %v", err)
 	}
@@ -292,7 +308,7 @@ func TestConfigImportPreservesExistingOnFailure(t *testing.T) {
 	r.ServeHTTP(catW, catReq)
 
 	// Try to import with wrong password — should not affect existing data
-	code := importEncrypted(t, r, "wrong-pass", "deadbeefcafebabe")
+	code := importEncrypted(t, r, "wrong-pass", exportResult{Data: "deadbeefcafebabe"})
 	if code != http.StatusBadRequest {
 		t.Fatalf("expected 400, got %d", code)
 	}
@@ -318,9 +334,9 @@ func TestConfigValidationCategoryEmptyName(t *testing.T) {
 	}
 	jsonData, _ := json.Marshal(cfg)
 	password := "test"
-	encrypted, _ := crypto.Encrypt(string(jsonData), crypto.DeriveKey(password))
+	encrypted, _ := crypto.Encrypt(string(jsonData), crypto.DeriveKey(password)) //nolint:staticcheck // testing legacy format
 
-	code := importEncrypted(t, r, password, encrypted)
+	code := importEncrypted(t, r, password, exportResult{Data: encrypted})
 	if code != http.StatusBadRequest {
 		t.Errorf("expected 400 for empty category name, got %d", code)
 	}
@@ -346,9 +362,9 @@ func TestImportWidgetAnyTypeAccepted(t *testing.T) {
 		}
 		jsonData, _ := json.Marshal(cfg)
 		password := "test"
-		encrypted, _ := crypto.Encrypt(string(jsonData), crypto.DeriveKey(password))
+		encrypted, _ := crypto.Encrypt(string(jsonData), crypto.DeriveKey(password)) //nolint:staticcheck // testing legacy format
 
-		code := importEncrypted(t, r, password, encrypted)
+		code := importEncrypted(t, r, password, exportResult{Data: encrypted})
 		if code != http.StatusOK {
 			t.Errorf("expected 200 for widget type '%s', got %d", wType, code)
 		}
@@ -372,9 +388,9 @@ func TestImportWidgetLargeWidth(t *testing.T) {
 	}
 	jsonData, _ := json.Marshal(cfg)
 	password := "test"
-	encrypted, _ := crypto.Encrypt(string(jsonData), crypto.DeriveKey(password))
+	encrypted, _ := crypto.Encrypt(string(jsonData), crypto.DeriveKey(password)) //nolint:staticcheck // testing legacy format
 
-	code := importEncrypted(t, r, password, encrypted)
+	code := importEncrypted(t, r, password, exportResult{Data: encrypted})
 	if code != http.StatusOK {
 		t.Errorf("expected 200 for large widget widths (12, 24), got %d", code)
 	}
@@ -396,9 +412,9 @@ func TestImportWidgetZeroHeight(t *testing.T) {
 	}
 	jsonData, _ := json.Marshal(cfg)
 	password := "test"
-	encrypted, _ := crypto.Encrypt(string(jsonData), crypto.DeriveKey(password))
+	encrypted, _ := crypto.Encrypt(string(jsonData), crypto.DeriveKey(password)) //nolint:staticcheck // testing legacy format
 
-	code := importEncrypted(t, r, password, encrypted)
+	code := importEncrypted(t, r, password, exportResult{Data: encrypted})
 	if code != http.StatusOK {
 		t.Errorf("expected 200 for widget with height=0 (auto), got %d", code)
 	}
@@ -417,9 +433,9 @@ func TestImportServiceWithoutURL(t *testing.T) {
 	}
 	jsonData, _ := json.Marshal(cfg)
 	password := "test"
-	encrypted, _ := crypto.Encrypt(string(jsonData), crypto.DeriveKey(password))
+	encrypted, _ := crypto.Encrypt(string(jsonData), crypto.DeriveKey(password)) //nolint:staticcheck // testing legacy format
 
-	code := importEncrypted(t, r, password, encrypted)
+	code := importEncrypted(t, r, password, exportResult{Data: encrypted})
 	if code != http.StatusOK {
 		t.Errorf("expected 200 for reolink service without URL (NeedsURL=false), got %d", code)
 	}
@@ -438,9 +454,9 @@ func TestConfigValidationServiceInvalidType(t *testing.T) {
 	}
 	jsonData, _ := json.Marshal(cfg)
 	password := "test"
-	encrypted, _ := crypto.Encrypt(string(jsonData), crypto.DeriveKey(password))
+	encrypted, _ := crypto.Encrypt(string(jsonData), crypto.DeriveKey(password)) //nolint:staticcheck // testing legacy format
 
-	code := importEncrypted(t, r, password, encrypted)
+	code := importEncrypted(t, r, password, exportResult{Data: encrypted})
 	if code != http.StatusBadRequest {
 		t.Errorf("expected 400 for invalid service type, got %d", code)
 	}
@@ -459,9 +475,9 @@ func TestConfigValidationServiceMissingURL(t *testing.T) {
 	}
 	jsonData, _ := json.Marshal(cfg)
 	password := "test"
-	encrypted, _ := crypto.Encrypt(string(jsonData), crypto.DeriveKey(password))
+	encrypted, _ := crypto.Encrypt(string(jsonData), crypto.DeriveKey(password)) //nolint:staticcheck // testing legacy format
 
-	code := importEncrypted(t, r, password, encrypted)
+	code := importEncrypted(t, r, password, exportResult{Data: encrypted})
 	if code != http.StatusBadRequest {
 		t.Errorf("expected 400 for missing service URL, got %d", code)
 	}
@@ -482,9 +498,9 @@ func TestImportTooManyCategories(t *testing.T) {
 	}
 	jsonData, _ := json.Marshal(cfg)
 	password := "test"
-	encrypted, _ := crypto.Encrypt(string(jsonData), crypto.DeriveKey(password))
+	encrypted, _ := crypto.Encrypt(string(jsonData), crypto.DeriveKey(password)) //nolint:staticcheck // testing legacy format
 
-	code := importEncrypted(t, r, password, encrypted)
+	code := importEncrypted(t, r, password, exportResult{Data: encrypted})
 	if code != http.StatusBadRequest {
 		t.Errorf("expected 400 for too many categories, got %d", code)
 	}
@@ -506,9 +522,9 @@ func TestImportTooManyWidgets(t *testing.T) {
 	}
 	jsonData, _ := json.Marshal(cfg)
 	password := "test"
-	encrypted, _ := crypto.Encrypt(string(jsonData), crypto.DeriveKey(password))
+	encrypted, _ := crypto.Encrypt(string(jsonData), crypto.DeriveKey(password)) //nolint:staticcheck // testing legacy format
 
-	code := importEncrypted(t, r, password, encrypted)
+	code := importEncrypted(t, r, password, exportResult{Data: encrypted})
 	if code != http.StatusBadRequest {
 		t.Errorf("expected 400 for too many widgets, got %d", code)
 	}
@@ -529,9 +545,9 @@ func TestImportTooManyServices(t *testing.T) {
 	}
 	jsonData, _ := json.Marshal(cfg)
 	password := "test"
-	encrypted, _ := crypto.Encrypt(string(jsonData), crypto.DeriveKey(password))
+	encrypted, _ := crypto.Encrypt(string(jsonData), crypto.DeriveKey(password)) //nolint:staticcheck // testing legacy format
 
-	code := importEncrypted(t, r, password, encrypted)
+	code := importEncrypted(t, r, password, exportResult{Data: encrypted})
 	if code != http.StatusBadRequest {
 		t.Errorf("expected 400 for too many services, got %d", code)
 	}
@@ -552,9 +568,9 @@ func TestImportCategoryNameTooLong(t *testing.T) {
 	}
 	jsonData, _ := json.Marshal(cfg)
 	password := "test"
-	encrypted, _ := crypto.Encrypt(string(jsonData), crypto.DeriveKey(password))
+	encrypted, _ := crypto.Encrypt(string(jsonData), crypto.DeriveKey(password)) //nolint:staticcheck // testing legacy format
 
-	code := importEncrypted(t, r, password, encrypted)
+	code := importEncrypted(t, r, password, exportResult{Data: encrypted})
 	if code != http.StatusBadRequest {
 		t.Errorf("expected 400 for category name too long, got %d", code)
 	}
@@ -576,9 +592,9 @@ func TestImportWidgetTitleTooLong(t *testing.T) {
 	}
 	jsonData, _ := json.Marshal(cfg)
 	password := "test"
-	encrypted, _ := crypto.Encrypt(string(jsonData), crypto.DeriveKey(password))
+	encrypted, _ := crypto.Encrypt(string(jsonData), crypto.DeriveKey(password)) //nolint:staticcheck // testing legacy format
 
-	code := importEncrypted(t, r, password, encrypted)
+	code := importEncrypted(t, r, password, exportResult{Data: encrypted})
 	if code != http.StatusBadRequest {
 		t.Errorf("expected 400 for widget title too long, got %d", code)
 	}
@@ -596,9 +612,9 @@ func TestImportWidgetHeightTooLarge(t *testing.T) {
 	}
 	jsonData, _ := json.Marshal(cfg)
 	password := "test"
-	encrypted, _ := crypto.Encrypt(string(jsonData), crypto.DeriveKey(password))
+	encrypted, _ := crypto.Encrypt(string(jsonData), crypto.DeriveKey(password)) //nolint:staticcheck // testing legacy format
 
-	code := importEncrypted(t, r, password, encrypted)
+	code := importEncrypted(t, r, password, exportResult{Data: encrypted})
 	if code != http.StatusBadRequest {
 		t.Errorf("expected 400 for widget height too large, got %d", code)
 	}
@@ -619,9 +635,9 @@ func TestImportServiceNameTooLong(t *testing.T) {
 	}
 	jsonData, _ := json.Marshal(cfg)
 	password := "test"
-	encrypted, _ := crypto.Encrypt(string(jsonData), crypto.DeriveKey(password))
+	encrypted, _ := crypto.Encrypt(string(jsonData), crypto.DeriveKey(password)) //nolint:staticcheck // testing legacy format
 
-	code := importEncrypted(t, r, password, encrypted)
+	code := importEncrypted(t, r, password, exportResult{Data: encrypted})
 	if code != http.StatusBadRequest {
 		t.Errorf("expected 400 for service name too long, got %d", code)
 	}
@@ -639,9 +655,9 @@ func TestImportServiceURLTooLong(t *testing.T) {
 	}
 	jsonData, _ := json.Marshal(cfg)
 	password := "test"
-	encrypted, _ := crypto.Encrypt(string(jsonData), crypto.DeriveKey(password))
+	encrypted, _ := crypto.Encrypt(string(jsonData), crypto.DeriveKey(password)) //nolint:staticcheck // testing legacy format
 
-	code := importEncrypted(t, r, password, encrypted)
+	code := importEncrypted(t, r, password, exportResult{Data: encrypted})
 	if code != http.StatusBadRequest {
 		t.Errorf("expected 400 for service URL too long, got %d", code)
 	}

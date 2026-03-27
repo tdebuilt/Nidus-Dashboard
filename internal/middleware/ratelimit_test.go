@@ -153,6 +153,65 @@ func TestRateLimiterHTTPMiddlewareResetsAfterWindow(t *testing.T) {
 	}
 }
 
+func TestRateLimiterHTTPMiddlewareDifferentPortsSameIP(t *testing.T) {
+	t.Parallel()
+	rl := NewRateLimiter(2, 15*time.Minute)
+	handler := rl.Limit(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+
+	// Two requests from same IP but different ports share the same counter
+	req := httptest.NewRequest(http.MethodPost, "/api/auth/login", nil)
+	req.RemoteAddr = "10.0.0.1:11111"
+	w := httptest.NewRecorder()
+	handler.ServeHTTP(w, req)
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d", w.Code)
+	}
+
+	req = httptest.NewRequest(http.MethodPost, "/api/auth/login", nil)
+	req.RemoteAddr = "10.0.0.1:22222"
+	w = httptest.NewRecorder()
+	handler.ServeHTTP(w, req)
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d", w.Code)
+	}
+
+	// 3rd request from yet another port should be blocked (limit=2)
+	req = httptest.NewRequest(http.MethodPost, "/api/auth/login", nil)
+	req.RemoteAddr = "10.0.0.1:33333"
+	w = httptest.NewRecorder()
+	handler.ServeHTTP(w, req)
+	if w.Code != http.StatusTooManyRequests {
+		t.Fatalf("expected 429, got %d", w.Code)
+	}
+}
+
+func TestRateLimiterHTTPMiddlewareIPv6(t *testing.T) {
+	t.Parallel()
+	rl := NewRateLimiter(1, 15*time.Minute)
+	handler := rl.Limit(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+
+	req := httptest.NewRequest(http.MethodPost, "/api/auth/login", nil)
+	req.RemoteAddr = "[::1]:12345"
+	w := httptest.NewRecorder()
+	handler.ServeHTTP(w, req)
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d", w.Code)
+	}
+
+	// 2nd request from same IPv6 should be blocked (limit=1)
+	req = httptest.NewRequest(http.MethodPost, "/api/auth/login", nil)
+	req.RemoteAddr = "[::1]:54321"
+	w = httptest.NewRecorder()
+	handler.ServeHTTP(w, req)
+	if w.Code != http.StatusTooManyRequests {
+		t.Fatalf("expected 429, got %d", w.Code)
+	}
+}
+
 func TestRateLimiterReset(t *testing.T) {
 	t.Parallel()
 	rl := NewRateLimiter(1, 15*time.Minute)

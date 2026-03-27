@@ -31,7 +31,6 @@
   import { navigate } from './lib/stores/router'
   import { t, applyBrowserLocale, setLocale, isRTL } from './lib/i18n'
   import { setTheme } from './lib/stores/theme'
-  import { onMount } from 'svelte'
   import { openSidebar, sidebarOpen } from './lib/stores/sidebar'
 
   let networkError = $state(false)
@@ -133,7 +132,7 @@
     }
   }
 
-  onMount(() => {
+  $effect(() => {
     applyBrowserLocale()
     checkAuth().then(() => {
       if (get(auth).authenticated) {

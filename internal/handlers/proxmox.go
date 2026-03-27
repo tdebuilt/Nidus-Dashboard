@@ -226,7 +226,7 @@ func (h *ProxmoxHandler) VMAction(w http.ResponseWriter, r *http.Request) {
 
 	taskID, err := client.VMAction(r.Context(), node, vmType, vmid, action)
 	if err != nil {
-		writeJSON(w, http.StatusBadGateway, models.ErrorResponse{Error: "action failed: " + err.Error()})
+		writeJSON(w, http.StatusBadGateway, models.ErrorResponse{Error: "action failed: " + sanitizeError(err)})
 		return
 	}
 

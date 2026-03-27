@@ -27,8 +27,9 @@
       return
     }
     try {
-      const result = await api.post<{ data: string }>('/api/config/export', { password: exportPassword })
-      const blob = new Blob([result.data], { type: 'application/octet-stream' })
+      const result = await api.post<{ data: string; salt?: string; kdf?: string }>('/api/config/export', { password: exportPassword })
+      const fileContent = JSON.stringify({ data: result.data, salt: result.salt, kdf: result.kdf })
+      const blob = new Blob([fileContent], { type: 'application/octet-stream' })
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
@@ -60,7 +61,14 @@
     if (!importFile) return
     try {
       const text = (await importFile.text()).trim()
-      await api.post('/api/config/import', { password: importPassword, data: text })
+      let payload: { password: string; data: string; salt?: string; kdf?: string }
+      try {
+        const parsed = JSON.parse(text)
+        payload = { password: importPassword, data: parsed.data, salt: parsed.salt, kdf: parsed.kdf }
+      } catch {
+        payload = { password: importPassword, data: text }
+      }
+      await api.post('/api/config/import', payload)
       showImportPassword = false
       importFile = null
       toasts.success(translate('settings.importSuccess'))

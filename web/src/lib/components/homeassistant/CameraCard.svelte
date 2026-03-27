@@ -1,5 +1,4 @@
 <script lang="ts">
-  import { onMount } from 'svelte'
   import { Camera, ExternalLink } from 'lucide-svelte'
   import { t } from '../../i18n'
 
@@ -62,7 +61,7 @@
     onResize?.(finalWidth)
   }
 
-  onMount(() => {
+  $effect(() => {
     refreshSnapshot()
     const interval = setInterval(refreshSnapshot, 10000)
     return () => clearInterval(interval)

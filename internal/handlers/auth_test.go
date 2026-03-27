@@ -8,7 +8,6 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
-	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -19,22 +18,12 @@ import (
 
 	"github.com/tdebuilt/nidus/internal/database"
 	"github.com/tdebuilt/nidus/internal/models"
+	"github.com/tdebuilt/nidus/internal/testutil"
 )
 
 func setupTestDB(t *testing.T) *database.DB {
 	t.Helper()
-	ctx := context.Background()
-	dir := t.TempDir()
-	dbPath := filepath.Join(dir, "test.db")
-	db, err := database.Open(dbPath)
-	if err != nil {
-		t.Fatalf("failed to open test db: %v", err)
-	}
-	if err := db.Migrate(ctx); err != nil {
-		t.Fatalf("failed to migrate: %v", err)
-	}
-	t.Cleanup(func() { db.Close() })
-	return db
+	return testutil.SetupTestDB(t)
 }
 
 func setupRequest(t *testing.T, body interface{}) *http.Request {

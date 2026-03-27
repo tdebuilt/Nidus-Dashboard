@@ -7,29 +7,18 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
-	"path/filepath"
 	"testing"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
 
 	"github.com/tdebuilt/nidus/internal/database"
+	"github.com/tdebuilt/nidus/internal/testutil"
 )
 
 func setupTestDB(t *testing.T) *database.DB {
 	t.Helper()
-	dir := t.TempDir()
-	dbPath := filepath.Join(dir, "test.db")
-	db, err := database.Open(dbPath)
-	if err != nil {
-		t.Fatalf("failed to open test db: %v", err)
-	}
-	ctx := context.Background()
-	if err := db.Migrate(ctx); err != nil {
-		t.Fatalf("failed to migrate: %v", err)
-	}
-	t.Cleanup(func() { db.Close() })
-	return db
+	return testutil.SetupTestDB(t)
 }
 
 // setupUserAndSecret creates a test user and JWT secret, returns the secret bytes.

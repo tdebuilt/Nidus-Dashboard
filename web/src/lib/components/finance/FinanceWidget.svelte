@@ -133,13 +133,10 @@
   })
 
   // Re-fetch when symbols list changes (e.g. user adds a symbol in config)
-  let prevSymbolsKey = $state('')
+  const symbolsKey = $derived(symbols.join(','))
   $effect(() => {
-    const key = symbols.join(',')
-    if (key !== prevSymbolsKey) {
-      prevSymbolsKey = key
-      fetchData()
-    }
+    void symbolsKey
+    fetchData()
   })
 </script>
 
