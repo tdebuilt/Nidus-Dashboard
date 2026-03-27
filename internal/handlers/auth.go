@@ -15,6 +15,11 @@ import (
 	"github.com/tdebuilt/nidus/internal/models"
 )
 
+const (
+	JWTExpiry    = 24 * time.Hour
+	CookieMaxAge = 24 * 60 * 60 // seconds
+)
+
 // AuthHandler handles authentication-related HTTP requests.
 type AuthHandler struct {
 	DB *database.DB
@@ -158,7 +163,7 @@ func (h *AuthHandler) issueJWTCookie(w http.ResponseWriter, r *http.Request, use
 		"role": user.Role,
 		"tv":   user.TokenVersion,
 		"iat":  now.Unix(),
-		"exp":  now.Add(24 * time.Hour).Unix(),
+		"exp":  now.Add(JWTExpiry).Unix(),
 	}
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 	tokenString, err := token.SignedString(jwtSecret)
@@ -178,7 +183,7 @@ func (h *AuthHandler) issueJWTCookie(w http.ResponseWriter, r *http.Request, use
 		HttpOnly: true,
 		Secure:   secure,
 		SameSite: sameSite,
-		MaxAge:   24 * 60 * 60,
+		MaxAge:   CookieMaxAge,
 	})
 	return nil
 }

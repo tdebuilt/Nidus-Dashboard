@@ -62,14 +62,19 @@ var ValidServiceTypes = func() map[string]bool {
 	return m
 }()
 
+const (
+	serviceTestTimeout = 5 * time.Second
+	batchStatusTimeout = 10 * time.Second
+)
+
 // ServicesHandler handles service configuration HTTP requests.
 type ServicesHandler struct {
 	DB    *database.DB
 	Cache *cache.Cache
 }
 
-func (h *ServicesHandler) getEncryptionKey() (string, error) {
-	return h.DB.GetSystemSetting("encryption_key")
+func (h *ServicesHandler) getEncryptionKey(ctx context.Context) (string, error) {
+	return h.DB.GetSystemSetting(ctx, "encryption_key")
 }
 
 // List godoc
@@ -96,7 +101,7 @@ func (h *ServicesHandler) List(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	services, err := h.DB.GetServices()
+	services, err := h.DB.GetServices(r.Context())
 	if err != nil {
 		writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "failed to list services"})
 		return
@@ -163,7 +168,7 @@ func (h *ServicesHandler) Update(w http.ResponseWriter, r *http.Request) {
 	// Encrypt credentials if provided
 	encryptedCreds := ""
 	if req.Credentials != "" {
-		encKey, err := h.getEncryptionKey()
+		encKey, err := h.getEncryptionKey(r.Context())
 		if err != nil || encKey == "" {
 			writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "encryption key not configured"})
 			return
@@ -175,7 +180,7 @@ func (h *ServicesHandler) Update(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	svc, err := h.DB.UpsertService(serviceType, req.Name, req.URL, encryptedCreds, req.Config, enabled)
+	svc, err := h.DB.UpsertService(r.Context(), serviceType, req.Name, req.URL, encryptedCreds, req.Config, enabled)
 	if err != nil {
 		writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "failed to save service"})
 		return
@@ -214,7 +219,7 @@ func (h *ServicesHandler) Delete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := h.DB.DeleteService(serviceType); err != nil {
+	if err := h.DB.DeleteService(r.Context(), serviceType); err != nil {
 		writeJSON(w, http.StatusNotFound, models.ErrorResponse{Error: "service not found"})
 		return
 	}
@@ -243,7 +248,7 @@ func (h *ServicesHandler) Test(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	svc, err := h.DB.GetServiceByType(serviceType)
+	svc, err := h.DB.GetServiceByType(r.Context(), serviceType)
 	if err != nil {
 		writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "database error"})
 		return
@@ -259,7 +264,7 @@ func (h *ServicesHandler) Test(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Real connectivity test — HTTP GET to the service URL
-	testClient := &http.Client{Timeout: 5 * time.Second}
+	testClient := &http.Client{Timeout: serviceTestTimeout}
 	testURL := svc.URL
 	if def, ok := ServiceRegistry[serviceType]; ok && def.TestPath != "" {
 		testURL += def.TestPath
@@ -292,7 +297,7 @@ func (h *ServicesHandler) Test(w http.ResponseWriter, r *http.Request) {
 
 // BatchStatus returns connectivity status for all configured services.
 func (h *ServicesHandler) BatchStatus(w http.ResponseWriter, r *http.Request) {
-	services, err := h.DB.GetServices()
+	services, err := h.DB.GetServices(r.Context())
 	if err != nil {
 		writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "failed to list services"})
 		return
@@ -302,10 +307,10 @@ func (h *ServicesHandler) BatchStatus(w http.ResponseWriter, r *http.Request) {
 	var mu sync.Mutex
 	var wg sync.WaitGroup
 
-	ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(r.Context(), batchStatusTimeout)
 	defer cancel()
 
-	client := &http.Client{Timeout: 5 * time.Second}
+	client := &http.Client{Timeout: serviceTestTimeout}
 
 	for _, svc := range services {
 		if svc.URL == "" {

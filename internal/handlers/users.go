@@ -4,6 +4,7 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"encoding/json"
+	"log"
 	"net/http"
 	"strconv"
 	"time"
@@ -14,6 +15,12 @@ import (
 	"github.com/tdebuilt/nidus/internal/database"
 	nidusmw "github.com/tdebuilt/nidus/internal/middleware"
 	"github.com/tdebuilt/nidus/internal/models"
+)
+
+const (
+	MinPasswordLength = 8
+	InviteExpiry      = 7 * 24 * time.Hour
+	ResetExpiry       = 24 * time.Hour
 )
 
 // UsersHandler handles user management HTTP requests.
@@ -31,7 +38,7 @@ type UsersHandler struct {
 // @Router /users [get]
 // @Security BearerAuth
 func (h *UsersHandler) List(w http.ResponseWriter, r *http.Request) {
-	users, err := h.DB.ListUsers()
+	users, err := h.DB.ListUsers(r.Context())
 	if err != nil {
 		writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "failed to list users"})
 		return
@@ -81,13 +88,15 @@ func (h *UsersHandler) UpdateRole(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := h.DB.UpdateUserRole(userID, req.Role); err != nil {
+	if err := h.DB.UpdateUserRole(r.Context(), userID, req.Role); err != nil {
 		writeJSON(w, http.StatusNotFound, models.ErrorResponse{Error: "user not found"})
 		return
 	}
 
 	// Invalidate existing JWTs for this user
-	h.DB.IncrementTokenVersion(userID)
+	if err := h.DB.IncrementTokenVersion(r.Context(), userID); err != nil {
+		log.Printf("warning: failed to increment token version for user %d: %v", userID, err)
+	}
 
 	writeJSON(w, http.StatusOK, map[string]string{"message": "role updated"})
 }
@@ -118,7 +127,7 @@ func (h *UsersHandler) Delete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := h.DB.DeleteUser(userID); err != nil {
+	if err := h.DB.DeleteUser(r.Context(), userID); err != nil {
 		writeJSON(w, http.StatusNotFound, models.ErrorResponse{Error: "user not found"})
 		return
 	}
@@ -162,9 +171,9 @@ func (h *UsersHandler) CreateInvite(w http.ResponseWriter, r *http.Request) {
 	code := hex.EncodeToString(codeBytes)
 
 	createdBy, _ := nidusmw.GetUserID(r.Context())
-	expiresAt := time.Now().Add(7 * 24 * time.Hour) // 7 days
+	expiresAt := time.Now().Add(InviteExpiry)
 
-	if err := h.DB.CreateInvitation(code, req.Role, createdBy, expiresAt.Format(time.RFC3339)); err != nil {
+	if err := h.DB.CreateInvitation(r.Context(), code, req.Role, createdBy, expiresAt.Format(time.RFC3339)); err != nil {
 		writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "failed to create invitation"})
 		return
 	}
@@ -186,7 +195,7 @@ func (h *UsersHandler) CreateInvite(w http.ResponseWriter, r *http.Request) {
 // @Router /invites [get]
 // @Security BearerAuth
 func (h *UsersHandler) ListInvites(w http.ResponseWriter, r *http.Request) {
-	invitations, err := h.DB.ListInvitations()
+	invitations, err := h.DB.ListInvitations(r.Context())
 	if err != nil {
 		writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "failed to list invitations"})
 		return
@@ -216,7 +225,7 @@ func (h *UsersHandler) DeleteInvite(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := h.DB.DeleteInvitation(invID); err != nil {
+	if err := h.DB.DeleteInvitation(r.Context(), invID); err != nil {
 		writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "failed to delete invitation"})
 		return
 	}
@@ -247,7 +256,7 @@ func (h *UsersHandler) Register(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusBadRequest, models.ErrorResponse{Error: "username is required"})
 		return
 	}
-	if len(req.Password) < 8 {
+	if len(req.Password) < MinPasswordLength {
 		writeJSON(w, http.StatusBadRequest, models.ErrorResponse{Error: "password must be at least 8 characters"})
 		return
 	}
@@ -257,7 +266,7 @@ func (h *UsersHandler) Register(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Check invitation
-	inv, err := h.DB.GetInvitationByCode(req.Code)
+	inv, err := h.DB.GetInvitationByCode(r.Context(), req.Code)
 	if err != nil {
 		writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "database error"})
 		return
@@ -268,7 +277,7 @@ func (h *UsersHandler) Register(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Check username not taken
-	existing, err := h.DB.GetUserByUsername(req.Username)
+	existing, err := h.DB.GetUserByUsername(r.Context(), req.Username)
 	if err != nil {
 		writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "database error"})
 		return
@@ -286,14 +295,14 @@ func (h *UsersHandler) Register(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Create user with the invitation's role
-	userID, err := h.DB.CreateUser(req.Username, string(hash), inv.Role)
+	userID, err := h.DB.CreateUser(r.Context(), req.Username, string(hash), inv.Role)
 	if err != nil {
 		writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "failed to create user"})
 		return
 	}
 
 	// Mark invitation as used
-	if err := h.DB.UseInvitation(inv.ID, userID); err != nil {
+	if err := h.DB.UseInvitation(r.Context(), inv.ID, userID); err != nil {
 		writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "failed to use invitation"})
 		return
 	}
@@ -325,7 +334,7 @@ func (h *UsersHandler) CreateReset(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Verify target user exists
-	target, err := h.DB.GetUserByID(userID)
+	target, err := h.DB.GetUserByID(r.Context(), userID)
 	if err != nil || target == nil {
 		writeJSON(w, http.StatusNotFound, models.ErrorResponse{Error: "user not found"})
 		return
@@ -339,9 +348,9 @@ func (h *UsersHandler) CreateReset(w http.ResponseWriter, r *http.Request) {
 	}
 	code := hex.EncodeToString(codeBytes)
 
-	expiresAt := time.Now().Add(24 * time.Hour)
+	expiresAt := time.Now().Add(ResetExpiry)
 
-	if err := h.DB.CreatePasswordReset(userID, code, currentUserID, expiresAt.Format(time.RFC3339)); err != nil {
+	if err := h.DB.CreatePasswordReset(r.Context(), userID, code, currentUserID, expiresAt.Format(time.RFC3339)); err != nil {
 		writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "failed to create reset code"})
 		return
 	}
@@ -370,7 +379,7 @@ func (h *UsersHandler) ResetPassword(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Validate reset code
-	reset, err := h.DB.GetPasswordResetByCode(req.Code)
+	reset, err := h.DB.GetPasswordResetByCode(r.Context(), req.Code)
 	if err != nil {
 		writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "database error"})
 		return
@@ -381,7 +390,7 @@ func (h *UsersHandler) ResetPassword(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Verify user still exists
-	user, err := h.DB.GetUserByID(reset.UserID)
+	user, err := h.DB.GetUserByID(r.Context(), reset.UserID)
 	if err != nil || user == nil {
 		writeJSON(w, http.StatusBadRequest, models.ErrorResponse{Error: "user not found"})
 		return
@@ -395,21 +404,29 @@ func (h *UsersHandler) ResetPassword(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Update password
-	if err := h.DB.UpdateUserPassword(user.ID, string(hash)); err != nil {
+	if err := h.DB.UpdateUserPassword(r.Context(), user.ID, string(hash)); err != nil {
 		writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "failed to update password"})
 		return
 	}
 
 	// Always disable TOTP on reset
 	if user.TOTPEnabled {
-		h.DB.DisableUserTOTP(user.ID)
+		if err := h.DB.DisableUserTOTP(r.Context(), user.ID); err != nil {
+			writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "failed to disable TOTP"})
+			return
+		}
 	}
 
 	// Invalidate all existing sessions
-	h.DB.IncrementTokenVersion(user.ID)
+	if err := h.DB.IncrementTokenVersion(r.Context(), user.ID); err != nil {
+		writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "failed to invalidate sessions"})
+		return
+	}
 
 	// Mark reset code as used
-	h.DB.UsePasswordReset(reset.ID)
+	if err := h.DB.UsePasswordReset(r.Context(), reset.ID); err != nil {
+		log.Printf("warning: failed to mark password reset as used: %v", err)
+	}
 
 	writeJSON(w, http.StatusOK, map[string]string{"message": "password reset successful"})
 }

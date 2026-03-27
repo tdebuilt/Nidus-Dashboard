@@ -3,6 +3,7 @@ package middleware
 import (
 	"context"
 	"encoding/hex"
+	"encoding/json"
 	"net/http"
 	"strings"
 
@@ -10,6 +11,13 @@ import (
 
 	"github.com/tdebuilt/nidus/internal/database"
 )
+
+// writeErrorJSON writes a JSON error response with proper Content-Type header.
+func writeErrorJSON(w http.ResponseWriter, status int, message string) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(status)
+	json.NewEncoder(w).Encode(map[string]string{"error": message})
+}
 
 type contextKey string
 
@@ -23,19 +31,19 @@ func Auth(db *database.DB) func(http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			tokenString := extractToken(r)
 			if tokenString == "" {
-				http.Error(w, `{"error":"authentication required"}`, http.StatusUnauthorized)
+				writeErrorJSON(w, http.StatusUnauthorized, "authentication required")
 				return
 			}
 
-			jwtSecretHex, err := db.GetSystemSetting("jwt_secret")
+			jwtSecretHex, err := db.GetSystemSetting(r.Context(), "jwt_secret")
 			if err != nil || jwtSecretHex == "" {
-				http.Error(w, `{"error":"JWT secret not configured"}`, http.StatusInternalServerError)
+				writeErrorJSON(w, http.StatusInternalServerError, "JWT secret not configured")
 				return
 			}
 
 			jwtSecret, err := hex.DecodeString(jwtSecretHex)
 			if err != nil {
-				http.Error(w, `{"error":"invalid JWT secret"}`, http.StatusInternalServerError)
+				writeErrorJSON(w, http.StatusInternalServerError, "invalid JWT secret")
 				return
 			}
 
@@ -46,35 +54,35 @@ func Auth(db *database.DB) func(http.Handler) http.Handler {
 				return jwtSecret, nil
 			})
 			if err != nil || !token.Valid {
-				http.Error(w, `{"error":"invalid or expired token"}`, http.StatusUnauthorized)
+				writeErrorJSON(w, http.StatusUnauthorized, "invalid or expired token")
 				return
 			}
 
 			claims, ok := token.Claims.(jwt.MapClaims)
 			if !ok {
-				http.Error(w, `{"error":"invalid token claims"}`, http.StatusUnauthorized)
+				writeErrorJSON(w, http.StatusUnauthorized, "invalid token claims")
 				return
 			}
 
 			userIDFloat, ok := claims["sub"].(float64)
 			if !ok {
-				http.Error(w, `{"error":"invalid token claims"}`, http.StatusUnauthorized)
+				writeErrorJSON(w, http.StatusUnauthorized, "invalid token claims")
 				return
 			}
 
 			userID := int64(userIDFloat)
 
 			// Verify user still exists
-			user, err := db.GetUserByID(userID)
+			user, err := db.GetUserByID(r.Context(), userID)
 			if err != nil || user == nil {
-				http.Error(w, `{"error":"user not found"}`, http.StatusUnauthorized)
+				writeErrorJSON(w, http.StatusUnauthorized, "user not found")
 				return
 			}
 
 			// Validate token version (invalidated on password/role change)
 			if tvClaim, ok := claims["tv"].(float64); ok {
 				if int64(tvClaim) != user.TokenVersion {
-					http.Error(w, `{"error":"token revoked"}`, http.StatusUnauthorized)
+					writeErrorJSON(w, http.StatusUnauthorized, "token revoked")
 					return
 				}
 			}
@@ -136,7 +144,7 @@ func RequireRole(minRole string) func(http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			role := GetUserRole(r.Context())
 			if roleLevel(role) < minLevel {
-				http.Error(w, `{"error":"insufficient permissions"}`, http.StatusForbidden)
+				writeErrorJSON(w, http.StatusForbidden, "insufficient permissions")
 				return
 			}
 			next.ServeHTTP(w, r)

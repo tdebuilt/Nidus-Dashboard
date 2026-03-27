@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"encoding/json"
 	"log"
 	"net/http"
@@ -10,6 +11,11 @@ import (
 	"github.com/go-chi/chi/v5"
 
 	"github.com/tdebuilt/nidus/internal/models"
+)
+
+const (
+	dockerOperationTimeout  = 10 * time.Minute
+	dockerOperationWarnAfter = 5 * time.Minute
 )
 
 // ContainerAction godoc
@@ -57,7 +63,7 @@ func (h *DockerHandler) ContainerAction(w http.ResponseWriter, r *http.Request) 
 	}
 
 	log.Printf("docker: container action %s on %s (envID: %d)", action, containerID[:12], envID)
-	if err := client.ContainerAction(envID, containerID, effectiveAction); err != nil {
+	if err := client.ContainerAction(r.Context(), envID, containerID, effectiveAction); err != nil {
 		log.Printf("docker: container action error: %v", err)
 		writeJSON(w, http.StatusBadGateway, models.ErrorResponse{Error: "action failed: " + err.Error()})
 		return
@@ -92,7 +98,9 @@ func (h *DockerHandler) RecreateContainer(w http.ResponseWriter, r *http.Request
 	var body struct {
 		PullImage bool `json:"pull_image"`
 	}
-	json.NewDecoder(r.Body).Decode(&body)
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		log.Printf("warning: failed to decode recreate body: %v", err)
+	}
 
 	client, err := h.getPortainerClient(r.Context())
 	if err != nil || client == nil {
@@ -104,11 +112,13 @@ func (h *DockerHandler) RecreateContainer(w http.ResponseWriter, r *http.Request
 
 	// Recreate in background — pull+restart can take minutes
 	go func() {
-		timer := time.AfterFunc(5*time.Minute, func() {
+		ctx, cancel := context.WithTimeout(context.Background(), dockerOperationTimeout)
+		defer cancel()
+		timer := time.AfterFunc(dockerOperationWarnAfter, func() {
 			log.Printf("docker: recreate container %s still running after 5m", containerID[:12])
 		})
 		defer timer.Stop()
-		if err := client.RecreateContainer(envID, containerID, body.PullImage); err != nil {
+		if err := client.RecreateContainer(ctx, envID, containerID, body.PullImage); err != nil {
 			log.Printf("docker: recreate error: %v", err)
 		} else {
 			log.Printf("docker: recreate success: %s", containerID[:12])
@@ -149,7 +159,9 @@ func (h *DockerHandler) StackAction(w http.ResponseWriter, r *http.Request) {
 		StackName    string   `json:"stack_name"`
 		ContainerIDs []string `json:"container_ids"`
 	}
-	json.NewDecoder(r.Body).Decode(&body)
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		log.Printf("warning: failed to decode stack action body: %v", err)
+	}
 
 	client, err := h.getPortainerClient(r.Context())
 	if err != nil || client == nil {
@@ -161,7 +173,7 @@ func (h *DockerHandler) StackAction(w http.ResponseWriter, r *http.Request) {
 
 	// If no container IDs provided, fetch them by listing and filtering by stack name
 	if len(containerIDs) == 0 && body.StackName != "" {
-		containers, err := client.ListContainers(body.EnvID)
+		containers, err := client.ListContainers(r.Context(), body.EnvID)
 		if err != nil {
 			writeJSON(w, http.StatusBadGateway, models.ErrorResponse{Error: "failed to list containers"})
 			return
@@ -189,7 +201,7 @@ func (h *DockerHandler) StackAction(w http.ResponseWriter, r *http.Request) {
 
 	var errors []string
 	for _, cid := range containerIDs {
-		if err := client.ContainerAction(body.EnvID, cid, effectiveAction); err != nil {
+		if err := client.ContainerAction(r.Context(), body.EnvID, cid, effectiveAction); err != nil {
 			log.Printf("docker: container %s %s error: %v", cid[:12], action, err)
 			errors = append(errors, err.Error())
 		}
@@ -233,7 +245,9 @@ func (h *DockerHandler) UpdateStack(w http.ResponseWriter, r *http.Request) {
 		EnvID     int  `json:"env_id"`
 		PullImage bool `json:"pull_image"`
 	}
-	json.NewDecoder(r.Body).Decode(&body)
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		log.Printf("warning: failed to decode update stack body: %v", err)
+	}
 
 	client, err := h.getPortainerClient(r.Context())
 	if err != nil || client == nil {
@@ -245,11 +259,13 @@ func (h *DockerHandler) UpdateStack(w http.ResponseWriter, r *http.Request) {
 
 	// Run in background — pull + redeploy can take minutes
 	go func() {
-		timer := time.AfterFunc(5*time.Minute, func() {
+		ctx, cancel := context.WithTimeout(context.Background(), dockerOperationTimeout)
+		defer cancel()
+		timer := time.AfterFunc(dockerOperationWarnAfter, func() {
 			log.Printf("docker: stack update %d still running after 5m", stackID)
 		})
 		defer timer.Stop()
-		if err := client.UpdateStack(stackID, body.EnvID, body.PullImage); err != nil {
+		if err := client.UpdateStack(ctx, stackID, body.EnvID, body.PullImage); err != nil {
 			log.Printf("docker: stack update error: %v", err)
 		} else {
 			log.Printf("docker: stack update success: %d", stackID)
