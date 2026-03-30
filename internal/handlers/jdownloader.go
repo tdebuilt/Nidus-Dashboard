@@ -92,7 +92,7 @@ func (h *JDownloaderHandler) GetQueue(w http.ResponseWriter, r *http.Request) {
 	packages, err := client.ListPackages(r.Context())
 	if err != nil {
 		slog.Error("jdownloader: failed to fetch queue", "error", err)
-		writeJSON(w, http.StatusBadGateway, models.ErrorResponse{Error: "failed to fetch queue: " + err.Error()})
+		writeJSON(w, http.StatusBadGateway, models.ErrorResponse{Error: "failed to fetch queue"})
 		return
 	}
 
@@ -153,7 +153,7 @@ func (h *JDownloaderHandler) AddLinks(w http.ResponseWriter, r *http.Request) {
 
 	if err := client.AddLinks(r.Context(), body.Links); err != nil {
 		slog.Error("jdownloader: failed to add links", "count", len(body.Links), "error", err)
-		writeJSON(w, http.StatusBadGateway, models.ErrorResponse{Error: "failed to add links: " + err.Error()})
+		writeJSON(w, http.StatusBadGateway, models.ErrorResponse{Error: "failed to add links"})
 		return
 	}
 
@@ -180,7 +180,7 @@ func (h *JDownloaderHandler) StartQueue(w http.ResponseWriter, r *http.Request) 
 
 	if err := client.StartQueue(r.Context()); err != nil {
 		slog.Error("jdownloader: failed to start queue", "error", err)
-		writeJSON(w, http.StatusBadGateway, models.ErrorResponse{Error: "failed to start queue: " + err.Error()})
+		writeJSON(w, http.StatusBadGateway, models.ErrorResponse{Error: "failed to start queue"})
 		return
 	}
 
@@ -208,7 +208,7 @@ func (h *JDownloaderHandler) CleanupFinished(w http.ResponseWriter, r *http.Requ
 	count, err := client.CleanupFinished(r.Context())
 	if err != nil {
 		slog.Error("jdownloader: failed to cleanup finished", "error", err)
-		writeJSON(w, http.StatusBadGateway, models.ErrorResponse{Error: "failed to cleanup: " + err.Error()})
+		writeJSON(w, http.StatusBadGateway, models.ErrorResponse{Error: "failed to cleanup"})
 		return
 	}
 
@@ -235,7 +235,7 @@ func (h *JDownloaderHandler) PauseQueue(w http.ResponseWriter, r *http.Request) 
 
 	if err := client.PauseQueue(r.Context()); err != nil {
 		slog.Error("jdownloader: failed to pause queue", "error", err)
-		writeJSON(w, http.StatusBadGateway, models.ErrorResponse{Error: "failed to pause queue: " + err.Error()})
+		writeJSON(w, http.StatusBadGateway, models.ErrorResponse{Error: "failed to pause queue"})
 		return
 	}
 

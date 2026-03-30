@@ -203,7 +203,7 @@ func (h *HomeAssistantHandler) CallService(w http.ResponseWriter, r *http.Reques
 
 	if _, err := client.CallService(r.Context(), domain, service, req); err != nil {
 		slog.Error("homeassistant: service call failed", "domain", domain, "service", service, "error", err)
-		writeJSON(w, http.StatusBadGateway, models.ErrorResponse{Error: "service call failed: " + err.Error()})
+		writeJSON(w, http.StatusBadGateway, models.ErrorResponse{Error: "service call failed"})
 		return
 	}
 

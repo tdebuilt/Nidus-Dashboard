@@ -163,7 +163,9 @@
   class="group overflow-hidden {fullscreen ? 'fixed inset-0 z-50 flex items-center justify-center bg-black' : 'relative rounded-lg border border-[var(--color-border)] bg-[var(--color-bg)]'}"
   role="button"
   tabindex="0"
+  aria-label={fullscreen ? $t('reolink.exitFullscreen') : $t('reolink.fullscreen')}
   ondblclick={toggleFullscreen}
+  onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleFullscreen() } }}
 >
   {#if mseActive}
     <video

@@ -155,7 +155,7 @@ func (h *AdGuardHandler) ToggleFiltering(w http.ResponseWriter, r *http.Request)
 
 	if err := client.SetFilteringEnabled(r.Context(), body.Enabled); err != nil {
 		slog.Error("adguard: toggle filtering failed", "enabled", body.Enabled, "error", err)
-		writeJSON(w, http.StatusBadGateway, models.ErrorResponse{Error: "toggle failed: " + err.Error()})
+		writeJSON(w, http.StatusBadGateway, models.ErrorResponse{Error: "toggle failed"})
 		return
 	}
 

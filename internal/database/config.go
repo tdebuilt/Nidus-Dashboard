@@ -2,6 +2,7 @@ package database
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"strconv"
 
@@ -115,15 +116,8 @@ func (db *DB) ExportConfigFull(ctx context.Context, encryptionKey string) (*mode
 	}, nil
 }
 
-// ImportConfigFull imports a full configuration including credentials.
-// Credentials are re-encrypted with the system encryption key before storage.
-func (db *DB) ImportConfigFull(ctx context.Context, cfg models.EncryptedExport, encryptionKey string) error {
-	tx, err := db.BeginTx(ctx, nil)
-	if err != nil {
-		return fmt.Errorf("beginning transaction: %w", err)
-	}
-	defer tx.Rollback()
-
+// clearImportData deletes all existing categories, widgets, and services inside a transaction.
+func clearImportData(ctx context.Context, tx *sql.Tx) error {
 	if _, err := tx.ExecContext(ctx, "DELETE FROM widgets"); err != nil {
 		return fmt.Errorf("clearing widgets: %w", err)
 	}
@@ -133,29 +127,40 @@ func (db *DB) ImportConfigFull(ctx context.Context, cfg models.EncryptedExport, 
 	if _, err := tx.ExecContext(ctx, "DELETE FROM services"); err != nil {
 		return fmt.Errorf("clearing services: %w", err)
 	}
+	return nil
+}
 
+// importCategoriesTx inserts categories and returns a mapping from old IDs to new IDs.
+func importCategoriesTx(ctx context.Context, tx *sql.Tx, categories []models.Category) (map[int64]int64, error) {
 	catIDMap := make(map[int64]int64)
-	for _, c := range cfg.Categories {
+	for _, c := range categories {
 		slug := c.Slug
 		if slug == "" {
 			slug = GenerateSlug(c.Name)
 		}
-		slug, err = generateUniqueSlugTx(ctx, tx, slug)
+		slug, err := generateUniqueSlugTx(ctx, tx, slug)
 		if err != nil {
-			return fmt.Errorf("generating slug for category '%s': %w", c.Name, err)
+			return nil, fmt.Errorf("generating slug for category '%s': %w", c.Name, err)
 		}
 		result, err := tx.ExecContext(ctx,
 			"INSERT INTO categories (name, icon, sort_order, slug) VALUES (?, ?, ?, ?)",
 			c.Name, c.Icon, c.SortOrder, slug,
 		)
 		if err != nil {
-			return fmt.Errorf("importing category '%s': %w", c.Name, err)
+			return nil, fmt.Errorf("importing category '%s': %w", c.Name, err)
 		}
-		newID, _ := result.LastInsertId()
+		newID, err := result.LastInsertId()
+		if err != nil {
+			return nil, fmt.Errorf("getting last insert id: %w", err)
+		}
 		catIDMap[c.ID] = newID
 	}
+	return catIDMap, nil
+}
 
-	for _, w := range cfg.Widgets {
+// importWidgetsTx inserts widgets using the remapped category IDs.
+func importWidgetsTx(ctx context.Context, tx *sql.Tx, widgets []models.Widget, catIDMap map[int64]int64) error {
+	for _, w := range widgets {
 		newCatID, ok := catIDMap[w.CategoryID]
 		if !ok {
 			continue
@@ -171,8 +176,12 @@ func (db *DB) ImportConfigFull(ctx context.Context, cfg models.EncryptedExport, 
 			return fmt.Errorf("importing widget '%s': %w", w.Title, err)
 		}
 	}
+	return nil
+}
 
-	for _, s := range cfg.Services {
+// importServicesFullTx inserts services with re-encrypted credentials.
+func importServicesFullTx(ctx context.Context, tx *sql.Tx, services []models.ServiceExport, encryptionKey string) error {
+	for _, s := range services {
 		enabledInt := 0
 		if s.Enabled {
 			enabledInt = 1
@@ -196,13 +205,17 @@ func (db *DB) ImportConfigFull(ctx context.Context, cfg models.EncryptedExport, 
 			return fmt.Errorf("importing service '%s': %w", s.Type, err)
 		}
 	}
+	return nil
+}
 
+// importSettingsTx upserts settings from the export into system_settings.
+func importSettingsTx(ctx context.Context, tx *sql.Tx, settings models.Settings) error {
 	settingsMap := map[string]string{
-		SettingTheme:           cfg.Settings.Theme,
-		SettingLanguage:        cfg.Settings.Language,
-		SettingRefreshInterval: strconv.Itoa(cfg.Settings.RefreshInterval),
-		SettingAccentColor:     cfg.Settings.AccentColor,
-		SettingCustomCSS:       cfg.Settings.CustomCSS,
+		SettingTheme:           settings.Theme,
+		SettingLanguage:        settings.Language,
+		SettingRefreshInterval: strconv.Itoa(settings.RefreshInterval),
+		SettingAccentColor:     settings.AccentColor,
+		SettingCustomCSS:       settings.CustomCSS,
 	}
 	for key, value := range settingsMap {
 		if value == "" {
@@ -214,6 +227,38 @@ func (db *DB) ImportConfigFull(ctx context.Context, cfg models.EncryptedExport, 
 		); err != nil {
 			return fmt.Errorf("importing setting '%s': %w", key, err)
 		}
+	}
+	return nil
+}
+
+// ImportConfigFull imports a full configuration including credentials.
+// Credentials are re-encrypted with the system encryption key before storage.
+func (db *DB) ImportConfigFull(ctx context.Context, cfg models.EncryptedExport, encryptionKey string) error {
+	tx, err := db.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("beginning transaction: %w", err)
+	}
+	defer tx.Rollback()
+
+	if err := clearImportData(ctx, tx); err != nil {
+		return err
+	}
+
+	catIDMap, err := importCategoriesTx(ctx, tx, cfg.Categories)
+	if err != nil {
+		return err
+	}
+
+	if err := importWidgetsTx(ctx, tx, cfg.Widgets, catIDMap); err != nil {
+		return err
+	}
+
+	if err := importServicesFullTx(ctx, tx, cfg.Services, encryptionKey); err != nil {
+		return err
+	}
+
+	if err := importSettingsTx(ctx, tx, cfg.Settings); err != nil {
+		return err
 	}
 
 	return tx.Commit()
@@ -286,58 +331,20 @@ func (db *DB) ImportConfig(ctx context.Context, cfg models.ConfigExport) error {
 	}
 	defer tx.Rollback()
 
-	// Clear existing data (order matters for foreign keys)
-	if _, err := tx.ExecContext(ctx, "DELETE FROM widgets"); err != nil {
-		return fmt.Errorf("clearing widgets: %w", err)
-	}
-	if _, err := tx.ExecContext(ctx, "DELETE FROM categories"); err != nil {
-		return fmt.Errorf("clearing categories: %w", err)
-	}
-	if _, err := tx.ExecContext(ctx, "DELETE FROM services"); err != nil {
-		return fmt.Errorf("clearing services: %w", err)
+	if err := clearImportData(ctx, tx); err != nil {
+		return err
 	}
 
-	// Import categories, build old ID -> new ID mapping
-	catIDMap := make(map[int64]int64)
-	for _, c := range cfg.Categories {
-		slug := c.Slug
-		if slug == "" {
-			slug = GenerateSlug(c.Name)
-		}
-		slug, err = generateUniqueSlugTx(ctx, tx, slug)
-		if err != nil {
-			return fmt.Errorf("generating slug for category '%s': %w", c.Name, err)
-		}
-		result, err := tx.ExecContext(ctx,
-			"INSERT INTO categories (name, icon, sort_order, slug) VALUES (?, ?, ?, ?)",
-			c.Name, c.Icon, c.SortOrder, slug,
-		)
-		if err != nil {
-			return fmt.Errorf("importing category '%s': %w", c.Name, err)
-		}
-		newID, _ := result.LastInsertId()
-		catIDMap[c.ID] = newID
+	catIDMap, err := importCategoriesTx(ctx, tx, cfg.Categories)
+	if err != nil {
+		return err
 	}
 
-	// Import widgets with remapped category IDs
-	for _, w := range cfg.Widgets {
-		newCatID, ok := catIDMap[w.CategoryID]
-		if !ok {
-			continue // skip widgets with unknown category
-		}
-		collapsedInt := 0
-		if w.Collapsed {
-			collapsedInt = 1
-		}
-		if _, err := tx.ExecContext(ctx,
-			"INSERT INTO widgets (category_id, type, title, config, collapsed, pos_x, pos_y, width, height) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
-			newCatID, w.Type, w.Title, w.Config, collapsedInt, w.PosX, w.PosY, w.Width, w.Height,
-		); err != nil {
-			return fmt.Errorf("importing widget '%s': %w", w.Title, err)
-		}
+	if err := importWidgetsTx(ctx, tx, cfg.Widgets, catIDMap); err != nil {
+		return err
 	}
 
-	// Import services (without credentials — those are not exported)
+	// Import services without credentials (not exported in this format)
 	for _, s := range cfg.Services {
 		enabledInt := 0
 		if s.Enabled {
@@ -355,24 +362,8 @@ func (db *DB) ImportConfig(ctx context.Context, cfg models.ConfigExport) error {
 		}
 	}
 
-	// Import settings
-	settingsMap := map[string]string{
-		SettingTheme:           cfg.Settings.Theme,
-		SettingLanguage:        cfg.Settings.Language,
-		SettingRefreshInterval: strconv.Itoa(cfg.Settings.RefreshInterval),
-		SettingAccentColor:     cfg.Settings.AccentColor,
-		SettingCustomCSS:       cfg.Settings.CustomCSS,
-	}
-	for key, value := range settingsMap {
-		if value == "" {
-			continue
-		}
-		if _, err := tx.ExecContext(ctx,
-			"INSERT INTO system_settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value",
-			key, value,
-		); err != nil {
-			return fmt.Errorf("importing setting '%s': %w", key, err)
-		}
+	if err := importSettingsTx(ctx, tx, cfg.Settings); err != nil {
+		return err
 	}
 
 	return tx.Commit()

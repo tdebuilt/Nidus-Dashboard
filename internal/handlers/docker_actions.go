@@ -66,7 +66,7 @@ func (h *DockerHandler) ContainerAction(w http.ResponseWriter, r *http.Request) 
 	slog.Info("docker container action", "action", action, "container", containerID[:12], "env_id", envID)
 	if err := client.ContainerAction(r.Context(), envID, containerID, effectiveAction); err != nil {
 		slog.Error("docker container action failed", "error", err)
-		writeJSON(w, http.StatusBadGateway, models.ErrorResponse{Error: "action failed: " + err.Error()})
+		writeJSON(w, http.StatusBadGateway, models.ErrorResponse{Error: "action failed"})
 		return
 	}
 

@@ -152,7 +152,7 @@ func (h *TransmissionHandler) AddTorrent(w http.ResponseWriter, r *http.Request)
 	}
 	if err != nil {
 		slog.Error("transmission: failed to add torrent", "error", err)
-		writeJSON(w, http.StatusBadGateway, models.ErrorResponse{Error: "failed to add torrent: " + err.Error()})
+		writeJSON(w, http.StatusBadGateway, models.ErrorResponse{Error: "failed to add torrent"})
 		return
 	}
 
@@ -187,7 +187,7 @@ func (h *TransmissionHandler) StartTorrent(w http.ResponseWriter, r *http.Reques
 
 	if err := client.StartTorrent(r.Context(), []int{id}); err != nil {
 		slog.Error("transmission: start torrent failed", "id", id, "error", err)
-		writeJSON(w, http.StatusBadGateway, models.ErrorResponse{Error: "start failed: " + err.Error()})
+		writeJSON(w, http.StatusBadGateway, models.ErrorResponse{Error: "start failed"})
 		return
 	}
 
@@ -222,7 +222,7 @@ func (h *TransmissionHandler) StopTorrent(w http.ResponseWriter, r *http.Request
 
 	if err := client.StopTorrent(r.Context(), []int{id}); err != nil {
 		slog.Error("transmission: stop torrent failed", "id", id, "error", err)
-		writeJSON(w, http.StatusBadGateway, models.ErrorResponse{Error: "stop failed: " + err.Error()})
+		writeJSON(w, http.StatusBadGateway, models.ErrorResponse{Error: "stop failed"})
 		return
 	}
 
@@ -249,7 +249,7 @@ func (h *TransmissionHandler) StartAllTorrents(w http.ResponseWriter, r *http.Re
 
 	if err := client.StartAll(r.Context()); err != nil {
 		slog.Error("transmission: start all failed", "error", err)
-		writeJSON(w, http.StatusBadGateway, models.ErrorResponse{Error: "start all failed: " + err.Error()})
+		writeJSON(w, http.StatusBadGateway, models.ErrorResponse{Error: "start all failed"})
 		return
 	}
 
@@ -276,7 +276,7 @@ func (h *TransmissionHandler) StopAllTorrents(w http.ResponseWriter, r *http.Req
 
 	if err := client.StopAll(r.Context()); err != nil {
 		slog.Error("transmission: stop all failed", "error", err)
-		writeJSON(w, http.StatusBadGateway, models.ErrorResponse{Error: "stop all failed: " + err.Error()})
+		writeJSON(w, http.StatusBadGateway, models.ErrorResponse{Error: "stop all failed"})
 		return
 	}
 
@@ -304,7 +304,7 @@ func (h *TransmissionHandler) CleanupCompleted(w http.ResponseWriter, r *http.Re
 	count, err := client.RemoveCompleted(r.Context())
 	if err != nil {
 		slog.Error("transmission: cleanup failed", "error", err)
-		writeJSON(w, http.StatusBadGateway, models.ErrorResponse{Error: "cleanup failed: " + err.Error()})
+		writeJSON(w, http.StatusBadGateway, models.ErrorResponse{Error: "cleanup failed"})
 		return
 	}
 

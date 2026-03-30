@@ -133,7 +133,10 @@ func (db *DB) UpdateUserRole(ctx context.Context, userID int64, role string) err
 	if err != nil {
 		return fmt.Errorf("updating user role: %w", err)
 	}
-	rows, _ := result.RowsAffected()
+	rows, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("getting rows affected: %w", err)
+	}
 	if rows == 0 {
 		return fmt.Errorf("user not found")
 	}
@@ -152,7 +155,10 @@ func (db *DB) DeleteUser(ctx context.Context, userID int64) error {
 	if err != nil {
 		return fmt.Errorf("deleting user: %w", err)
 	}
-	rows, _ := result.RowsAffected()
+	rows, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("getting rows affected: %w", err)
+	}
 	if rows == 0 {
 		return fmt.Errorf("user not found")
 	}
@@ -248,7 +254,10 @@ func (db *DB) UpdateUserUsername(ctx context.Context, userID int64, username str
 	if err != nil {
 		return fmt.Errorf("updating username: %w", err)
 	}
-	rows, _ := result.RowsAffected()
+	rows, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("getting rows affected: %w", err)
+	}
 	if rows == 0 {
 		return fmt.Errorf("user not found")
 	}
@@ -264,7 +273,10 @@ func (db *DB) UpdateUserPassword(ctx context.Context, userID int64, passwordHash
 	if err != nil {
 		return fmt.Errorf("updating password: %w", err)
 	}
-	rows, _ := result.RowsAffected()
+	rows, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("getting rows affected: %w", err)
+	}
 	if rows == 0 {
 		return fmt.Errorf("user not found")
 	}

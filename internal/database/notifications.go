@@ -3,6 +3,7 @@ package database
 import (
 	"context"
 	"database/sql"
+	"fmt"
 
 	"github.com/tdebuilt/nidus/internal/models"
 )
@@ -19,7 +20,10 @@ func (db *DB) CreateNotificationProvider(ctx context.Context, providerType, name
 	if err != nil {
 		return nil, err
 	}
-	id, _ := result.LastInsertId()
+	id, err := result.LastInsertId()
+	if err != nil {
+		return nil, fmt.Errorf("getting last insert id: %w", err)
+	}
 	return db.GetNotificationProvider(ctx, id)
 }
 
@@ -115,7 +119,10 @@ func (db *DB) CreateNotificationRule(ctx context.Context, eventType string, prov
 	if err != nil {
 		return nil, err
 	}
-	id, _ := result.LastInsertId()
+	id, err := result.LastInsertId()
+	if err != nil {
+		return nil, fmt.Errorf("getting last insert id: %w", err)
+	}
 	return db.GetNotificationRule(ctx, id)
 }
 

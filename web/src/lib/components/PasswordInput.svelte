@@ -39,7 +39,7 @@
     type="button"
     onclick={() => (showPassword = !showPassword)}
     class="absolute end-2 top-1/2 -translate-y-1/2 text-[var(--color-text-muted)] hover:text-[var(--color-text)]"
-    tabindex={-1}
+    aria-label={showPassword ? 'Hide password' : 'Show password'}
     data-testid={testid ? `${testid}-toggle` : ''}
   >
     {#if showPassword}

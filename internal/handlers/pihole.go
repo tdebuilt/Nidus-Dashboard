@@ -118,7 +118,7 @@ func (h *PiholeHandler) ToggleBlocking(w http.ResponseWriter, r *http.Request) {
 
 	if err := client.SetBlocking(r.Context(), body.Blocking); err != nil {
 		slog.Error("pihole: toggle blocking failed", "blocking", body.Blocking, "error", err)
-		writeJSON(w, http.StatusBadGateway, models.ErrorResponse{Error: "toggle failed: " + err.Error()})
+		writeJSON(w, http.StatusBadGateway, models.ErrorResponse{Error: "toggle failed"})
 		return
 	}
 

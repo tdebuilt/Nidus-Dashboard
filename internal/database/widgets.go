@@ -26,7 +26,10 @@ func (db *DB) CreateWidget(ctx context.Context, categoryID int64, wType, title, 
 	if err != nil {
 		return nil, fmt.Errorf("inserting widget: %w", err)
 	}
-	id, _ := result.LastInsertId()
+	id, err := result.LastInsertId()
+	if err != nil {
+		return nil, fmt.Errorf("getting last insert id: %w", err)
+	}
 	return db.GetWidget(ctx, id)
 }
 
@@ -103,7 +106,10 @@ func (db *DB) UpdateWidget(ctx context.Context, id int64, wType, title, config s
 	if err != nil {
 		return nil, fmt.Errorf("updating widget: %w", err)
 	}
-	rows, _ := result.RowsAffected()
+	rows, err := result.RowsAffected()
+	if err != nil {
+		return nil, fmt.Errorf("getting rows affected: %w", err)
+	}
 	if rows == 0 {
 		return nil, ErrNotFound
 	}
@@ -123,7 +129,10 @@ func (db *DB) SetWidgetCollapsed(ctx context.Context, id int64, collapsed bool) 
 	if err != nil {
 		return nil, fmt.Errorf("updating widget collapsed: %w", err)
 	}
-	rows, _ := result.RowsAffected()
+	rows, err := result.RowsAffected()
+	if err != nil {
+		return nil, fmt.Errorf("getting rows affected: %w", err)
+	}
 	if rows == 0 {
 		return nil, ErrNotFound
 	}
@@ -136,7 +145,10 @@ func (db *DB) DeleteWidget(ctx context.Context, id int64) (bool, error) {
 	if err != nil {
 		return false, fmt.Errorf("deleting widget: %w", err)
 	}
-	rows, _ := result.RowsAffected()
+	rows, err := result.RowsAffected()
+	if err != nil {
+		return false, fmt.Errorf("getting rows affected: %w", err)
+	}
 	return rows > 0, nil
 }
 

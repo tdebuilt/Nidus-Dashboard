@@ -25,7 +25,10 @@ func (db *DB) CreateCategory(ctx context.Context, name, icon string) (*models.Ca
 	if err != nil {
 		return nil, fmt.Errorf("inserting category: %w", err)
 	}
-	id, _ := result.LastInsertId()
+	id, err := result.LastInsertId()
+	if err != nil {
+		return nil, fmt.Errorf("getting last insert id: %w", err)
+	}
 	return db.GetCategory(ctx, id)
 }
 
@@ -72,7 +75,10 @@ func (db *DB) UpdateCategory(ctx context.Context, id int64, name, icon string) (
 	if err != nil {
 		return nil, fmt.Errorf("updating category: %w", err)
 	}
-	rows, _ := result.RowsAffected()
+	rows, err := result.RowsAffected()
+	if err != nil {
+		return nil, fmt.Errorf("getting rows affected: %w", err)
+	}
 	if rows == 0 {
 		return nil, ErrNotFound
 	}
@@ -85,7 +91,10 @@ func (db *DB) DeleteCategory(ctx context.Context, id int64) (bool, error) {
 	if err != nil {
 		return false, fmt.Errorf("deleting category: %w", err)
 	}
-	rows, _ := result.RowsAffected()
+	rows, err := result.RowsAffected()
+	if err != nil {
+		return false, fmt.Errorf("getting rows affected: %w", err)
+	}
 	return rows > 0, nil
 }
 

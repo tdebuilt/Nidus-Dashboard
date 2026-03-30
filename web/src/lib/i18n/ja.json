@@ -1096,7 +1096,8 @@
     "channel": "",
     "cameras": "",
     "columns": "",
-    "fullscreen": "フルスクリーン"
+    "fullscreen": "フルスクリーン",
+    "exitFullscreen": "フルスクリーンを終了"
   },
   "go2rtc": {
     "title": "Live Streaming (go2rtc)",

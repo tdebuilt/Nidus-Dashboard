@@ -68,7 +68,7 @@ func (h *CalendarHandler) GetEvents(w http.ResponseWriter, r *http.Request) {
 	data, err := client.FetchEvents(r.Context(), urls, days)
 	if err != nil {
 		slog.Error("calendar: failed to fetch events", "error", err)
-		writeJSON(w, http.StatusBadGateway, map[string]string{"error": "failed to fetch calendar: " + err.Error()})
+		writeJSON(w, http.StatusBadGateway, map[string]string{"error": "failed to fetch calendar"})
 		return
 	}
 

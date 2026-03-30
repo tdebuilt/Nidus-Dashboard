@@ -79,7 +79,10 @@ func (db *DB) DeleteService(ctx context.Context, serviceType string) error {
 	if err != nil {
 		return fmt.Errorf("deleting service: %w", err)
 	}
-	rows, _ := result.RowsAffected()
+	rows, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("getting rows affected: %w", err)
+	}
 	if rows == 0 {
 		return fmt.Errorf("service not found")
 	}

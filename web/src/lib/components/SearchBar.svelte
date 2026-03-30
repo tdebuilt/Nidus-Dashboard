@@ -79,6 +79,10 @@
       oninput={debounceSearch}
       onkeydown={handleKeydown}
       placeholder={$t('search.placeholder')}
+      role="combobox"
+      aria-expanded={showResults}
+      aria-controls="search-results-list"
+      aria-autocomplete="list"
       class="h-10 w-36 rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-tertiary)] ps-9 pe-8 text-sm text-[var(--color-text)] placeholder-[var(--color-text-muted)] outline-none transition-all focus:w-56 sm:h-9 sm:w-48 sm:focus:w-64 focus:border-[var(--color-primary)]"
       data-testid="search-input"
     />
@@ -96,6 +100,9 @@
 
   {#if showResults}
     <div
+      id="search-results-list"
+      role="listbox"
+      aria-label={$t('search.placeholder')}
       class="absolute top-full end-0 z-50 mt-1 w-[calc(100vw-2rem)] max-w-72 overflow-hidden rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-secondary)] shadow-lg sm:start-0 sm:end-auto sm:w-72"
       data-testid="search-results"
     >
@@ -106,6 +113,8 @@
       {:else}
         {#each results as result (result.type + '-' + result.id)}
           <button
+            role="option"
+            aria-selected="false"
             onclick={() => selectResult(result)}
             class="flex w-full items-center gap-3 px-4 py-2.5 text-start text-sm transition-colors hover:bg-[var(--color-bg-tertiary)]"
             data-testid="search-result-item"

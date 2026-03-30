@@ -37,7 +37,7 @@ func (h *Go2RTCHandler) Start(w http.ResponseWriter, r *http.Request) {
 	}
 	if err := h.Manager.Start(); err != nil {
 		slog.Error("go2rtc: start failed", "error", err)
-		writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "start failed: " + err.Error()})
+		writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "start failed"})
 		return
 	}
 	slog.Info("go2rtc: started")
@@ -63,7 +63,7 @@ func (h *Go2RTCHandler) Restart(w http.ResponseWriter, r *http.Request) {
 	}
 	if err := h.Manager.Restart(); err != nil {
 		slog.Error("go2rtc: restart failed", "error", err)
-		writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "restart failed: " + err.Error()})
+		writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "restart failed"})
 		return
 	}
 	slog.Info("go2rtc: restarted")

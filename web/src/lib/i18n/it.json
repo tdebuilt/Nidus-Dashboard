@@ -1096,7 +1096,8 @@
     "channel": "",
     "cameras": "",
     "columns": "",
-    "fullscreen": "Schermo intero"
+    "fullscreen": "Schermo intero",
+    "exitFullscreen": "Esci da schermo intero"
   },
   "go2rtc": {
     "title": "Live Streaming (go2rtc)",

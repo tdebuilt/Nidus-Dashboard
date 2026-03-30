@@ -17,7 +17,10 @@ func (db *DB) CreateWebhook(ctx context.Context, name, secret string) (*models.W
 	if err != nil {
 		return nil, err
 	}
-	id, _ := result.LastInsertId()
+	id, err := result.LastInsertId()
+	if err != nil {
+		return nil, fmt.Errorf("getting last insert id: %w", err)
+	}
 	return db.GetWebhook(ctx, id)
 }
 
@@ -122,7 +125,10 @@ func (db *DB) CreateWebhookAction(ctx context.Context, webhookID int64, actionTy
 	if err != nil {
 		return nil, err
 	}
-	id, _ := result.LastInsertId()
+	id, err := result.LastInsertId()
+	if err != nil {
+		return nil, fmt.Errorf("getting last insert id: %w", err)
+	}
 	var a models.WebhookAction
 	err = db.QueryRowContext(ctx, "SELECT id, webhook_id, action_type, config FROM webhook_actions WHERE id = ?", id).
 		Scan(&a.ID, &a.WebhookID, &a.ActionType, &a.Config)

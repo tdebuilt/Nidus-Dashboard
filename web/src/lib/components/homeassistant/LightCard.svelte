@@ -69,6 +69,7 @@
       {#if !$isViewer}
         <div class="mt-1 flex items-center gap-2">
           <input type="range" min="1" max="100" value={brightness} onchange={setBrightness}
+            aria-label="Brightness" aria-valuetext="{brightness}%"
             class="h-1 w-full cursor-pointer appearance-none rounded-lg bg-[var(--color-border)]" />
           <span class="text-xs text-[var(--color-text-muted)]">{brightness}%</span>
         </div>
