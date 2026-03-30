@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"encoding/json"
+	"log/slog"
 	"net/http"
 
 	"golang.org/x/crypto/bcrypt"
@@ -26,10 +27,12 @@ func (h *AuthHandler) Setup(w http.ResponseWriter, r *http.Request) {
 	// Check if admin already exists
 	count, err := h.DB.CountUsers(r.Context())
 	if err != nil {
+		slog.Error("setup: database error counting users", "error", err)
 		writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "database error"})
 		return
 	}
 	if count > 0 {
+		slog.Warn("setup: attempted setup when admin already exists", "ip", r.RemoteAddr)
 		writeJSON(w, http.StatusConflict, models.ErrorResponse{Error: "admin account already exists"})
 		return
 	}
@@ -54,6 +57,7 @@ func (h *AuthHandler) Setup(w http.ResponseWriter, r *http.Request) {
 	// Hash password with bcrypt
 	hash, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
 	if err != nil {
+		slog.Error("setup: failed to hash password", "error", err)
 		writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "failed to hash password"})
 		return
 	}
@@ -61,6 +65,7 @@ func (h *AuthHandler) Setup(w http.ResponseWriter, r *http.Request) {
 	// Create user
 	userID, err := h.DB.CreateUser(r.Context(), req.Username, string(hash), models.RoleAdmin)
 	if err != nil {
+		slog.Error("setup: failed to create admin user", "username", req.Username, "error", err)
 		writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "failed to create user"})
 		return
 	}
@@ -96,6 +101,7 @@ func (h *AuthHandler) Setup(w http.ResponseWriter, r *http.Request) {
 		Username: req.Username,
 	}
 
+	slog.Info("setup: admin account created", "user_id", userID, "username", req.Username)
 	writeJSON(w, http.StatusCreated, models.SetupResponse{
 		Message: "admin account created",
 		User:    user,

@@ -11,8 +11,10 @@ export default defineConfig({
     chunkSizeWarningLimit: 1500,
     rollupOptions: {
       output: {
-        manualChunks: {
-          'vendor-svelte': ['svelte', 'svelte/internal', 'svelte/store', 'svelte/reactivity'],
+        manualChunks(id) {
+          if (id.includes('node_modules/svelte')) {
+            return 'vendor-svelte'
+          }
         },
       },
     },
@@ -25,6 +27,12 @@ export default defineConfig({
   test: {
     environment: 'jsdom',
     include: ['src/**/*.test.ts'],
+    coverage: {
+      provider: 'v8',
+      reporter: ['text', 'html'],
+      include: ['src/lib/**/*.ts', 'src/lib/**/*.svelte', 'src/pages/**/*.svelte'],
+      exclude: ['src/**/*.test.ts', 'src/**/*.d.ts'],
+    },
   },
   resolve: {
     conditions: ['browser'],

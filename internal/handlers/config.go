@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 
 	"gopkg.in/yaml.v3"
@@ -56,34 +57,40 @@ func (h *ConfigHandler) Export(w http.ResponseWriter, r *http.Request) {
 
 	encKey, err := h.DB.GetSystemSetting(r.Context(), "encryption_key")
 	if err != nil || encKey == "" {
+		slog.Error("config: encryption key not configured for export")
 		writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "encryption key not configured"})
 		return
 	}
 
 	cfg, err := h.DB.ExportConfigFull(r.Context(), encKey)
 	if err != nil {
+		slog.Error("config: failed to export config", "error", err)
 		writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "failed to export config"})
 		return
 	}
 
 	jsonData, err := json.Marshal(cfg)
 	if err != nil {
+		slog.Error("config: failed to serialize config", "error", err)
 		writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "failed to serialize config"})
 		return
 	}
 
 	derivedKey, salt, err := crypto.DeriveKeyArgon2(req.Password)
 	if err != nil {
+		slog.Error("config: failed to derive key for export", "error", err)
 		writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "failed to derive key"})
 		return
 	}
 
 	encrypted, err := crypto.Encrypt(string(jsonData), derivedKey)
 	if err != nil {
+		slog.Error("config: failed to encrypt config", "error", err)
 		writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "failed to encrypt config"})
 		return
 	}
 
+	slog.Info("config: configuration exported")
 	writeJSON(w, http.StatusOK, map[string]string{
 		"data": encrypted,
 		"salt": hex.EncodeToString(salt),
@@ -153,15 +160,18 @@ func (h *ConfigHandler) Import(w http.ResponseWriter, r *http.Request) {
 
 	encKey, err := h.DB.GetSystemSetting(r.Context(), "encryption_key")
 	if err != nil || encKey == "" {
+		slog.Error("config: encryption key not configured for import")
 		writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "encryption key not configured"})
 		return
 	}
 
 	if err := h.DB.ImportConfigFull(r.Context(),cfg, encKey); err != nil {
+		slog.Error("config: failed to import config", "error", err)
 		writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "failed to import config"})
 		return
 	}
 
+	slog.Info("config: configuration imported")
 	writeJSON(w, http.StatusOK, map[string]string{"message": "config imported successfully"})
 }
 
@@ -266,12 +276,14 @@ func validateServiceExports(services []models.ServiceExport) error {
 func (h *ConfigHandler) ExportYAML(w http.ResponseWriter, r *http.Request) {
 	encKey, err := h.DB.GetSystemSetting(r.Context(), "encryption_key")
 	if err != nil || encKey == "" {
+		slog.Error("config: encryption key not configured for YAML export")
 		writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "encryption key not configured"})
 		return
 	}
 
 	fullCfg, err := h.DB.ExportConfigFull(r.Context(), encKey)
 	if err != nil {
+		slog.Error("config: failed to export config for YAML", "error", err)
 		writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "failed to export config"})
 		return
 	}
@@ -280,9 +292,12 @@ func (h *ConfigHandler) ExportYAML(w http.ResponseWriter, r *http.Request) {
 
 	data, err := yaml.Marshal(yamlCfg)
 	if err != nil {
+		slog.Error("config: failed to serialize YAML", "error", err)
 		writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "failed to serialize YAML"})
 		return
 	}
+
+	slog.Info("config: YAML configuration exported")
 
 	w.Header().Set("Content-Type", "application/x-yaml")
 	w.Header().Set("Content-Disposition", "attachment; filename=nidus-config.yaml")
@@ -326,6 +341,7 @@ func (h *ConfigHandler) ImportYAML(w http.ResponseWriter, r *http.Request) {
 
 	encKey, err := h.DB.GetSystemSetting(r.Context(), "encryption_key")
 	if err != nil || encKey == "" {
+		slog.Error("config: encryption key not configured for YAML import")
 		writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "encryption key not configured"})
 		return
 	}
@@ -333,9 +349,11 @@ func (h *ConfigHandler) ImportYAML(w http.ResponseWriter, r *http.Request) {
 	encExport := convertFromYAMLConfig(&yamlCfg)
 
 	if err := h.DB.ImportConfigFull(r.Context(),encExport, encKey); err != nil {
+		slog.Error("config: failed to import YAML config", "error", err)
 		writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "failed to import config"})
 		return
 	}
 
+	slog.Info("config: YAML configuration imported")
 	writeJSON(w, http.StatusOK, map[string]string{"message": "YAML config imported successfully"})
 }

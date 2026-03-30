@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"log/slog"
 	"net/http"
 	"strconv"
 	"strings"
@@ -65,6 +66,7 @@ func (h *RSSHandler) GetFeed(w http.ResponseWriter, r *http.Request) {
 	client := rss.NewClient(nil)
 	data, err := client.FetchFeeds(r.Context(), urls, maxItems)
 	if err != nil {
+		slog.Error("rss: failed to fetch feeds", "error", err)
 		writeJSON(w, http.StatusBadGateway, map[string]string{"error": "failed to fetch feeds: " + err.Error()})
 		return
 	}

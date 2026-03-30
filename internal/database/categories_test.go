@@ -2,6 +2,7 @@ package database
 
 import (
 	"context"
+	"errors"
 	"path/filepath"
 	"testing"
 )
@@ -77,8 +78,8 @@ func TestGetCategory_NotFound(t *testing.T) {
 	ctx := context.Background()
 
 	cat, err := db.GetCategory(ctx, 9999)
-	if err != nil {
-		t.Fatalf("GetCategory: %v", err)
+	if !errors.Is(err, ErrNotFound) {
+		t.Fatalf("GetCategory: expected ErrNotFound, got %v", err)
 	}
 	if cat != nil {
 		t.Errorf("expected nil for nonexistent category, got %+v", cat)
@@ -144,8 +145,8 @@ func TestUpdateCategory_NotFound(t *testing.T) {
 	ctx := context.Background()
 
 	updated, err := db.UpdateCategory(ctx, 9999, "Name", "icon")
-	if err != nil {
-		t.Fatalf("UpdateCategory: %v", err)
+	if !errors.Is(err, ErrNotFound) {
+		t.Fatalf("UpdateCategory: expected ErrNotFound, got %v", err)
 	}
 	if updated != nil {
 		t.Errorf("expected nil for nonexistent category update, got %+v", updated)
@@ -171,8 +172,8 @@ func TestDeleteCategory(t *testing.T) {
 	}
 
 	fetched, err := db.GetCategory(ctx, cat.ID)
-	if err != nil {
-		t.Fatalf("GetCategory after delete: %v", err)
+	if !errors.Is(err, ErrNotFound) {
+		t.Fatalf("GetCategory after delete: expected ErrNotFound, got %v", err)
 	}
 	if fetched != nil {
 		t.Error("expected nil after delete")

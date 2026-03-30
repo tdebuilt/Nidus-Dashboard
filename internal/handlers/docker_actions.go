@@ -50,6 +50,7 @@ func (h *DockerHandler) ContainerAction(w http.ResponseWriter, r *http.Request) 
 
 	client, err := h.getPortainerClient(r.Context())
 	if err != nil || client == nil {
+		slog.Error("docker_actions: Portainer not available for container action", "error", err)
 		writeJSON(w, http.StatusBadGateway, models.ErrorResponse{Error: "Portainer not available"})
 		return
 	}
@@ -104,6 +105,7 @@ func (h *DockerHandler) RecreateContainer(w http.ResponseWriter, r *http.Request
 
 	client, err := h.getPortainerClient(r.Context())
 	if err != nil || client == nil {
+		slog.Error("docker_actions: Portainer not available for recreate", "error", err)
 		writeJSON(w, http.StatusBadGateway, models.ErrorResponse{Error: "Portainer not available"})
 		return
 	}
@@ -165,6 +167,7 @@ func (h *DockerHandler) StackAction(w http.ResponseWriter, r *http.Request) {
 
 	client, err := h.getPortainerClient(r.Context())
 	if err != nil || client == nil {
+		slog.Error("docker_actions: Portainer not available for stack action", "error", err)
 		writeJSON(w, http.StatusBadGateway, models.ErrorResponse{Error: "Portainer not available"})
 		return
 	}
@@ -175,6 +178,7 @@ func (h *DockerHandler) StackAction(w http.ResponseWriter, r *http.Request) {
 	if len(containerIDs) == 0 && body.StackName != "" {
 		containers, err := client.ListContainers(r.Context(), body.EnvID)
 		if err != nil {
+			slog.Error("docker_actions: failed to list containers for stack", "stack", body.StackName, "error", err)
 			writeJSON(w, http.StatusBadGateway, models.ErrorResponse{Error: "failed to list containers"})
 			return
 		}
@@ -251,6 +255,7 @@ func (h *DockerHandler) UpdateStack(w http.ResponseWriter, r *http.Request) {
 
 	client, err := h.getPortainerClient(r.Context())
 	if err != nil || client == nil {
+		slog.Error("docker_actions: Portainer not available for stack update", "error", err)
 		writeJSON(w, http.StatusBadGateway, models.ErrorResponse{Error: "Portainer not available"})
 		return
 	}

@@ -38,7 +38,7 @@ func (db *DB) GetWidget(ctx context.Context, id int64) (*models.Widget, error) {
 		"SELECT id, category_id, type, title, config, collapsed, pos_x, pos_y, width, height, created_at, updated_at FROM widgets WHERE id = ?", id,
 	).Scan(&w.ID, &w.CategoryID, &w.Type, &w.Title, &w.Config, &collapsed, &w.PosX, &w.PosY, &w.Width, &w.Height, &w.CreatedAt, &w.UpdatedAt)
 	if err == sql.ErrNoRows {
-		return nil, nil
+		return nil, ErrNotFound
 	}
 	if err != nil {
 		return nil, fmt.Errorf("querying widget: %w", err)
@@ -105,7 +105,7 @@ func (db *DB) UpdateWidget(ctx context.Context, id int64, wType, title, config s
 	}
 	rows, _ := result.RowsAffected()
 	if rows == 0 {
-		return nil, nil
+		return nil, ErrNotFound
 	}
 	return db.GetWidget(ctx, id)
 }
@@ -125,7 +125,7 @@ func (db *DB) SetWidgetCollapsed(ctx context.Context, id int64, collapsed bool) 
 	}
 	rows, _ := result.RowsAffected()
 	if rows == 0 {
-		return nil, nil
+		return nil, ErrNotFound
 	}
 	return db.GetWidget(ctx, id)
 }

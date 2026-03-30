@@ -3,7 +3,9 @@ package handlers
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"sync"
 	"time"
@@ -103,6 +105,7 @@ func (h *ServicesHandler) List(w http.ResponseWriter, r *http.Request) {
 
 	services, err := h.DB.GetServices(r.Context())
 	if err != nil {
+		slog.Error("services: failed to list services", "error", err)
 		writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "failed to list services"})
 		return
 	}
@@ -170,11 +173,13 @@ func (h *ServicesHandler) Update(w http.ResponseWriter, r *http.Request) {
 	if req.Credentials != "" {
 		encKey, err := h.getEncryptionKey(r.Context())
 		if err != nil || encKey == "" {
+			slog.Error("services: encryption key not configured", "service_type", serviceType)
 			writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "encryption key not configured"})
 			return
 		}
 		encryptedCreds, err = crypto.Encrypt(req.Credentials, encKey)
 		if err != nil {
+			slog.Error("services: failed to encrypt credentials", "service_type", serviceType, "error", err)
 			writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "failed to encrypt credentials"})
 			return
 		}
@@ -182,6 +187,7 @@ func (h *ServicesHandler) Update(w http.ResponseWriter, r *http.Request) {
 
 	svc, err := h.DB.UpsertService(r.Context(), serviceType, req.Name, req.URL, encryptedCreds, req.Config, enabled)
 	if err != nil {
+		slog.Error("services: failed to save service", "service_type", serviceType, "error", err)
 		writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "failed to save service"})
 		return
 	}
@@ -189,6 +195,7 @@ func (h *ServicesHandler) Update(w http.ResponseWriter, r *http.Request) {
 	// Invalidate cached data for this service
 	h.invalidateServiceCache(serviceType)
 
+	slog.Info("services: service updated", "service_type", serviceType, "name", req.Name)
 	writeJSON(w, http.StatusOK, models.ServiceResponse{
 		ID:        svc.ID,
 		Type:      svc.Type,
@@ -220,6 +227,7 @@ func (h *ServicesHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := h.DB.DeleteService(r.Context(), serviceType); err != nil {
+		slog.Warn("services: service not found for deletion", "service_type", serviceType, "error", err)
 		writeJSON(w, http.StatusNotFound, models.ErrorResponse{Error: "service not found"})
 		return
 	}
@@ -227,6 +235,7 @@ func (h *ServicesHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	// Invalidate cached data for this service
 	h.invalidateServiceCache(serviceType)
 
+	slog.Info("services: service deleted", "service_type", serviceType)
 	writeJSON(w, http.StatusOK, map[string]string{"message": "service deleted"})
 }
 
@@ -249,11 +258,13 @@ func (h *ServicesHandler) Test(w http.ResponseWriter, r *http.Request) {
 	}
 
 	svc, err := h.DB.GetServiceByType(r.Context(), serviceType)
-	if err != nil {
+	if err != nil && !errors.Is(err, database.ErrNotFound) {
+		slog.Error("services: failed to get service for test", "service_type", serviceType, "error", err)
 		writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "database error"})
 		return
 	}
 	if svc == nil {
+		slog.Warn("services: service not configured for test", "service_type", serviceType)
 		writeJSON(w, http.StatusNotFound, models.ErrorResponse{Error: "service not configured"})
 		return
 	}
@@ -299,6 +310,7 @@ func (h *ServicesHandler) Test(w http.ResponseWriter, r *http.Request) {
 func (h *ServicesHandler) BatchStatus(w http.ResponseWriter, r *http.Request) {
 	services, err := h.DB.GetServices(r.Context())
 	if err != nil {
+		slog.Error("services: failed to list services for batch status", "error", err)
 		writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "failed to list services"})
 		return
 	}

@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"log/slog"
 	"net/http"
 
 	"github.com/tdebuilt/nidus/internal/cache"
@@ -47,6 +48,7 @@ func (h *SearchHandler) Search(w http.ResponseWriter, r *http.Request) {
 
 	widgets, err := h.DB.SearchWidgets(r.Context(), query)
 	if err != nil {
+		slog.Error("search: failed to search widgets", "query", query, "error", err)
 		writeJSON(w, http.StatusInternalServerError, SearchResponse{Results: []SearchResult{}})
 		return
 	}
@@ -62,6 +64,7 @@ func (h *SearchHandler) Search(w http.ResponseWriter, r *http.Request) {
 
 	categories, err := h.DB.SearchCategories(r.Context(), query)
 	if err != nil {
+		slog.Error("search: failed to search categories", "query", query, "error", err)
 		writeJSON(w, http.StatusInternalServerError, SearchResponse{Results: []SearchResult{}})
 		return
 	}

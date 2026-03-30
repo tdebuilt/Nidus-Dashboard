@@ -3,7 +3,9 @@ package handlers
 import (
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"time"
 
@@ -51,17 +53,20 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 
 	// Fetch user
 	user, err := h.DB.GetUserByUsername(r.Context(), req.Username)
-	if err != nil {
+	if err != nil && !errors.Is(err, database.ErrNotFound) {
+		slog.Error("login: database error fetching user", "username", req.Username, "error", err)
 		writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "database error"})
 		return
 	}
 	if user == nil {
+		slog.Warn("login: invalid credentials", "username", req.Username, "ip", r.RemoteAddr)
 		writeJSON(w, http.StatusUnauthorized, models.ErrorResponse{Error: "invalid credentials"})
 		return
 	}
 
 	// Verify password
 	if err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(req.Password)); err != nil {
+		slog.Warn("login: wrong password", "username", req.Username, "ip", r.RemoteAddr)
 		writeJSON(w, http.StatusUnauthorized, models.ErrorResponse{Error: "invalid credentials"})
 		return
 	}
@@ -73,26 +78,31 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		if user.TOTPSecret == nil {
+			slog.Error("login: TOTP secret not found", "user_id", user.ID)
 			writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "TOTP secret not found"})
 			return
 		}
 		decryptedSecret, err := h.decryptTOTPSecret(r.Context(), *user.TOTPSecret)
 		if err != nil {
+			slog.Error("login: failed to decrypt TOTP secret", "user_id", user.ID, "error", err)
 			writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "failed to decrypt TOTP secret"})
 			return
 		}
 		valid := totp.Validate(req.TOTPCode, decryptedSecret)
 		if !valid {
+			slog.Warn("login: invalid TOTP code", "username", req.Username, "ip", r.RemoteAddr)
 			writeJSON(w, http.StatusUnauthorized, models.ErrorResponse{Error: "invalid TOTP code"})
 			return
 		}
 	}
 
 	if err := h.issueJWTCookie(w, r, user); err != nil {
+		slog.Error("login: failed to issue JWT", "user_id", user.ID, "error", err)
 		writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "failed to generate token"})
 		return
 	}
 
+	slog.Info("login: successful", "user_id", user.ID, "username", user.Username, "ip", r.RemoteAddr)
 	writeJSON(w, http.StatusOK, models.LoginResponse{
 		Message: "login successful",
 		User: models.User{
@@ -199,6 +209,7 @@ func (h *AuthHandler) issueJWTCookie(w http.ResponseWriter, r *http.Request, use
 func (h *AuthHandler) Status(w http.ResponseWriter, r *http.Request) {
 	count, err := h.DB.CountUsers(r.Context())
 	if err != nil {
+		slog.Error("auth-status: database error", "error", err)
 		writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "database error"})
 		return
 	}

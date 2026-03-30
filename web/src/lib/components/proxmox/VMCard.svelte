@@ -152,18 +152,18 @@
   {#if !$isViewer}
     <div class="flex gap-1">
       {#if isStopped}
-        <button onclick={() => doAction('start')} disabled={!!actionInProgress} class="touch-action-btn rounded p-2 sm:p-1 text-[var(--color-text-muted)] hover:text-[var(--color-success)] disabled:opacity-30" title={$t('proxmox.start')}>
+        <button onclick={() => doAction('start')} disabled={!!actionInProgress} class="touch-action-btn rounded p-2 sm:p-1 text-[var(--color-text-muted)] hover:text-[var(--color-success)] disabled:opacity-30" title={$t('proxmox.start')} aria-label={$t('proxmox.start')}>
           <Play size={14} />
         </button>
       {/if}
       {#if isRunning}
-        <button onclick={() => doAction('shutdown')} disabled={!!actionInProgress} class="touch-action-btn rounded p-2 sm:p-1 text-[var(--color-text-muted)] hover:text-[var(--color-warning)] disabled:opacity-30" title={$t('proxmox.shutdown')}>
+        <button onclick={() => doAction('shutdown')} disabled={!!actionInProgress} class="touch-action-btn rounded p-2 sm:p-1 text-[var(--color-text-muted)] hover:text-[var(--color-warning)] disabled:opacity-30" title={$t('proxmox.shutdown')} aria-label={$t('proxmox.shutdown')}>
           <Power size={14} />
         </button>
-        <button onclick={() => doAction('stop')} disabled={!!actionInProgress} class="touch-action-btn rounded p-2 sm:p-1 text-[var(--color-text-muted)] hover:text-[var(--color-danger)] disabled:opacity-30" title={$t('proxmox.stop')}>
+        <button onclick={() => doAction('stop')} disabled={!!actionInProgress} class="touch-action-btn rounded p-2 sm:p-1 text-[var(--color-text-muted)] hover:text-[var(--color-danger)] disabled:opacity-30" title={$t('proxmox.stop')} aria-label={$t('proxmox.stop')}>
           <Square size={14} />
         </button>
-        <button onclick={() => doAction('reboot')} disabled={!!actionInProgress} class="touch-action-btn rounded p-2 sm:p-1 text-[var(--color-text-muted)] hover:text-[var(--color-primary)] disabled:opacity-30" title={$t('proxmox.reboot')}>
+        <button onclick={() => doAction('reboot')} disabled={!!actionInProgress} class="touch-action-btn rounded p-2 sm:p-1 text-[var(--color-text-muted)] hover:text-[var(--color-primary)] disabled:opacity-30" title={$t('proxmox.reboot')} aria-label={$t('proxmox.reboot')}>
           <RotateCw size={14} />
         </button>
       {/if}

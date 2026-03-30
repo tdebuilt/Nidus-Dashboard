@@ -56,6 +56,7 @@
           onclick={onDelete}
           class="rounded p-1 text-[var(--color-text-muted)] hover:text-[var(--color-danger)]"
           title={translate('common.delete')}
+          aria-label={translate('common.delete')}
         >
           <Trash2 size={14} />
         </button>
@@ -63,6 +64,7 @@
         <button
           onclick={onClose}
           class="rounded p-1 text-[var(--color-text-muted)] hover:text-[var(--color-text)]"
+          aria-label={translate('common.close')}
         >
           <X size={14} />
         </button>

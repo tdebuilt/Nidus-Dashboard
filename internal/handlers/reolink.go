@@ -3,7 +3,9 @@ package handlers
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"sync"
 	"time"
@@ -101,10 +103,12 @@ func (h *ReolinkHandler) findCamera(ctx context.Context, id string) (*reolink.Ca
 func (h *ReolinkHandler) ListCameras(w http.ResponseWriter, r *http.Request) {
 	config, err := h.getReolinkConfig(r.Context())
 	if err != nil {
+		slog.Error("reolink: failed to load config", "error", err)
 		writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "failed to load config"})
 		return
 	}
 	if config == nil {
+		slog.Warn("reolink: not configured")
 		writeJSON(w, http.StatusNotFound, models.ErrorResponse{Error: "Reolink not configured"})
 		return
 	}
@@ -134,10 +138,12 @@ func (h *ReolinkHandler) GetSnapshot(w http.ResponseWriter, r *http.Request) {
 
 	cam, config, err := h.findCamera(r.Context(), id)
 	if err != nil {
+		slog.Error("reolink: failed to load config for snapshot", "camera_id", id, "error", err)
 		writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "failed to load config"})
 		return
 	}
 	if cam == nil {
+		slog.Warn("reolink: camera not found for snapshot", "camera_id", id)
 		writeJSON(w, http.StatusNotFound, models.ErrorResponse{Error: "camera not found"})
 		return
 	}
@@ -153,6 +159,7 @@ func (h *ReolinkHandler) GetSnapshot(w http.ResponseWriter, r *http.Request) {
 
 	data, contentType, err := client.GetSnapshot(r.Context())
 	if err != nil {
+		slog.Error("reolink: snapshot failed", "camera_id", id, "error", err)
 		writeJSON(w, http.StatusBadGateway, models.ErrorResponse{Error: "snapshot failed: " + sanitizeError(err)})
 		return
 	}
@@ -165,18 +172,26 @@ func (h *ReolinkHandler) GetSnapshot(w http.ResponseWriter, r *http.Request) {
 func (h *ReolinkHandler) proxyHASnapshot(w http.ResponseWriter, r *http.Request, entityID string) {
 	// Reuse HA handler logic
 	svc, err := h.DB.GetServiceByType(r.Context(), "homeassistant")
-	if err != nil || svc == nil {
+	if err != nil && !errors.Is(err, database.ErrNotFound) {
+		slog.Error("reolink: database error", "error", err)
+		writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "database error"})
+		return
+	}
+	if svc == nil {
+		slog.Error("reolink: Home Assistant not configured for HA proxy")
 		writeJSON(w, http.StatusBadGateway, models.ErrorResponse{Error: "Home Assistant not configured"})
 		return
 	}
 
 	encKey, _ := h.DB.GetSystemSetting(r.Context(), "encryption_key")
 	if encKey == "" {
+		slog.Error("reolink: encryption key not found for HA proxy")
 		writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "encryption key not found"})
 		return
 	}
 	creds, err := crypto.Decrypt(svc.Credentials, encKey)
 	if err != nil {
+		slog.Error("reolink: failed to decrypt HA credentials", "error", err)
 		writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "failed to decrypt credentials"})
 		return
 	}
@@ -184,6 +199,7 @@ func (h *ReolinkHandler) proxyHASnapshot(w http.ResponseWriter, r *http.Request,
 		Token string `json:"token"`
 	}
 	if err := json.Unmarshal([]byte(creds), &authData); err != nil {
+		slog.Error("reolink: invalid HA credentials format", "error", err)
 		writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "invalid HA credentials format"})
 		return
 	}
@@ -191,6 +207,7 @@ func (h *ReolinkHandler) proxyHASnapshot(w http.ResponseWriter, r *http.Request,
 	url := fmt.Sprintf("%s/api/camera_proxy/%s", svc.URL, entityID)
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
+		slog.Error("reolink: failed to build HA request", "error", err)
 		writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "failed to build HA request"})
 		return
 	}
@@ -199,6 +216,7 @@ func (h *ReolinkHandler) proxyHASnapshot(w http.ResponseWriter, r *http.Request,
 	client := &http.Client{Timeout: 10 * time.Second}
 	resp, err := client.Do(req)
 	if err != nil {
+		slog.Error("reolink: HA request failed", "entity_id", entityID, "error", err)
 		writeJSON(w, http.StatusBadGateway, models.ErrorResponse{Error: "HA request failed"})
 		return
 	}
@@ -233,6 +251,7 @@ func (h *ReolinkHandler) GetStreamURL(w http.ResponseWriter, r *http.Request) {
 
 	cam, _, err := h.findCamera(r.Context(), id)
 	if err != nil || cam == nil {
+		slog.Warn("reolink: camera not found for stream", "camera_id", id)
 		writeJSON(w, http.StatusNotFound, models.ErrorResponse{Error: "camera not found"})
 		return
 	}
@@ -264,6 +283,7 @@ func (h *ReolinkHandler) GetStreamURL(w http.ResponseWriter, r *http.Request) {
 func (h *ReolinkHandler) Discover(w http.ResponseWriter, r *http.Request) {
 	cameras, err := reolink.DiscoverCameras(3 * time.Second)
 	if err != nil {
+		slog.Error("reolink: discovery failed", "error", err)
 		writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "discovery failed: " + sanitizeError(err)})
 		return
 	}

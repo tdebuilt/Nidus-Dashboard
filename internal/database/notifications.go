@@ -2,6 +2,7 @@ package database
 
 import (
 	"context"
+	"database/sql"
 
 	"github.com/tdebuilt/nidus/internal/models"
 )
@@ -29,6 +30,9 @@ func (db *DB) GetNotificationProvider(ctx context.Context, id int64) (*models.No
 	err := db.QueryRowContext(ctx,
 		"SELECT id, type, name, url, token, enabled, config, created_at, updated_at FROM notification_providers WHERE id = ?", id,
 	).Scan(&p.ID, &p.Type, &p.Name, &p.URL, &p.Token, &enabled, &p.Config, &p.CreatedAt, &p.UpdatedAt)
+	if err == sql.ErrNoRows {
+		return nil, ErrNotFound
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -122,6 +126,9 @@ func (db *DB) GetNotificationRule(ctx context.Context, id int64) (*models.Notifi
 	err := db.QueryRowContext(ctx,
 		"SELECT id, event_type, provider_id, enabled, config, created_at, updated_at FROM notification_rules WHERE id = ?", id,
 	).Scan(&r.ID, &r.EventType, &r.ProviderID, &enabled, &r.Config, &r.CreatedAt, &r.UpdatedAt)
+	if err == sql.ErrNoRows {
+		return nil, ErrNotFound
+	}
 	if err != nil {
 		return nil, err
 	}

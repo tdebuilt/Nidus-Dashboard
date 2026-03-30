@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"encoding/json"
+	"log/slog"
 	"net/http"
 	"strconv"
 
@@ -33,6 +34,7 @@ type UserPreferencesHandler struct {
 func (h *SettingsHandler) Get(w http.ResponseWriter, r *http.Request) {
 	settings, err := h.DB.GetSettings(r.Context())
 	if err != nil {
+		slog.Error("settings: failed to read settings", "error", err)
 		writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "failed to read settings"})
 		return
 	}
@@ -67,6 +69,7 @@ func (h *SettingsHandler) Update(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := h.DB.SaveSettings(r.Context(), req); err != nil {
+		slog.Error("settings: failed to save settings", "error", err)
 		writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "failed to save settings"})
 		return
 	}
@@ -74,9 +77,11 @@ func (h *SettingsHandler) Update(w http.ResponseWriter, r *http.Request) {
 	// Return updated settings
 	settings, err := h.DB.GetSettings(r.Context())
 	if err != nil {
+		slog.Error("settings: failed to read settings after update", "error", err)
 		writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "failed to read settings"})
 		return
 	}
+	slog.Info("settings: settings updated")
 	writeJSON(w, http.StatusOK, settings)
 }
 
@@ -99,6 +104,7 @@ func (h *UserPreferencesHandler) GetPreferences(w http.ResponseWriter, r *http.R
 
 	prefs, err := h.DB.GetUserPreferences(r.Context(), userID)
 	if err != nil {
+		slog.Error("settings: failed to read preferences", "user_id", userID, "error", err)
 		writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "failed to read preferences"})
 		return
 	}
@@ -140,24 +146,28 @@ func (h *UserPreferencesHandler) UpdatePreferences(w http.ResponseWriter, r *htt
 
 	if req.Theme != nil {
 		if err := h.DB.SaveUserPreference(r.Context(), userID, "setting_theme", *req.Theme); err != nil {
+			slog.Error("settings: failed to save theme preference", "user_id", userID, "error", err)
 			writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "failed to save preference"})
 			return
 		}
 	}
 	if req.Language != nil {
 		if err := h.DB.SaveUserPreference(r.Context(), userID, "setting_language", *req.Language); err != nil {
+			slog.Error("settings: failed to save language preference", "user_id", userID, "error", err)
 			writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "failed to save preference"})
 			return
 		}
 	}
 	if req.RefreshInterval != nil {
 		if err := h.DB.SaveUserPreference(r.Context(), userID, "setting_refresh_interval", strconv.Itoa(*req.RefreshInterval)); err != nil {
+			slog.Error("settings: failed to save refresh_interval preference", "user_id", userID, "error", err)
 			writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "failed to save preference"})
 			return
 		}
 	}
 	if req.AccentColor != nil {
 		if err := h.DB.SaveUserPreference(r.Context(), userID, "setting_accent_color", *req.AccentColor); err != nil {
+			slog.Error("settings: failed to save accent_color preference", "user_id", userID, "error", err)
 			writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "failed to save preference"})
 			return
 		}
@@ -168,6 +178,7 @@ func (h *UserPreferencesHandler) UpdatePreferences(w http.ResponseWriter, r *htt
 			val = "true"
 		}
 		if err := h.DB.SaveUserPreference(r.Context(), userID, "setting_keyboard_shortcuts", val); err != nil {
+			slog.Error("settings: failed to save keyboard_shortcuts preference", "user_id", userID, "error", err)
 			writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "failed to save preference"})
 			return
 		}
@@ -175,8 +186,10 @@ func (h *UserPreferencesHandler) UpdatePreferences(w http.ResponseWriter, r *htt
 
 	prefs, err := h.DB.GetUserPreferences(r.Context(), userID)
 	if err != nil {
+		slog.Error("settings: failed to read preferences after update", "user_id", userID, "error", err)
 		writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "failed to read preferences"})
 		return
 	}
+	slog.Info("settings: user preferences updated", "user_id", userID)
 	writeJSON(w, http.StatusOK, prefs)
 }

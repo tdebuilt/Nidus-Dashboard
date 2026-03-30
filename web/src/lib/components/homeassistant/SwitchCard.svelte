@@ -38,7 +38,7 @@
 
 <div class="flex items-center gap-3 rounded-lg border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-2" data-testid="switch-card">
   {#if !$isViewer}
-    <button onclick={toggle} class="flex-shrink-0 rounded p-1" title={$t(isOn ? 'homeassistant.turnOff' : 'homeassistant.turnOn')}>
+    <button onclick={toggle} class="flex-shrink-0 rounded p-1" title={$t(isOn ? 'homeassistant.turnOff' : 'homeassistant.turnOn')} aria-label={$t(isOn ? 'homeassistant.turnOff' : 'homeassistant.turnOn')}>
       {#if isOn}
         <ToggleRight size={18} style="color: var(--color-success)" />
       {:else}

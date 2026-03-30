@@ -2,6 +2,7 @@ package database
 
 import (
 	"context"
+	"errors"
 	"path/filepath"
 	"testing"
 
@@ -106,8 +107,8 @@ func TestGetWidget_NotFound(t *testing.T) {
 	ctx := context.Background()
 
 	w, err := db.GetWidget(ctx, 9999)
-	if err != nil {
-		t.Fatalf("GetWidget: %v", err)
+	if !errors.Is(err, ErrNotFound) {
+		t.Fatalf("GetWidget: expected ErrNotFound, got %v", err)
 	}
 	if w != nil {
 		t.Errorf("expected nil for nonexistent widget, got %+v", w)
@@ -196,8 +197,8 @@ func TestUpdateWidget_NotFound(t *testing.T) {
 	ctx := context.Background()
 
 	updated, err := db.UpdateWidget(ctx, 9999, "docker", "Title", "{}")
-	if err != nil {
-		t.Fatalf("UpdateWidget: %v", err)
+	if !errors.Is(err, ErrNotFound) {
+		t.Fatalf("UpdateWidget: expected ErrNotFound, got %v", err)
 	}
 	if updated != nil {
 		t.Errorf("expected nil for nonexistent widget update, got %+v", updated)
@@ -223,8 +224,8 @@ func TestDeleteWidget(t *testing.T) {
 	}
 
 	fetched, err := db.GetWidget(ctx, w.ID)
-	if err != nil {
-		t.Fatalf("GetWidget after delete: %v", err)
+	if !errors.Is(err, ErrNotFound) {
+		t.Fatalf("GetWidget after delete: expected ErrNotFound, got %v", err)
 	}
 	if fetched != nil {
 		t.Error("expected nil after delete")

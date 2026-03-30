@@ -50,6 +50,7 @@
           onclick={() => onCopyInviteLink(generatedInviteCode)}
           class="rounded p-1 text-[var(--color-text-muted)] hover:text-[var(--color-primary)]"
           title={$t('users.copyLink')}
+          aria-label={$t('users.copyLink')}
         >
           <Copy size={16} />
         </button>
@@ -102,12 +103,16 @@
             <button
               onclick={() => onCopyInviteLink(invite.code)}
               class="text-[var(--color-text-muted)] hover:text-[var(--color-primary)]"
+              title={$t('users.copyLink')}
+              aria-label={$t('users.copyLink')}
             >
               <Copy size={12} />
             </button>
             <button
               onclick={() => onDeleteInvite(invite.id)}
               class="text-[var(--color-text-muted)] hover:text-[var(--color-danger)]"
+              title={$t('common.delete')}
+              aria-label={$t('common.delete')}
             >
               <Trash2 size={12} />
             </button>

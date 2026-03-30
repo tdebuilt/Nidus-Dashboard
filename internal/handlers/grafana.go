@@ -3,7 +3,9 @@ package handlers
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"strconv"
 
@@ -23,7 +25,7 @@ type GrafanaHandler struct {
 
 func (h *GrafanaHandler) getGrafanaClient(ctx context.Context) (*grafana.Client, error) {
 	svc, err := h.DB.GetServiceByType(ctx, "grafana")
-	if err != nil {
+	if err != nil && !errors.Is(err, database.ErrNotFound) {
 		return nil, err
 	}
 	if svc == nil {
@@ -73,16 +75,19 @@ func (h *GrafanaHandler) ListDashboards(w http.ResponseWriter, r *http.Request) 
 
 	client, err := h.getGrafanaClient(r.Context())
 	if err != nil {
+		slog.Error("grafana: failed to connect", "error", err)
 		writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "failed to connect to Grafana"})
 		return
 	}
 	if client == nil {
+		slog.Warn("grafana: not configured")
 		writeJSON(w, http.StatusNotFound, models.ErrorResponse{Error: "Grafana not configured"})
 		return
 	}
 
 	dashboards, err := client.SearchDashboards(r.Context())
 	if err != nil {
+		slog.Error("grafana: failed to fetch dashboards", "error", err)
 		writeJSON(w, http.StatusBadGateway, models.ErrorResponse{Error: "failed to fetch dashboards"})
 		return
 	}
@@ -112,12 +117,14 @@ func (h *GrafanaHandler) GetDashboardPanels(w http.ResponseWriter, r *http.Reque
 
 	client, err := h.getGrafanaClient(r.Context())
 	if err != nil || client == nil {
+		slog.Warn("grafana: not configured for panels", "uid", uid)
 		writeJSON(w, http.StatusNotFound, models.ErrorResponse{Error: "Grafana not configured"})
 		return
 	}
 
 	detail, err := client.GetDashboard(r.Context(), uid)
 	if err != nil {
+		slog.Error("grafana: failed to fetch dashboard", "uid", uid, "error", err)
 		writeJSON(w, http.StatusBadGateway, models.ErrorResponse{Error: "failed to fetch dashboard"})
 		return
 	}
@@ -160,7 +167,13 @@ func (h *GrafanaHandler) GetEmbedURL(w http.ResponseWriter, r *http.Request) {
 	}
 
 	svc, err := h.DB.GetServiceByType(r.Context(), "grafana")
-	if err != nil || svc == nil {
+	if err != nil && !errors.Is(err, database.ErrNotFound) {
+		slog.Error("grafana: database error", "error", err)
+		writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "database error"})
+		return
+	}
+	if svc == nil {
+		slog.Warn("grafana: not configured for embed URL")
 		writeJSON(w, http.StatusNotFound, models.ErrorResponse{Error: "Grafana not configured"})
 		return
 	}

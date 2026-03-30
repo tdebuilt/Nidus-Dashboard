@@ -38,7 +38,7 @@ func (db *DB) GetServiceByType(ctx context.Context, serviceType string) (*models
 		serviceType,
 	).Scan(&s.ID, &s.Type, &s.Name, &s.URL, &s.Credentials, &enabled, &s.Config, &s.CreatedAt, &s.UpdatedAt)
 	if err == sql.ErrNoRows {
-		return nil, nil
+		return nil, ErrNotFound
 	}
 	if err != nil {
 		return nil, fmt.Errorf("querying service: %w", err)

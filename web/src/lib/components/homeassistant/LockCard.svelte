@@ -38,7 +38,7 @@
 
 <div class="flex items-center gap-3 rounded-lg border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-2" data-testid="lock-card">
   {#if !$isViewer}
-    <button onclick={toggle} class="flex-shrink-0 rounded p-1" title={$t(isLocked ? 'homeassistant.unlock' : 'homeassistant.lock')}>
+    <button onclick={toggle} class="flex-shrink-0 rounded p-1" title={$t(isLocked ? 'homeassistant.unlock' : 'homeassistant.lock')} aria-label={$t(isLocked ? 'homeassistant.unlock' : 'homeassistant.lock')}>
       {#if isLocked}
         <Lock size={18} style="color: var(--color-success)" />
       {:else}

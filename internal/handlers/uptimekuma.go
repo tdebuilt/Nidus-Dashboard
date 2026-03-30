@@ -2,6 +2,8 @@ package handlers
 
 import (
 	"context"
+	"errors"
+	"log/slog"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
@@ -20,7 +22,7 @@ type UptimeKumaHandler struct {
 
 func (h *UptimeKumaHandler) getUptimeKumaClient(ctx context.Context) (*uptimekuma.Client, error) {
 	svc, err := h.DB.GetServiceByType(ctx, "uptimekuma")
-	if err != nil {
+	if err != nil && !errors.Is(err, database.ErrNotFound) {
 		return nil, err
 	}
 	if svc == nil {
@@ -56,16 +58,19 @@ func (h *UptimeKumaHandler) GetMonitors(w http.ResponseWriter, r *http.Request) 
 
 	client, err := h.getUptimeKumaClient(r.Context())
 	if err != nil {
+		slog.Error("uptimekuma: failed to connect", "error", err)
 		writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "failed to connect to Uptime Kuma"})
 		return
 	}
 	if client == nil {
+		slog.Warn("uptimekuma: not configured")
 		writeJSON(w, http.StatusNotFound, models.ErrorResponse{Error: "Uptime Kuma not configured"})
 		return
 	}
 
 	overview, err := client.GetMonitors(r.Context(), slug)
 	if err != nil {
+		slog.Error("uptimekuma: failed to fetch monitors", "slug", slug, "error", err)
 		writeJSON(w, http.StatusBadGateway, models.ErrorResponse{Error: "failed to fetch monitors"})
 		return
 	}

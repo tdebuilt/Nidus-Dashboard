@@ -33,7 +33,7 @@ func (db *DB) GetUserByUsername(ctx context.Context, username string) (*models.U
 		username,
 	).Scan(&u.ID, &u.Username, &u.PasswordHash, &u.Role, &totpSecret, &totpEnabled, &u.TokenVersion, &u.CreatedAt, &u.UpdatedAt)
 	if err == sql.ErrNoRows {
-		return nil, nil
+		return nil, ErrNotFound
 	}
 	if err != nil {
 		return nil, fmt.Errorf("querying user: %w", err)
@@ -62,7 +62,7 @@ func (db *DB) GetUserByID(ctx context.Context, id int64) (*models.User, error) {
 		id,
 	).Scan(&u.ID, &u.Username, &u.PasswordHash, &u.Role, &totpSecret, &totpEnabled, &u.TokenVersion, &u.CreatedAt, &u.UpdatedAt)
 	if err == sql.ErrNoRows {
-		return nil, nil
+		return nil, ErrNotFound
 	}
 	if err != nil {
 		return nil, fmt.Errorf("querying user: %w", err)
@@ -181,7 +181,7 @@ func (db *DB) GetInvitationByCode(ctx context.Context, code string) (*models.Inv
 		code,
 	).Scan(&inv.ID, &inv.Code, &inv.Role, &inv.CreatedBy, &usedBy, &usedAt, &inv.ExpiresAt, &inv.CreatedAt)
 	if err == sql.ErrNoRows {
-		return nil, nil
+		return nil, ErrNotFound
 	}
 	if err != nil {
 		return nil, fmt.Errorf("querying invitation: %w", err)
@@ -292,7 +292,7 @@ func (db *DB) GetPasswordResetByCode(ctx context.Context, code string) (*models.
 		code,
 	).Scan(&reset.ID, &reset.UserID, &reset.Code, &reset.CreatedBy, &usedAt, &reset.ExpiresAt, &reset.CreatedAt)
 	if err == sql.ErrNoRows {
-		return nil, nil
+		return nil, ErrNotFound
 	}
 	if err != nil {
 		return nil, fmt.Errorf("querying password reset: %w", err)

@@ -12,6 +12,7 @@
     "check": "svelte-check --tsconfig ./tsconfig.app.json && tsc -p tsconfig.node.json",
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
     "i18n:validate": "node scripts/validate-i18n.js",
     "test:e2e": "playwright test",
     "test:e2e:headed": "playwright test --headed"
@@ -25,6 +26,7 @@
     "@testing-library/svelte": "^5.3.1",
     "@tsconfig/svelte": "^5.0.6",
     "@types/node": "^24.10.1",
+    "@vitest/coverage-v8": "^4.1.2",
     "eslint": "^10.1.0",
     "eslint-plugin-svelte": "^3.16.0",
     "jsdom": "^28.1.0",

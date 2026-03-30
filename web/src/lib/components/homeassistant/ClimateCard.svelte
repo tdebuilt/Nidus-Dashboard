@@ -72,13 +72,13 @@
   {#if targetTemp !== null}
     <div class="flex items-center gap-1">
       {#if !$isViewer}
-        <button onclick={() => adjustTemp(-0.5)} class="touch-action-btn rounded p-2 sm:p-0.5 text-[var(--color-text-muted)] hover:text-[var(--color-primary)]" title={$t('homeassistant.decrease')}>
+        <button onclick={() => adjustTemp(-0.5)} class="touch-action-btn rounded p-2 sm:p-0.5 text-[var(--color-text-muted)] hover:text-[var(--color-primary)]" title={$t('homeassistant.decrease')} aria-label={$t('homeassistant.decrease')}>
           <ChevronDown size={14} />
         </button>
       {/if}
       <span class="min-w-[3rem] text-center text-sm font-semibold text-[var(--color-text)]">{targetTemp}{unit}</span>
       {#if !$isViewer}
-        <button onclick={() => adjustTemp(0.5)} class="touch-action-btn rounded p-2 sm:p-0.5 text-[var(--color-text-muted)] hover:text-[var(--color-primary)]" title={$t('homeassistant.increase')}>
+        <button onclick={() => adjustTemp(0.5)} class="touch-action-btn rounded p-2 sm:p-0.5 text-[var(--color-text-muted)] hover:text-[var(--color-primary)]" title={$t('homeassistant.increase')} aria-label={$t('homeassistant.increase')}>
           <ChevronUp size={14} />
         </button>
       {/if}

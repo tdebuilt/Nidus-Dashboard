@@ -36,7 +36,7 @@ func (db *DB) GetCategory(ctx context.Context, id int64) (*models.Category, erro
 		"SELECT id, name, slug, icon, sort_order, created_at, updated_at FROM categories WHERE id = ?", id,
 	).Scan(&c.ID, &c.Name, &c.Slug, &c.Icon, &c.SortOrder, &c.CreatedAt, &c.UpdatedAt)
 	if err == sql.ErrNoRows {
-		return nil, nil
+		return nil, ErrNotFound
 	}
 	if err != nil {
 		return nil, fmt.Errorf("querying category: %w", err)
@@ -74,7 +74,7 @@ func (db *DB) UpdateCategory(ctx context.Context, id int64, name, icon string) (
 	}
 	rows, _ := result.RowsAffected()
 	if rows == 0 {
-		return nil, nil
+		return nil, ErrNotFound
 	}
 	return db.GetCategory(ctx, id)
 }

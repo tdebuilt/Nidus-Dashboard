@@ -55,6 +55,7 @@
         onclick={onCollapse}
         class="shrink-0 rounded p-0.5 text-[var(--color-text-muted)] hover:text-[var(--color-text)]"
         title={collapsed ? translate('widget.expand') : translate('widget.collapse')}
+        aria-label={collapsed ? translate('widget.expand') : translate('widget.collapse')}
         data-testid="widget-collapse"
       >
         {#if collapsed}
@@ -91,10 +92,11 @@
         class:text-[var(--color-primary)]={widget.height === 0}
         class:text-[var(--color-text-muted)]={widget.height !== 0}
         title={translate(widget.height === 0 ? 'widget.autoHeightOn' : 'widget.autoHeightOff')}
+        aria-label={translate(widget.height === 0 ? 'widget.autoHeightOn' : 'widget.autoHeightOff')}
         data-testid="widget-auto-height">
         <Maximize2 size={12} />
       </button>
-      <button onclick={onEdit} class="touch-action-btn rounded p-2 sm:p-1 text-[var(--color-text-muted)] hover:text-[var(--color-primary)]" title={translate('widget.edit')} data-testid="widget-edit">
+      <button onclick={onEdit} class="touch-action-btn rounded p-2 sm:p-1 text-[var(--color-text-muted)] hover:text-[var(--color-primary)]" title={translate('widget.edit')} aria-label={translate('widget.edit')} data-testid="widget-edit">
         <Pencil size={12} />
       </button>
       <button onclick={onDelete} class="touch-action-btn rounded p-2 sm:p-1 text-[var(--color-text-muted)] hover:text-[var(--color-danger)]" title={translate('common.delete')} aria-label={translate('common.delete')} data-testid="widget-delete">

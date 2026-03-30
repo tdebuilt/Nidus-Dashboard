@@ -3,6 +3,8 @@ package handlers
 import (
 	"context"
 	"encoding/json"
+	"errors"
+	"log/slog"
 	"net/http"
 
 	"github.com/tdebuilt/nidus/internal/cache"
@@ -20,7 +22,7 @@ type PiholeHandler struct {
 
 func (h *PiholeHandler) getPiholeClient(ctx context.Context) (*pihole.Client, error) {
 	svc, err := h.DB.GetServiceByType(ctx, "pihole")
-	if err != nil {
+	if err != nil && !errors.Is(err, database.ErrNotFound) {
 		return nil, err
 	}
 	if svc == nil {
@@ -66,16 +68,19 @@ func (h *PiholeHandler) GetStats(w http.ResponseWriter, r *http.Request) {
 
 	client, err := h.getPiholeClient(r.Context())
 	if err != nil {
+		slog.Error("pihole: failed to connect", "error", err)
 		writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "failed to connect to Pi-hole"})
 		return
 	}
 	if client == nil {
+		slog.Warn("pihole: not configured")
 		writeJSON(w, http.StatusNotFound, models.ErrorResponse{Error: "Pi-hole not configured"})
 		return
 	}
 
 	stats, err := client.GetStats(r.Context())
 	if err != nil {
+		slog.Error("pihole: failed to fetch stats", "error", err)
 		writeJSON(w, http.StatusBadGateway, models.ErrorResponse{Error: "failed to fetch stats"})
 		return
 	}
@@ -106,15 +111,18 @@ func (h *PiholeHandler) ToggleBlocking(w http.ResponseWriter, r *http.Request) {
 
 	client, err := h.getPiholeClient(r.Context())
 	if err != nil || client == nil {
+		slog.Error("pihole: not available for toggle blocking", "error", err)
 		writeJSON(w, http.StatusBadGateway, models.ErrorResponse{Error: "Pi-hole not available"})
 		return
 	}
 
 	if err := client.SetBlocking(r.Context(), body.Blocking); err != nil {
+		slog.Error("pihole: toggle blocking failed", "blocking", body.Blocking, "error", err)
 		writeJSON(w, http.StatusBadGateway, models.ErrorResponse{Error: "toggle failed: " + err.Error()})
 		return
 	}
 
+	slog.Info("pihole: blocking toggled", "blocking", body.Blocking)
 	h.Cache.InvalidatePrefix("pihole:")
 	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 }

@@ -3,6 +3,8 @@ package handlers
 import (
 	"context"
 	"encoding/json"
+	"errors"
+	"log/slog"
 	"net/http"
 	"strings"
 
@@ -28,7 +30,7 @@ var validMediaTypes = map[string]bool{
 
 func (h *MediaServerHandler) getMediaClient(ctx context.Context, serverType string) (mediaserver.Client, error) {
 	svc, err := h.DB.GetServiceByType(ctx, serverType)
-	if err != nil {
+	if err != nil && !errors.Is(err, database.ErrNotFound) {
 		return nil, err
 	}
 	if svc == nil {
@@ -94,16 +96,19 @@ func (h *MediaServerHandler) GetSessions(w http.ResponseWriter, r *http.Request)
 
 	client, err := h.getMediaClient(r.Context(), serverType)
 	if err != nil {
+		slog.Error("mediaserver: failed to connect", "type", serverType, "error", err)
 		writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "failed to connect to media server"})
 		return
 	}
 	if client == nil {
+		slog.Warn("mediaserver: not configured", "type", serverType)
 		writeJSON(w, http.StatusNotFound, models.ErrorResponse{Error: serverType + " not configured"})
 		return
 	}
 
 	sessions, err := client.GetSessions(r.Context())
 	if err != nil {
+		slog.Error("mediaserver: failed to fetch sessions", "type", serverType, "error", err)
 		writeJSON(w, http.StatusBadGateway, models.ErrorResponse{Error: "failed to fetch sessions"})
 		return
 	}
@@ -148,16 +153,19 @@ func (h *MediaServerHandler) GetLibraries(w http.ResponseWriter, r *http.Request
 
 	client, err := h.getMediaClient(r.Context(), serverType)
 	if err != nil {
+		slog.Error("mediaserver: failed to connect for libraries", "type", serverType, "error", err)
 		writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "failed to connect to media server"})
 		return
 	}
 	if client == nil {
+		slog.Warn("mediaserver: not configured for libraries", "type", serverType)
 		writeJSON(w, http.StatusNotFound, models.ErrorResponse{Error: serverType + " not configured"})
 		return
 	}
 
 	libraries, err := client.GetLibraries(r.Context())
 	if err != nil {
+		slog.Error("mediaserver: failed to fetch libraries", "type", serverType, "error", err)
 		writeJSON(w, http.StatusBadGateway, models.ErrorResponse{Error: "failed to fetch libraries"})
 		return
 	}
@@ -197,12 +205,14 @@ func (h *MediaServerHandler) ProxyImage(w http.ResponseWriter, r *http.Request) 
 
 	client, err := h.getMediaClient(r.Context(), serverType)
 	if err != nil || client == nil {
+		slog.Warn("mediaserver: not available for proxy", "type", serverType)
 		writeJSON(w, http.StatusNotFound, models.ErrorResponse{Error: "media server not available"})
 		return
 	}
 
 	body, contentType, err := client.ProxyImage(r.Context(), path)
 	if err != nil {
+		slog.Error("mediaserver: failed to fetch image", "type", serverType, "error", err)
 		writeJSON(w, http.StatusBadGateway, models.ErrorResponse{Error: "failed to fetch image"})
 		return
 	}

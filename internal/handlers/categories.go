@@ -2,6 +2,8 @@ package handlers
 
 import (
 	"encoding/json"
+	"errors"
+	"log/slog"
 	"net/http"
 	"strconv"
 
@@ -28,6 +30,7 @@ type CategoriesHandler struct {
 func (h *CategoriesHandler) List(w http.ResponseWriter, r *http.Request) {
 	categories, err := h.DB.GetCategories(r.Context())
 	if err != nil {
+		slog.Error("categories: failed to list categories", "error", err)
 		writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "failed to list categories"})
 		return
 	}
@@ -67,10 +70,12 @@ func (h *CategoriesHandler) Create(w http.ResponseWriter, r *http.Request) {
 
 	cat, err := h.DB.CreateCategory(r.Context(), req.Name, req.Icon)
 	if err != nil {
+		slog.Error("categories: failed to create category", "error", err)
 		writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "failed to create category"})
 		return
 	}
 
+	slog.Info("categories: category created", "id", cat.ID, "name", cat.Name)
 	writeJSON(w, http.StatusCreated, cat)
 }
 
@@ -94,11 +99,13 @@ func (h *CategoriesHandler) Get(w http.ResponseWriter, r *http.Request) {
 	}
 
 	cat, err := h.DB.GetCategory(r.Context(), id)
-	if err != nil {
+	if err != nil && !errors.Is(err, database.ErrNotFound) {
+		slog.Error("categories: failed to get category", "id", id, "error", err)
 		writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "failed to get category"})
 		return
 	}
 	if cat == nil {
+		slog.Warn("categories: category not found", "id", id)
 		writeJSON(w, http.StatusNotFound, models.ErrorResponse{Error: "category not found"})
 		return
 	}
@@ -143,15 +150,18 @@ func (h *CategoriesHandler) Update(w http.ResponseWriter, r *http.Request) {
 	}
 
 	cat, err := h.DB.UpdateCategory(r.Context(), id, req.Name, req.Icon)
-	if err != nil {
+	if err != nil && !errors.Is(err, database.ErrNotFound) {
+		slog.Error("categories: failed to update category", "id", id, "error", err)
 		writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "failed to update category"})
 		return
 	}
 	if cat == nil {
+		slog.Warn("categories: category not found for update", "id", id)
 		writeJSON(w, http.StatusNotFound, models.ErrorResponse{Error: "category not found"})
 		return
 	}
 
+	slog.Info("categories: category updated", "id", id, "name", req.Name)
 	writeJSON(w, http.StatusOK, cat)
 }
 
@@ -176,14 +186,17 @@ func (h *CategoriesHandler) Delete(w http.ResponseWriter, r *http.Request) {
 
 	deleted, err := h.DB.DeleteCategory(r.Context(), id)
 	if err != nil {
+		slog.Error("categories: failed to delete category", "id", id, "error", err)
 		writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "failed to delete category"})
 		return
 	}
 	if !deleted {
+		slog.Warn("categories: category not found for deletion", "id", id)
 		writeJSON(w, http.StatusNotFound, models.ErrorResponse{Error: "category not found"})
 		return
 	}
 
+	slog.Info("categories: category deleted", "id", id)
 	writeJSON(w, http.StatusOK, map[string]string{"message": "category deleted"})
 }
 
@@ -212,15 +225,18 @@ func (h *CategoriesHandler) Reorder(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := h.DB.ReorderCategories(r.Context(), req.IDs); err != nil {
+		slog.Error("categories: failed to reorder categories", "error", err)
 		writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "failed to reorder categories"})
 		return
 	}
 
 	categories, err := h.DB.GetCategories(r.Context())
 	if err != nil {
+		slog.Error("categories: failed to list categories after reorder", "error", err)
 		writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "failed to list categories"})
 		return
 	}
 
+	slog.Info("categories: categories reordered", "count", len(req.IDs))
 	writeJSON(w, http.StatusOK, categories)
 }

@@ -2,6 +2,8 @@ package handlers
 
 import (
 	"encoding/json"
+	"errors"
+	"log/slog"
 	"net/http"
 	"strconv"
 
@@ -74,6 +76,7 @@ func (e *validationError) Error() string {
 func (h *ThemesHandler) List(w http.ResponseWriter, r *http.Request) {
 	themes, err := h.DB.ListCustomThemes(r.Context())
 	if err != nil {
+		slog.Error("themes: failed to list themes", "error", err)
 		writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "failed to list themes"})
 		return
 	}
@@ -100,6 +103,7 @@ func (h *ThemesHandler) Create(w http.ResponseWriter, r *http.Request) {
 
 	count, err := h.DB.CountCustomThemes(r.Context())
 	if err != nil {
+		slog.Error("themes: failed to count themes", "error", err)
 		writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "failed to count themes"})
 		return
 	}
@@ -110,15 +114,18 @@ func (h *ThemesHandler) Create(w http.ResponseWriter, r *http.Request) {
 
 	id, err := h.DB.CreateCustomTheme(r.Context(), req.Name, req.ThemeJSON)
 	if err != nil {
+		slog.Error("themes: failed to create theme", "name", req.Name, "error", err)
 		writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "failed to create theme"})
 		return
 	}
 
 	theme, err := h.DB.GetCustomTheme(r.Context(), id)
 	if err != nil {
+		slog.Error("themes: failed to read created theme", "id", id, "error", err)
 		writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "failed to read created theme"})
 		return
 	}
+	slog.Info("themes: theme created", "id", id, "name", req.Name)
 	writeJSON(w, http.StatusCreated, theme)
 }
 
@@ -137,7 +144,13 @@ func (h *ThemesHandler) Update(w http.ResponseWriter, r *http.Request) {
 	}
 
 	existing, err := h.DB.GetCustomTheme(r.Context(), id)
-	if err != nil {
+	if err != nil && !errors.Is(err, database.ErrNotFound) {
+		slog.Error("themes: failed to get theme for update", "id", id, "error", err)
+		writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "failed to get theme"})
+		return
+	}
+	if existing == nil {
+		slog.Warn("themes: theme not found for update", "id", id)
 		writeJSON(w, http.StatusNotFound, models.ErrorResponse{Error: "theme not found"})
 		return
 	}
@@ -162,15 +175,18 @@ func (h *ThemesHandler) Update(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := h.DB.UpdateCustomTheme(r.Context(), id, name, themeJSON); err != nil {
+		slog.Error("themes: failed to update theme", "id", id, "error", err)
 		writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "failed to update theme"})
 		return
 	}
 
 	theme, err := h.DB.GetCustomTheme(r.Context(), id)
 	if err != nil {
+		slog.Error("themes: failed to read updated theme", "id", id, "error", err)
 		writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "failed to read updated theme"})
 		return
 	}
+	slog.Info("themes: theme updated", "id", id)
 	writeJSON(w, http.StatusOK, theme)
 }
 
@@ -183,8 +199,10 @@ func (h *ThemesHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := h.DB.DeleteCustomTheme(r.Context(), id); err != nil {
+		slog.Error("themes: failed to delete theme", "id", id, "error", err)
 		writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "failed to delete theme"})
 		return
 	}
+	slog.Info("themes: theme deleted", "id", id)
 	w.WriteHeader(http.StatusNoContent)
 }

@@ -3,6 +3,7 @@ package handlers
 import (
 	"context"
 	"encoding/json"
+	"log/slog"
 	"net/http"
 	"sort"
 	"strings"
@@ -67,6 +68,7 @@ func (h *FinanceHandler) GetQuotes(w http.ResponseWriter, r *http.Request) {
 	client := finance.NewClient(nil)
 	data, err := client.GetQuotes(r.Context(), symbols)
 	if err != nil {
+		slog.Error("finance: failed to fetch quotes", "error", err)
 		writeJSON(w, http.StatusBadGateway, models.ErrorResponse{Error: "failed to fetch quotes: " + err.Error()})
 		return
 	}
@@ -92,6 +94,7 @@ func (h *FinanceHandler) SearchSymbol(w http.ResponseWriter, r *http.Request) {
 	client := finance.NewClient(nil)
 	results, err := client.Search(r.Context(), query)
 	if err != nil {
+		slog.Error("finance: failed to search symbols", "query", query, "error", err)
 		writeJSON(w, http.StatusBadGateway, models.ErrorResponse{Error: "failed to search: " + err.Error()})
 		return
 	}

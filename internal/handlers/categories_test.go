@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -11,6 +12,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
+	"github.com/tdebuilt/nidus/internal/database"
 	"github.com/tdebuilt/nidus/internal/models"
 )
 
@@ -296,7 +298,7 @@ func TestCategoryDelete(t *testing.T) {
 
 	// Verify it's gone
 	got, err := h.DB.GetCategory(ctx, cat.ID)
-	if err != nil {
+	if err != nil && !errors.Is(err, database.ErrNotFound) {
 		t.Fatalf("failed to query: %v", err)
 	}
 	if got != nil {

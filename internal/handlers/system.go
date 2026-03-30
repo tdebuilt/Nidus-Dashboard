@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"log/slog"
 	"net/http"
 
 	"github.com/tdebuilt/nidus/internal/cache"
@@ -30,6 +31,7 @@ func (h *SystemHandler) GetStats(w http.ResponseWriter, r *http.Request) {
 
 	stats, err := system.GetStats()
 	if err != nil {
+		slog.Error("system: failed to read system stats", "error", err)
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed to read system stats: " + sanitizeError(err)})
 		return
 	}

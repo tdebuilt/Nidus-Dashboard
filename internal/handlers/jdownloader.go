@@ -3,6 +3,7 @@ package handlers
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"log/slog"
 	"net/http"
 
@@ -28,7 +29,7 @@ func (h *JDownloaderHandler) getJDClient(ctx context.Context) (*jdownloader.Clie
 	}
 
 	svc, err := h.DB.GetServiceByType(ctx, "jdownloader")
-	if err != nil {
+	if err != nil && !errors.Is(err, database.ErrNotFound) {
 		return nil, err
 	}
 	if svc == nil || svc.Credentials == "" {
@@ -78,16 +79,19 @@ func (h *JDownloaderHandler) GetQueue(w http.ResponseWriter, r *http.Request) {
 
 	client, err := h.getJDClient(r.Context())
 	if err != nil {
+		slog.Error("jdownloader: failed to connect", "error", err)
 		writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "failed to connect to JDownloader"})
 		return
 	}
 	if client == nil {
+		slog.Warn("jdownloader: not configured")
 		writeJSON(w, http.StatusNotFound, models.ErrorResponse{Error: "JDownloader not configured"})
 		return
 	}
 
 	packages, err := client.ListPackages(r.Context())
 	if err != nil {
+		slog.Error("jdownloader: failed to fetch queue", "error", err)
 		writeJSON(w, http.StatusBadGateway, models.ErrorResponse{Error: "failed to fetch queue: " + err.Error()})
 		return
 	}
@@ -142,15 +146,18 @@ func (h *JDownloaderHandler) AddLinks(w http.ResponseWriter, r *http.Request) {
 
 	client, err := h.getJDClient(r.Context())
 	if err != nil || client == nil {
+		slog.Error("jdownloader: not available for AddLinks", "error", err)
 		writeJSON(w, http.StatusBadGateway, models.ErrorResponse{Error: "JDownloader not available"})
 		return
 	}
 
 	if err := client.AddLinks(r.Context(), body.Links); err != nil {
+		slog.Error("jdownloader: failed to add links", "count", len(body.Links), "error", err)
 		writeJSON(w, http.StatusBadGateway, models.ErrorResponse{Error: "failed to add links: " + err.Error()})
 		return
 	}
 
+	slog.Info("jdownloader: links added", "count", len(body.Links))
 	h.Cache.InvalidatePrefix("jd:")
 	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 }
@@ -166,15 +173,18 @@ func (h *JDownloaderHandler) AddLinks(w http.ResponseWriter, r *http.Request) {
 func (h *JDownloaderHandler) StartQueue(w http.ResponseWriter, r *http.Request) {
 	client, err := h.getJDClient(r.Context())
 	if err != nil || client == nil {
+		slog.Error("jdownloader: not available for StartQueue", "error", err)
 		writeJSON(w, http.StatusBadGateway, models.ErrorResponse{Error: "JDownloader not available"})
 		return
 	}
 
 	if err := client.StartQueue(r.Context()); err != nil {
+		slog.Error("jdownloader: failed to start queue", "error", err)
 		writeJSON(w, http.StatusBadGateway, models.ErrorResponse{Error: "failed to start queue: " + err.Error()})
 		return
 	}
 
+	slog.Info("jdownloader: queue started")
 	h.Cache.InvalidatePrefix("jd:")
 	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 }
@@ -190,16 +200,19 @@ func (h *JDownloaderHandler) StartQueue(w http.ResponseWriter, r *http.Request) 
 func (h *JDownloaderHandler) CleanupFinished(w http.ResponseWriter, r *http.Request) {
 	client, err := h.getJDClient(r.Context())
 	if err != nil || client == nil {
+		slog.Error("jdownloader: not available for CleanupFinished", "error", err)
 		writeJSON(w, http.StatusBadGateway, models.ErrorResponse{Error: "JDownloader not available"})
 		return
 	}
 
 	count, err := client.CleanupFinished(r.Context())
 	if err != nil {
+		slog.Error("jdownloader: failed to cleanup finished", "error", err)
 		writeJSON(w, http.StatusBadGateway, models.ErrorResponse{Error: "failed to cleanup: " + err.Error()})
 		return
 	}
 
+	slog.Info("jdownloader: cleanup finished", "removed", count)
 	h.Cache.InvalidatePrefix("jd:")
 	writeJSON(w, http.StatusOK, map[string]any{"status": "ok", "removed": count})
 }
@@ -215,15 +228,18 @@ func (h *JDownloaderHandler) CleanupFinished(w http.ResponseWriter, r *http.Requ
 func (h *JDownloaderHandler) PauseQueue(w http.ResponseWriter, r *http.Request) {
 	client, err := h.getJDClient(r.Context())
 	if err != nil || client == nil {
+		slog.Error("jdownloader: not available for PauseQueue", "error", err)
 		writeJSON(w, http.StatusBadGateway, models.ErrorResponse{Error: "JDownloader not available"})
 		return
 	}
 
 	if err := client.PauseQueue(r.Context()); err != nil {
+		slog.Error("jdownloader: failed to pause queue", "error", err)
 		writeJSON(w, http.StatusBadGateway, models.ErrorResponse{Error: "failed to pause queue: " + err.Error()})
 		return
 	}
 
+	slog.Info("jdownloader: queue paused")
 	h.Cache.InvalidatePrefix("jd:")
 	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 }

@@ -2,6 +2,7 @@ package database
 
 import (
 	"context"
+	"errors"
 	"path/filepath"
 	"testing"
 )
@@ -90,8 +91,8 @@ func TestGetUserByUsername_NotFound(t *testing.T) {
 	ctx := context.Background()
 
 	u, err := db.GetUserByUsername(ctx, "nonexistent")
-	if err != nil {
-		t.Fatalf("GetUserByUsername: %v", err)
+	if !errors.Is(err, ErrNotFound) {
+		t.Fatalf("GetUserByUsername: expected ErrNotFound, got %v", err)
 	}
 	if u != nil {
 		t.Errorf("expected nil for nonexistent user, got %+v", u)
@@ -200,8 +201,8 @@ func TestDeleteUser(t *testing.T) {
 	}
 
 	u, err := db.GetUserByID(ctx, id)
-	if err != nil {
-		t.Fatalf("GetUserByID after delete: %v", err)
+	if !errors.Is(err, ErrNotFound) {
+		t.Fatalf("GetUserByID after delete: expected ErrNotFound, got %v", err)
 	}
 	if u != nil {
 		t.Error("expected nil after delete, got user")

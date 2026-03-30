@@ -2,6 +2,7 @@ package database
 
 import (
 	"context"
+	"database/sql"
 
 	"github.com/tdebuilt/nidus/internal/models"
 )
@@ -33,6 +34,9 @@ func (db *DB) GetCustomTheme(ctx context.Context, id int64) (*models.CustomTheme
 	err := db.QueryRowContext(ctx,
 		"SELECT id, name, theme_json, created_at, updated_at FROM custom_themes WHERE id = ?", id,
 	).Scan(&t.ID, &t.Name, &t.ThemeJSON, &t.CreatedAt, &t.UpdatedAt)
+	if err == sql.ErrNoRows {
+		return nil, ErrNotFound
+	}
 	if err != nil {
 		return nil, err
 	}

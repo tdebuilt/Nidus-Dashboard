@@ -3,6 +3,7 @@ package handlers
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"log/slog"
 	"net/http"
 	"sort"
@@ -26,7 +27,7 @@ type ProxmoxHandler struct {
 
 func (h *ProxmoxHandler) getProxmoxClient(ctx context.Context) (*proxmox.Client, error) {
 	svc, err := h.DB.GetServiceByType(ctx, "proxmox")
-	if err != nil {
+	if err != nil && !errors.Is(err, database.ErrNotFound) {
 		return nil, err
 	}
 	if svc == nil {
@@ -93,16 +94,19 @@ func (h *ProxmoxHandler) ListNodes(w http.ResponseWriter, r *http.Request) {
 
 	client, err := h.getProxmoxClient(r.Context())
 	if err != nil {
+		slog.Error("proxmox: failed to connect for ListNodes", "error", err)
 		writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "failed to connect to Proxmox"})
 		return
 	}
 	if client == nil {
+		slog.Warn("proxmox: not configured")
 		writeJSON(w, http.StatusNotFound, models.ErrorResponse{Error: "Proxmox not configured"})
 		return
 	}
 
 	nodes, err := client.ListNodes(r.Context())
 	if err != nil {
+		slog.Error("proxmox: failed to fetch nodes", "error", err)
 		writeJSON(w, http.StatusBadGateway, models.ErrorResponse{Error: "failed to fetch nodes"})
 		return
 	}
@@ -220,12 +224,15 @@ func (h *ProxmoxHandler) VMAction(w http.ResponseWriter, r *http.Request) {
 
 	client, err := h.getProxmoxClient(r.Context())
 	if err != nil || client == nil {
+		slog.Error("proxmox: not available for VM action", "error", err)
 		writeJSON(w, http.StatusBadGateway, models.ErrorResponse{Error: "Proxmox not available"})
 		return
 	}
 
+	slog.Info("proxmox: VM action", "node", node, "vm_type", vmType, "vmid", vmid, "action", action)
 	taskID, err := client.VMAction(r.Context(), node, vmType, vmid, action)
 	if err != nil {
+		slog.Error("proxmox: VM action failed", "node", node, "vmid", vmid, "action", action, "error", err)
 		writeJSON(w, http.StatusBadGateway, models.ErrorResponse{Error: "action failed: " + sanitizeError(err)})
 		return
 	}

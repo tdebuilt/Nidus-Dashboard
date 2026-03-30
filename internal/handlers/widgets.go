@@ -2,6 +2,8 @@ package handlers
 
 import (
 	"encoding/json"
+	"errors"
+	"log/slog"
 	"net/http"
 	"strconv"
 
@@ -38,17 +40,20 @@ func (h *WidgetsHandler) ListByCategory(w http.ResponseWriter, r *http.Request) 
 
 	// Check category exists
 	cat, err := h.DB.GetCategory(r.Context(), categoryID)
-	if err != nil {
+	if err != nil && !errors.Is(err, database.ErrNotFound) {
+		slog.Error("widgets: failed to get category", "category_id", categoryID, "error", err)
 		writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "database error"})
 		return
 	}
 	if cat == nil {
+		slog.Warn("widgets: category not found", "category_id", categoryID)
 		writeJSON(w, http.StatusNotFound, models.ErrorResponse{Error: "category not found"})
 		return
 	}
 
 	widgets, err := h.DB.GetWidgetsByCategory(r.Context(), categoryID)
 	if err != nil {
+		slog.Error("widgets: failed to list widgets", "category_id", categoryID, "error", err)
 		writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "failed to list widgets"})
 		return
 	}
@@ -81,11 +86,13 @@ func (h *WidgetsHandler) Create(w http.ResponseWriter, r *http.Request) {
 
 	// Check category exists
 	cat, err := h.DB.GetCategory(r.Context(), categoryID)
-	if err != nil {
+	if err != nil && !errors.Is(err, database.ErrNotFound) {
+		slog.Error("widgets: failed to check category for create", "category_id", categoryID, "error", err)
 		writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "database error"})
 		return
 	}
 	if cat == nil {
+		slog.Warn("widgets: category not found for create", "category_id", categoryID)
 		writeJSON(w, http.StatusNotFound, models.ErrorResponse{Error: "category not found"})
 		return
 	}
@@ -107,6 +114,7 @@ func (h *WidgetsHandler) Create(w http.ResponseWriter, r *http.Request) {
 
 	widget, err := h.DB.CreateWidget(r.Context(), categoryID, req.Type, req.Title, req.Config, req.PosX, req.PosY, req.Width, req.Height)
 	if err != nil {
+		slog.Error("widgets: failed to create widget", "category_id", categoryID, "type", req.Type, "error", err)
 		writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "failed to create widget"})
 		return
 	}
@@ -115,6 +123,7 @@ func (h *WidgetsHandler) Create(w http.ResponseWriter, r *http.Request) {
 		go h.OnReolinkChange()
 	}
 
+	slog.Info("widgets: widget created", "id", widget.ID, "type", req.Type, "title", req.Title)
 	writeJSON(w, http.StatusCreated, widget)
 }
 
@@ -158,11 +167,13 @@ func (h *WidgetsHandler) Update(w http.ResponseWriter, r *http.Request) {
 	}
 
 	widget, err := h.DB.UpdateWidget(r.Context(), id, req.Type, req.Title, req.Config)
-	if err != nil {
+	if err != nil && !errors.Is(err, database.ErrNotFound) {
+		slog.Error("widgets: failed to update widget", "id", id, "error", err)
 		writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "failed to update widget"})
 		return
 	}
 	if widget == nil {
+		slog.Warn("widgets: widget not found for update", "id", id)
 		writeJSON(w, http.StatusNotFound, models.ErrorResponse{Error: "widget not found"})
 		return
 	}
@@ -171,6 +182,7 @@ func (h *WidgetsHandler) Update(w http.ResponseWriter, r *http.Request) {
 		go h.OnReolinkChange()
 	}
 
+	slog.Info("widgets: widget updated", "id", id, "type", req.Type, "title", req.Title)
 	writeJSON(w, http.StatusOK, widget)
 }
 
@@ -195,10 +207,12 @@ func (h *WidgetsHandler) Delete(w http.ResponseWriter, r *http.Request) {
 
 	deleted, err := h.DB.DeleteWidget(r.Context(), id)
 	if err != nil {
+		slog.Error("widgets: failed to delete widget", "id", id, "error", err)
 		writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "failed to delete widget"})
 		return
 	}
 	if !deleted {
+		slog.Warn("widgets: widget not found for deletion", "id", id)
 		writeJSON(w, http.StatusNotFound, models.ErrorResponse{Error: "widget not found"})
 		return
 	}
@@ -207,6 +221,7 @@ func (h *WidgetsHandler) Delete(w http.ResponseWriter, r *http.Request) {
 		go h.OnReolinkChange()
 	}
 
+	slog.Info("widgets: widget deleted", "id", id)
 	writeJSON(w, http.StatusOK, map[string]string{"message": "widget deleted"})
 }
 
@@ -238,11 +253,13 @@ func (h *WidgetsHandler) ToggleCollapse(w http.ResponseWriter, r *http.Request) 
 	}
 
 	widget, err := h.DB.SetWidgetCollapsed(r.Context(), id, req.Collapsed)
-	if err != nil {
+	if err != nil && !errors.Is(err, database.ErrNotFound) {
+		slog.Error("widgets: failed to toggle collapse", "id", id, "error", err)
 		writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "failed to update widget"})
 		return
 	}
 	if widget == nil {
+		slog.Warn("widgets: widget not found for toggle collapse", "id", id)
 		writeJSON(w, http.StatusNotFound, models.ErrorResponse{Error: "widget not found"})
 		return
 	}
@@ -275,9 +292,11 @@ func (h *WidgetsHandler) SaveLayout(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := h.DB.SaveWidgetLayout(r.Context(), req.Widgets); err != nil {
+		slog.Error("widgets: failed to save layout", "error", err)
 		writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "failed to save layout"})
 		return
 	}
 
+	slog.Info("widgets: layout saved", "widget_count", len(req.Widgets))
 	writeJSON(w, http.StatusOK, map[string]string{"message": "layout saved"})
 }

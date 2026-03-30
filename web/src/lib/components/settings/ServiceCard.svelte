@@ -66,12 +66,14 @@
       <button onclick={onEdit}
         class="rounded border border-[var(--color-border)] p-1.5 text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-tertiary)]"
         title={$t('common.configure')}
+        aria-label={$t('common.configure')}
         data-testid="service-config-btn">
         <Settings size={14} />
       </button>
       <button onclick={onTest}
         class="rounded border border-[var(--color-border)] p-1.5 text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-tertiary)] disabled:cursor-not-allowed disabled:opacity-40"
         title={$t('common.test')}
+        aria-label={$t('common.test')}
         disabled={!url}
         data-testid="service-test-btn">
         <Zap size={14} />

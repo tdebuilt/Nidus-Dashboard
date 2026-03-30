@@ -6,6 +6,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"image/png"
+	"log/slog"
 	"net/http"
 	"time"
 
@@ -155,16 +156,19 @@ func (h *AuthHandler) TOTPEnable(w http.ResponseWriter, r *http.Request) {
 		Algorithm: otp.AlgorithmSHA1,
 	})
 	if err != nil || !valid {
+		slog.Warn("totp-enable: invalid verification code", "user_id", user.ID)
 		writeJSON(w, http.StatusUnauthorized, models.ErrorResponse{Error: "invalid TOTP code"})
 		return
 	}
 
 	// Enable TOTP
 	if err := h.DB.EnableUserTOTP(r.Context(), user.ID); err != nil {
+		slog.Error("totp-enable: failed to enable TOTP", "user_id", user.ID, "error", err)
 		writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "failed to enable TOTP"})
 		return
 	}
 
+	slog.Info("totp: enabled", "user_id", user.ID)
 	writeJSON(w, http.StatusOK, map[string]string{"message": "TOTP enabled"})
 }
 
@@ -192,9 +196,11 @@ func (h *AuthHandler) TOTPDisable(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := h.DB.DisableUserTOTP(r.Context(), user.ID); err != nil {
+		slog.Error("totp-disable: failed to disable TOTP", "user_id", user.ID, "error", err)
 		writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "failed to disable TOTP"})
 		return
 	}
 
+	slog.Info("totp: disabled", "user_id", user.ID)
 	writeJSON(w, http.StatusOK, map[string]string{"message": "TOTP disabled"})
 }

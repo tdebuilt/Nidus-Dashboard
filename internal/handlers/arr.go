@@ -3,6 +3,7 @@ package handlers
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"sync"
 	"time"
@@ -23,7 +24,7 @@ var arrServiceTypes = []string{"sonarr", "radarr", "lidarr", "prowlarr"}
 
 func (h *ArrHandler) getArrClient(ctx context.Context, serviceType string) (*arr.Client, error) {
 	svc, err := h.DB.GetServiceByType(ctx, serviceType)
-	if err != nil {
+	if err != nil && !errors.Is(err, database.ErrNotFound) {
 		return nil, err
 	}
 	if svc == nil {

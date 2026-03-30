@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -11,6 +12,7 @@ import (
 	"github.com/go-chi/chi/v5"
 
 	"github.com/tdebuilt/nidus/internal/crypto"
+	"github.com/tdebuilt/nidus/internal/database"
 	"github.com/tdebuilt/nidus/internal/models"
 )
 
@@ -461,7 +463,7 @@ func TestServiceDBMethodsDirectly(t *testing.T) {
 
 	// Get non-existent
 	notFound, err := db.GetServiceByType(ctx, "nonexistent")
-	if err != nil {
+	if err != nil && !errors.Is(err, database.ErrNotFound) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 	if notFound != nil {

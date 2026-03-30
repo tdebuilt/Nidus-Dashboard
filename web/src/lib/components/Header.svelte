@@ -31,6 +31,7 @@
         class:text-[var(--color-text-muted)]={!$editMode}
         class:hover:bg-[var(--color-bg-tertiary)]={!$editMode}
         title={$editMode ? translate('dashboard.editModeOff') : translate('dashboard.editModeOn')}
+        aria-label={$editMode ? translate('dashboard.editModeOff') : translate('dashboard.editModeOn')}
         data-testid="edit-mode-toggle"
       >
         <Pencil size={18} />

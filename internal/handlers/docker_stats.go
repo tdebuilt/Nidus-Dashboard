@@ -37,12 +37,14 @@ func (h *DockerHandler) ContainerStatsAll(w http.ResponseWriter, r *http.Request
 
 	client, err := h.getPortainerClient(r.Context())
 	if err != nil || client == nil {
+		slog.Error("docker_stats: Portainer not available for stats", "error", err)
 		writeJSON(w, http.StatusBadGateway, models.ErrorResponse{Error: "Portainer not available"})
 		return
 	}
 
 	containers, err := client.ListContainers(r.Context(), envID)
 	if err != nil {
+		slog.Error("docker_stats: failed to list containers for stats", "env_id", envID, "error", err)
 		writeJSON(w, http.StatusBadGateway, models.ErrorResponse{Error: "failed to list containers"})
 		return
 	}
@@ -90,12 +92,14 @@ func (h *DockerHandler) CheckUpdates(w http.ResponseWriter, r *http.Request) {
 
 	client, err := h.getPortainerClient(r.Context())
 	if err != nil || client == nil {
+		slog.Error("docker_stats: Portainer not available for updates check", "error", err)
 		writeJSON(w, http.StatusBadGateway, models.ErrorResponse{Error: "Portainer not available"})
 		return
 	}
 
 	containers, err := client.ListContainers(r.Context(), envID)
 	if err != nil {
+		slog.Error("docker_stats: failed to list containers for updates", "env_id", envID, "error", err)
 		writeJSON(w, http.StatusBadGateway, models.ErrorResponse{Error: "failed to list containers"})
 		return
 	}

@@ -2,6 +2,7 @@ package database
 
 import (
 	"context"
+	"errors"
 	"path/filepath"
 	"testing"
 )
@@ -94,8 +95,8 @@ func TestGetServiceByType_NotFound(t *testing.T) {
 	ctx := context.Background()
 
 	svc, err := db.GetServiceByType(ctx, "nonexistent")
-	if err != nil {
-		t.Fatalf("GetServiceByType: %v", err)
+	if !errors.Is(err, ErrNotFound) {
+		t.Fatalf("GetServiceByType: expected ErrNotFound, got %v", err)
 	}
 	if svc != nil {
 		t.Errorf("expected nil for nonexistent service, got %+v", svc)
@@ -198,8 +199,8 @@ func TestDeleteService(t *testing.T) {
 	}
 
 	svc, err := db.GetServiceByType(ctx, "portainer")
-	if err != nil {
-		t.Fatalf("GetServiceByType after delete: %v", err)
+	if !errors.Is(err, ErrNotFound) {
+		t.Fatalf("GetServiceByType after delete: expected ErrNotFound, got %v", err)
 	}
 	if svc != nil {
 		t.Error("expected nil after delete")

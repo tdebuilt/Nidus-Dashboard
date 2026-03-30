@@ -99,12 +99,12 @@
     {#if !$isViewer}
       <div class="flex gap-1">
         {#if isStopped}
-          <button onclick={startTorrent} class="touch-action-btn rounded p-2 sm:p-1 text-[var(--color-text-muted)] hover:text-[var(--color-success)]" title={$t('transmission.start')}>
+          <button onclick={startTorrent} class="touch-action-btn rounded p-2 sm:p-1 text-[var(--color-text-muted)] hover:text-[var(--color-success)]" title={$t('transmission.start')} aria-label={$t('transmission.start')}>
             <Play size={14} />
           </button>
         {/if}
         {#if isActive}
-          <button onclick={stopTorrent} class="touch-action-btn rounded p-2 sm:p-1 text-[var(--color-text-muted)] hover:text-[var(--color-danger)]" title={$t('transmission.stop')}>
+          <button onclick={stopTorrent} class="touch-action-btn rounded p-2 sm:p-1 text-[var(--color-text-muted)] hover:text-[var(--color-danger)]" title={$t('transmission.stop')} aria-label={$t('transmission.stop')}>
             <Square size={14} />
           </button>
         {/if}

@@ -3,6 +3,8 @@ package handlers
 import (
 	"context"
 	"encoding/json"
+	"errors"
+	"log/slog"
 	"net/http"
 
 	"github.com/tdebuilt/nidus/internal/cache"
@@ -20,7 +22,7 @@ type AdGuardHandler struct {
 
 func (h *AdGuardHandler) getAdGuardClient(ctx context.Context) (*adguard.Client, error) {
 	svc, err := h.DB.GetServiceByType(ctx, "adguard")
-	if err != nil {
+	if err != nil && !errors.Is(err, database.ErrNotFound) {
 		return nil, err
 	}
 	if svc == nil {
@@ -72,22 +74,26 @@ func (h *AdGuardHandler) GetStats(w http.ResponseWriter, r *http.Request) {
 
 	client, err := h.getAdGuardClient(r.Context())
 	if err != nil {
+		slog.Error("adguard: failed to connect", "error", err)
 		writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "failed to connect to AdGuard"})
 		return
 	}
 	if client == nil {
+		slog.Warn("adguard: not configured")
 		writeJSON(w, http.StatusNotFound, models.ErrorResponse{Error: "AdGuard not configured"})
 		return
 	}
 
 	stats, err := client.GetStats(r.Context())
 	if err != nil {
+		slog.Error("adguard: failed to fetch stats", "error", err)
 		writeJSON(w, http.StatusBadGateway, models.ErrorResponse{Error: "failed to fetch stats"})
 		return
 	}
 
 	filtering, err := client.GetFilteringStatus(r.Context())
 	if err != nil {
+		slog.Error("adguard: failed to fetch filtering status", "error", err)
 		writeJSON(w, http.StatusBadGateway, models.ErrorResponse{Error: "failed to fetch filtering status"})
 		return
 	}
@@ -142,15 +148,18 @@ func (h *AdGuardHandler) ToggleFiltering(w http.ResponseWriter, r *http.Request)
 
 	client, err := h.getAdGuardClient(r.Context())
 	if err != nil || client == nil {
+		slog.Error("adguard: not available for toggle filtering", "error", err)
 		writeJSON(w, http.StatusBadGateway, models.ErrorResponse{Error: "AdGuard not available"})
 		return
 	}
 
 	if err := client.SetFilteringEnabled(r.Context(), body.Enabled); err != nil {
+		slog.Error("adguard: toggle filtering failed", "enabled", body.Enabled, "error", err)
 		writeJSON(w, http.StatusBadGateway, models.ErrorResponse{Error: "toggle failed: " + err.Error()})
 		return
 	}
 
+	slog.Info("adguard: filtering toggled", "enabled", body.Enabled)
 	h.Cache.InvalidatePrefix("adguard:")
 	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 }

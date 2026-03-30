@@ -2,6 +2,7 @@ package database
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 
 	"github.com/tdebuilt/nidus/internal/models"
@@ -27,6 +28,9 @@ func (db *DB) GetWebhook(ctx context.Context, id int64) (*models.Webhook, error)
 	err := db.QueryRowContext(ctx,
 		"SELECT id, name, secret, enabled, created_at, updated_at FROM webhooks WHERE id = ?", id,
 	).Scan(&w.ID, &w.Name, &w.Secret, &enabled, &w.CreatedAt, &w.UpdatedAt)
+	if err == sql.ErrNoRows {
+		return nil, ErrNotFound
+	}
 	if err != nil {
 		return nil, err
 	}

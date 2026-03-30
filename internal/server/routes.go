@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
@@ -84,6 +85,17 @@ func registerSwagger(r *chi.Mux) {
 func registerAPIRoutes(r chi.Router, srv *Server, db *database.DB) {
 	r.Use(func(next http.Handler) http.Handler {
 		return http.MaxBytesHandler(next, 10<<20)
+	})
+	// Request timeout for non-streaming endpoints
+	r.Use(func(next http.Handler) http.Handler {
+		timeout := middleware.Timeout(10 * time.Second)
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if r.URL.Path == "/api/ws" || strings.HasPrefix(r.URL.Path, "/api/go2rtc/") {
+				next.ServeHTTP(w, r)
+				return
+			}
+			timeout(next).ServeHTTP(w, r)
+		})
 	})
 	r.Get("/health", healthHandler)
 	r.Get("/version", versionHandler(srv))

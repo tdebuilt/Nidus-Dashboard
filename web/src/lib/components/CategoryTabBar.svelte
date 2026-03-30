@@ -1,14 +1,18 @@
 <script lang="ts">
-  import { api } from '../api/client'
   import { translate } from '../i18n'
   import { categories } from '../stores/categories'
   import { editMode } from '../stores/editMode'
-  import { toasts } from '../stores/toast'
-  import { confirm } from '../stores/confirm'
   import { navigate } from '../stores/router'
   import { Plus, SquarePlus } from 'lucide-svelte'
   import CategoryPopover from './CategoryPopover.svelte'
   import CategoryTab from './CategoryTab.svelte'
+  import {
+    computePopoverPosition,
+    saveCategory,
+    deleteCategory,
+    reorderCategories,
+    createCategory,
+  } from './categoryTabActions'
 
   interface Props {
     selectedCategoryId: number | null
@@ -41,8 +45,6 @@
     showCreateInput = true
   }
 
-  // --- Tab interactions ---
-
   function handleTabClick(catId: number) {
     if (editingTabId !== null) return
     onSelect(catId)
@@ -52,12 +54,7 @@
 
   function handleTabDblClick(e: MouseEvent, catId: number, catName: string, catIcon: string) {
     const target = e.currentTarget as HTMLElement
-    const rect = target.getBoundingClientRect()
-    const panelWidth = 288
-    let left = rect.left
-    if (left + panelWidth > window.innerWidth - 8) left = window.innerWidth - panelWidth - 8
-    if (left < 8) left = 8
-    editPanelPos = { top: rect.bottom + 4, left }
+    editPanelPos = computePopoverPosition(target.getBoundingClientRect())
     editingTabId = catId
     editingTabName = catName
     editingTabIcon = catIcon
@@ -73,18 +70,8 @@
       editingTabId = null
       return
     }
-    try {
-      await api.put(`/api/categories/${editingTabId}`, {
-        name: editingTabName.trim(),
-        icon: editingTabIcon,
-      })
-      toasts.success(translate('category.updated'))
-      editingTabId = null
-      onCategoryUpdate()
-    } catch {
-      toasts.error(translate('category.updateError'))
-      editingTabId = null
-    }
+    await saveCategory(editingTabId, editingTabName.trim(), editingTabIcon, onCategoryUpdate)
+    editingTabId = null
   }
 
   function closeEditPanel() {
@@ -99,23 +86,9 @@
     if (catId === null) return
     const cat = $categories.find((c) => c.id === catId)
     if (!cat) return
-    const confirmed = await confirm({
-      title: translate('category.deleteTitle'),
-      message: translate('category.deleteMessage', { name: cat.name }),
-      confirmLabel: translate('common.delete'),
-      destructive: true,
-    })
-    if (!confirmed) return
-    try {
-      await api.delete(`/api/categories/${catId}`)
-      toasts.success(translate('category.deleted'))
-      onCategoryUpdate()
-    } catch {
-      toasts.error(translate('category.deleteError'))
-    }
+    await deleteCategory(cat, onCategoryUpdate)
   }
 
-  // Tab drag & drop for reorder
   function handleTabDragStart(e: DragEvent, index: number) {
     dragTabIndex = index
     if (e.dataTransfer) e.dataTransfer.effectAllowed = 'move'
@@ -133,15 +106,7 @@
       dragOverTabIndex = null
       return
     }
-    const reordered = [...$categories]
-    const [moved] = reordered.splice(dragTabIndex, 1)
-    reordered.splice(toIndex, 0, moved)
-    try {
-      await api.put('/api/categories/reorder', { ids: reordered.map((c) => c.id) })
-      onCategoryUpdate()
-    } catch {
-      toasts.error(translate('category.reorderError'))
-    }
+    await reorderCategories($categories, dragTabIndex, toIndex, onCategoryUpdate)
     dragTabIndex = null
     dragOverTabIndex = null
   }
@@ -151,19 +116,14 @@
     dragOverTabIndex = null
   }
 
-  // Create category
   async function handleCreateCategory() {
     if (!newCategoryName.trim()) return
-    try {
-      await api.post('/api/categories', { name: newCategoryName.trim(), icon: newCategoryIcon })
-      toasts.success(translate('category.created'))
+    await createCategory(newCategoryName.trim(), newCategoryIcon, () => {
       newCategoryName = ''
       newCategoryIcon = 'folder'
       showCreateInput = false
       onCategoryUpdate()
-    } catch {
-      toasts.error(translate('category.createError'))
-    }
+    })
   }
 
   function toggleCreatePanel() {
@@ -172,11 +132,7 @@
       return
     }
     if (addBtnRef) {
-      const rect = addBtnRef.getBoundingClientRect()
-      const panelWidth = 288
-      let left = rect.right - panelWidth
-      if (left < 8) left = 8
-      createPanelPos = { top: rect.bottom + 4, left }
+      createPanelPos = computePopoverPosition(addBtnRef.getBoundingClientRect(), 'right')
     }
     showCreateInput = true
   }
@@ -216,6 +172,7 @@
         onclick={toggleCreatePanel}
         class="shrink-0 rounded p-2 text-[var(--color-text-muted)] hover:text-[var(--color-primary)]"
         title={translate('category.addCategory')}
+        aria-label={translate('category.addCategory')}
         data-testid="category-add-btn"
       >
         <Plus size={16} />
@@ -229,6 +186,7 @@
       onclick={onShowAddWidget}
       class="shrink-0 rounded p-2 text-[var(--color-text-muted)] hover:text-[var(--color-primary)]"
       title={translate('widget.addWidget')}
+      aria-label={translate('widget.addWidget')}
       data-testid="widget-add-header-btn"
     >
       <SquarePlus size={16} />

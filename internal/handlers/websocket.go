@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"encoding/hex"
+	"errors"
 	"log/slog"
 	"net/http"
 
@@ -99,7 +100,10 @@ func (h *WebSocketHandler) authenticateWS(r *http.Request) (int64, error) {
 	userID := int64(userIDFloat)
 
 	user, err := h.DB.GetUserByID(r.Context(), userID)
-	if err != nil || user == nil {
+	if err != nil && !errors.Is(err, database.ErrNotFound) {
+		return 0, err
+	}
+	if user == nil {
 		return 0, jwt.ErrTokenInvalidClaims
 	}
 

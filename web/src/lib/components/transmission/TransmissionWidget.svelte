@@ -167,16 +167,16 @@
         </div>
         {#if !$isViewer}
           <div class="flex gap-1">
-            <button onclick={startAll} class="rounded p-1 text-[var(--color-text-muted)] hover:text-[var(--color-success)]" title={$t('transmission.startAll')}>
+            <button onclick={startAll} class="rounded p-1 text-[var(--color-text-muted)] hover:text-[var(--color-success)]" title={$t('transmission.startAll')} aria-label={$t('transmission.startAll')}>
               <Play size={14} />
             </button>
-            <button onclick={stopAll} class="rounded p-1 text-[var(--color-text-muted)] hover:text-[var(--color-danger)]" title={$t('transmission.stopAll')}>
+            <button onclick={stopAll} class="rounded p-1 text-[var(--color-text-muted)] hover:text-[var(--color-danger)]" title={$t('transmission.stopAll')} aria-label={$t('transmission.stopAll')}>
               <Square size={14} />
             </button>
-            <button onclick={cleanupCompleted} class="rounded p-1 text-[var(--color-text-muted)] hover:text-[var(--color-warning)]" title={$t('transmission.cleanup')}>
+            <button onclick={cleanupCompleted} class="rounded p-1 text-[var(--color-text-muted)] hover:text-[var(--color-warning)]" title={$t('transmission.cleanup')} aria-label={$t('transmission.cleanup')}>
               <Trash2 size={14} />
             </button>
-            <button onclick={() => showAddDialog = true} class="rounded p-1 text-[var(--color-text-muted)] hover:text-[var(--color-primary)]" title={$t('transmission.addTorrent')}>
+            <button onclick={() => showAddDialog = true} class="rounded p-1 text-[var(--color-text-muted)] hover:text-[var(--color-primary)]" title={$t('transmission.addTorrent')} aria-label={$t('transmission.addTorrent')}>
               <Plus size={14} />
             </button>
           </div>

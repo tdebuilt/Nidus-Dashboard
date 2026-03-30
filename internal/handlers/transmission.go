@@ -3,6 +3,7 @@ package handlers
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"log/slog"
 	"net/http"
 	"strconv"
@@ -24,7 +25,7 @@ type TransmissionHandler struct {
 
 func (h *TransmissionHandler) getTransmissionClient(ctx context.Context) (*transmission.Client, error) {
 	svc, err := h.DB.GetServiceByType(ctx, "transmission")
-	if err != nil {
+	if err != nil && !errors.Is(err, database.ErrNotFound) {
 		return nil, err
 	}
 	if svc == nil {
@@ -75,16 +76,19 @@ func (h *TransmissionHandler) ListTorrents(w http.ResponseWriter, r *http.Reques
 
 	client, err := h.getTransmissionClient(r.Context())
 	if err != nil {
+		slog.Error("transmission: failed to connect", "error", err)
 		writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "failed to connect to Transmission"})
 		return
 	}
 	if client == nil {
+		slog.Warn("transmission: not configured")
 		writeJSON(w, http.StatusNotFound, models.ErrorResponse{Error: "Transmission not configured"})
 		return
 	}
 
 	torrents, err := client.ListTorrents(r.Context())
 	if err != nil {
+		slog.Error("transmission: failed to fetch torrents", "error", err)
 		writeJSON(w, http.StatusBadGateway, models.ErrorResponse{Error: "failed to fetch torrents"})
 		return
 	}
@@ -136,6 +140,7 @@ func (h *TransmissionHandler) AddTorrent(w http.ResponseWriter, r *http.Request)
 
 	client, err := h.getTransmissionClient(r.Context())
 	if err != nil || client == nil {
+		slog.Error("transmission: not available for AddTorrent", "error", err)
 		writeJSON(w, http.StatusBadGateway, models.ErrorResponse{Error: "Transmission not available"})
 		return
 	}
@@ -146,10 +151,12 @@ func (h *TransmissionHandler) AddTorrent(w http.ResponseWriter, r *http.Request)
 		err = client.AddTorrent(r.Context(), body.URL)
 	}
 	if err != nil {
+		slog.Error("transmission: failed to add torrent", "error", err)
 		writeJSON(w, http.StatusBadGateway, models.ErrorResponse{Error: "failed to add torrent: " + err.Error()})
 		return
 	}
 
+	slog.Info("transmission: torrent added")
 	h.Cache.InvalidatePrefix("tx:")
 	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 }
@@ -173,15 +180,18 @@ func (h *TransmissionHandler) StartTorrent(w http.ResponseWriter, r *http.Reques
 
 	client, err := h.getTransmissionClient(r.Context())
 	if err != nil || client == nil {
+		slog.Error("transmission: not available for StartTorrent", "error", err)
 		writeJSON(w, http.StatusBadGateway, models.ErrorResponse{Error: "Transmission not available"})
 		return
 	}
 
 	if err := client.StartTorrent(r.Context(), []int{id}); err != nil {
+		slog.Error("transmission: start torrent failed", "id", id, "error", err)
 		writeJSON(w, http.StatusBadGateway, models.ErrorResponse{Error: "start failed: " + err.Error()})
 		return
 	}
 
+	slog.Info("transmission: torrent started", "id", id)
 	h.Cache.InvalidatePrefix("tx:")
 	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 }
@@ -205,15 +215,18 @@ func (h *TransmissionHandler) StopTorrent(w http.ResponseWriter, r *http.Request
 
 	client, err := h.getTransmissionClient(r.Context())
 	if err != nil || client == nil {
+		slog.Error("transmission: not available for StopTorrent", "error", err)
 		writeJSON(w, http.StatusBadGateway, models.ErrorResponse{Error: "Transmission not available"})
 		return
 	}
 
 	if err := client.StopTorrent(r.Context(), []int{id}); err != nil {
+		slog.Error("transmission: stop torrent failed", "id", id, "error", err)
 		writeJSON(w, http.StatusBadGateway, models.ErrorResponse{Error: "stop failed: " + err.Error()})
 		return
 	}
 
+	slog.Info("transmission: torrent stopped", "id", id)
 	h.Cache.InvalidatePrefix("tx:")
 	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 }
@@ -229,15 +242,18 @@ func (h *TransmissionHandler) StopTorrent(w http.ResponseWriter, r *http.Request
 func (h *TransmissionHandler) StartAllTorrents(w http.ResponseWriter, r *http.Request) {
 	client, err := h.getTransmissionClient(r.Context())
 	if err != nil || client == nil {
+		slog.Error("transmission: not available for StartAll", "error", err)
 		writeJSON(w, http.StatusBadGateway, models.ErrorResponse{Error: "Transmission not available"})
 		return
 	}
 
 	if err := client.StartAll(r.Context()); err != nil {
+		slog.Error("transmission: start all failed", "error", err)
 		writeJSON(w, http.StatusBadGateway, models.ErrorResponse{Error: "start all failed: " + err.Error()})
 		return
 	}
 
+	slog.Info("transmission: all torrents started")
 	h.Cache.InvalidatePrefix("tx:")
 	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 }
@@ -253,15 +269,18 @@ func (h *TransmissionHandler) StartAllTorrents(w http.ResponseWriter, r *http.Re
 func (h *TransmissionHandler) StopAllTorrents(w http.ResponseWriter, r *http.Request) {
 	client, err := h.getTransmissionClient(r.Context())
 	if err != nil || client == nil {
+		slog.Error("transmission: not available for StopAll", "error", err)
 		writeJSON(w, http.StatusBadGateway, models.ErrorResponse{Error: "Transmission not available"})
 		return
 	}
 
 	if err := client.StopAll(r.Context()); err != nil {
+		slog.Error("transmission: stop all failed", "error", err)
 		writeJSON(w, http.StatusBadGateway, models.ErrorResponse{Error: "stop all failed: " + err.Error()})
 		return
 	}
 
+	slog.Info("transmission: all torrents stopped")
 	h.Cache.InvalidatePrefix("tx:")
 	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 }
@@ -277,16 +296,19 @@ func (h *TransmissionHandler) StopAllTorrents(w http.ResponseWriter, r *http.Req
 func (h *TransmissionHandler) CleanupCompleted(w http.ResponseWriter, r *http.Request) {
 	client, err := h.getTransmissionClient(r.Context())
 	if err != nil || client == nil {
+		slog.Error("transmission: not available for CleanupCompleted", "error", err)
 		writeJSON(w, http.StatusBadGateway, models.ErrorResponse{Error: "Transmission not available"})
 		return
 	}
 
 	count, err := client.RemoveCompleted(r.Context())
 	if err != nil {
+		slog.Error("transmission: cleanup failed", "error", err)
 		writeJSON(w, http.StatusBadGateway, models.ErrorResponse{Error: "cleanup failed: " + err.Error()})
 		return
 	}
 
+	slog.Info("transmission: cleanup completed", "removed", count)
 	h.Cache.InvalidatePrefix("tx:")
 	writeJSON(w, http.StatusOK, map[string]interface{}{"status": "ok", "removed": count})
 }

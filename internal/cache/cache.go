@@ -2,6 +2,7 @@ package cache
 
 import (
 	"sync"
+	"sync/atomic"
 	"time"
 )
 
@@ -20,8 +21,8 @@ type Cache struct {
 	mu         sync.RWMutex
 	items      map[string]*entry
 	defaultTTL time.Duration
-	hits       int64
-	misses     int64
+	hits       atomic.Int64
+	misses     atomic.Int64
 	stopClean  chan struct{}
 	stopOnce   sync.Once
 }
@@ -42,27 +43,26 @@ func New(defaultTTL, cleanupInterval time.Duration) *Cache {
 func (c *Cache) Get(key string) (any, bool) {
 	c.mu.RLock()
 	e, ok := c.items[key]
-	c.mu.RUnlock()
-
 	if !ok {
-		c.mu.Lock()
-		c.misses++
-		c.mu.Unlock()
+		c.mu.RUnlock()
+		c.misses.Add(1)
 		return nil, false
 	}
-
 	if e.expired() {
+		c.mu.RUnlock()
+		// Lazy delete under write lock with double-check
 		c.mu.Lock()
-		delete(c.items, key)
-		c.misses++
+		if e2, ok := c.items[key]; ok && e2.expired() {
+			delete(c.items, key)
+		}
 		c.mu.Unlock()
+		c.misses.Add(1)
 		return nil, false
 	}
-
-	c.mu.Lock()
-	c.hits++
-	c.mu.Unlock()
-	return e.value, true
+	value := e.value
+	c.mu.RUnlock()
+	c.hits.Add(1)
+	return value, true
 }
 
 // Set stores a value with the default TTL.
@@ -114,17 +114,13 @@ func (c *Cache) Len() int {
 
 // Stats returns hit and miss counts.
 func (c *Cache) Stats() (hits, misses int64) {
-	c.mu.RLock()
-	defer c.mu.RUnlock()
-	return c.hits, c.misses
+	return c.hits.Load(), c.misses.Load()
 }
 
 // ResetStats resets hit and miss counters.
 func (c *Cache) ResetStats() {
-	c.mu.Lock()
-	c.hits = 0
-	c.misses = 0
-	c.mu.Unlock()
+	c.hits.Store(0)
+	c.misses.Store(0)
 }
 
 // SetDefaultTTL updates the default TTL for new cache entries.

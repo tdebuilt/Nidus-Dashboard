@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"strings"
 
@@ -74,7 +75,11 @@ func Auth(db *database.DB) func(http.Handler) http.Handler {
 
 			// Verify user still exists
 			user, err := db.GetUserByID(r.Context(), userID)
-			if err != nil || user == nil {
+			if err != nil && !errors.Is(err, database.ErrNotFound) {
+				writeErrorJSON(w, http.StatusInternalServerError, "database error")
+				return
+			}
+			if user == nil {
 				writeErrorJSON(w, http.StatusUnauthorized, "user not found")
 				return
 			}

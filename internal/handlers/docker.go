@@ -3,6 +3,7 @@ package handlers
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"log/slog"
 	"net/http"
 	"strconv"
@@ -24,7 +25,7 @@ type DockerHandler struct {
 
 func (h *DockerHandler) getPortainerClient(ctx context.Context) (*portainer.Client, error) {
 	svc, err := h.DB.GetServiceByType(ctx, "portainer")
-	if err != nil {
+	if err != nil && !errors.Is(err, database.ErrNotFound) {
 		return nil, err
 	}
 	if svc == nil {
@@ -82,16 +83,19 @@ func (h *DockerHandler) ListEnvironments(w http.ResponseWriter, r *http.Request)
 
 	client, err := h.getPortainerClient(r.Context())
 	if err != nil {
+		slog.Error("docker: failed to connect to Portainer", "error", err)
 		writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "failed to connect to Portainer"})
 		return
 	}
 	if client == nil {
+		slog.Warn("docker: Portainer not configured")
 		writeJSON(w, http.StatusNotFound, models.ErrorResponse{Error: "Portainer not configured"})
 		return
 	}
 
 	envs, err := client.ListEnvironments(r.Context())
 	if err != nil {
+		slog.Error("docker: failed to fetch environments", "error", err)
 		writeJSON(w, http.StatusBadGateway, models.ErrorResponse{Error: "failed to fetch environments"})
 		return
 	}
@@ -166,6 +170,7 @@ func (h *DockerHandler) ListContainers(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if client == nil {
+		slog.Warn("docker: Portainer not configured for containers")
 		writeJSON(w, http.StatusNotFound, models.ErrorResponse{Error: "Portainer not configured"})
 		return
 	}

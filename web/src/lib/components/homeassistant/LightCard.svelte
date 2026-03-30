@@ -57,7 +57,7 @@
 
 <div class="flex items-center gap-3 rounded-lg border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-2" data-testid="light-card">
   {#if !$isViewer}
-    <button onclick={toggle} class="touch-action-btn flex-shrink-0 rounded p-2 sm:p-1" title={$t(isOn ? 'homeassistant.turnOff' : 'homeassistant.turnOn')}>
+    <button onclick={toggle} class="touch-action-btn flex-shrink-0 rounded p-2 sm:p-1" title={$t(isOn ? 'homeassistant.turnOff' : 'homeassistant.turnOn')} aria-label={$t(isOn ? 'homeassistant.turnOff' : 'homeassistant.turnOn')}>
       <Lightbulb size={18} style="color: {isOn ? '#f59e0b' : 'var(--color-text-muted)'}" />
     </button>
   {:else}

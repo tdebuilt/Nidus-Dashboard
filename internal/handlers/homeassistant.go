@@ -3,6 +3,7 @@ package handlers
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"log/slog"
 	"net/http"
 
@@ -26,7 +27,7 @@ type HomeAssistantHandler struct {
 
 func (h *HomeAssistantHandler) getHAClient(ctx context.Context) (*homeassistant.Client, string, error) {
 	svc, err := h.DB.GetServiceByType(ctx, "homeassistant")
-	if err != nil {
+	if err != nil && !errors.Is(err, database.ErrNotFound) {
 		return nil, "", err
 	}
 	if svc == nil {
@@ -67,7 +68,7 @@ func (h *HomeAssistantHandler) ensureWSClient(ctx context.Context, baseURL, toke
 		return
 	}
 	svc, err := h.DB.GetServiceByType(ctx, "homeassistant")
-	if err != nil || svc == nil {
+	if (err != nil && !errors.Is(err, database.ErrNotFound)) || svc == nil {
 		return
 	}
 	h.wsClient = homeassistant.NewWSClient(svc.URL, token, h.Hub)
@@ -106,16 +107,19 @@ func (h *HomeAssistantHandler) ListEntities(w http.ResponseWriter, r *http.Reque
 
 	client, token, err := h.getHAClient(r.Context())
 	if err != nil {
+		slog.Error("homeassistant: failed to connect", "error", err)
 		writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "failed to connect to Home Assistant"})
 		return
 	}
 	if client == nil {
+		slog.Warn("homeassistant: not configured")
 		writeJSON(w, http.StatusNotFound, models.ErrorResponse{Error: "Home Assistant not configured"})
 		return
 	}
 
 	entities, err := client.ListStates(r.Context())
 	if err != nil {
+		slog.Error("homeassistant: failed to fetch entities", "error", err)
 		writeJSON(w, http.StatusBadGateway, models.ErrorResponse{Error: "failed to fetch entities"})
 		return
 	}
@@ -150,12 +154,14 @@ func (h *HomeAssistantHandler) GetEntity(w http.ResponseWriter, r *http.Request)
 
 	client, _, err := h.getHAClient(r.Context())
 	if err != nil || client == nil {
+		slog.Error("homeassistant: not available for GetEntity", "error", err)
 		writeJSON(w, http.StatusBadGateway, models.ErrorResponse{Error: "Home Assistant not available"})
 		return
 	}
 
 	entity, err := client.GetState(r.Context(), entityID)
 	if err != nil {
+		slog.Error("homeassistant: failed to fetch entity", "entity_id", entityID, "error", err)
 		writeJSON(w, http.StatusBadGateway, models.ErrorResponse{Error: "failed to fetch entity"})
 		return
 	}
@@ -190,15 +196,18 @@ func (h *HomeAssistantHandler) CallService(w http.ResponseWriter, r *http.Reques
 
 	client, _, err := h.getHAClient(r.Context())
 	if err != nil || client == nil {
+		slog.Error("homeassistant: not available for CallService", "error", err)
 		writeJSON(w, http.StatusBadGateway, models.ErrorResponse{Error: "Home Assistant not available"})
 		return
 	}
 
 	if _, err := client.CallService(r.Context(), domain, service, req); err != nil {
+		slog.Error("homeassistant: service call failed", "domain", domain, "service", service, "error", err)
 		writeJSON(w, http.StatusBadGateway, models.ErrorResponse{Error: "service call failed: " + err.Error()})
 		return
 	}
 
+	slog.Info("homeassistant: service called", "domain", domain, "service", service)
 	h.Cache.InvalidatePrefix("ha:")
 	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 }
@@ -217,12 +226,14 @@ func (h *HomeAssistantHandler) CameraSnapshot(w http.ResponseWriter, r *http.Req
 
 	client, _, err := h.getHAClient(r.Context())
 	if err != nil || client == nil {
+		slog.Error("homeassistant: not available for CameraSnapshot", "error", err)
 		writeJSON(w, http.StatusBadGateway, models.ErrorResponse{Error: "Home Assistant not available"})
 		return
 	}
 
 	data, contentType, err := client.GetCameraSnapshot(r.Context(), entityID)
 	if err != nil {
+		slog.Error("homeassistant: failed to get camera snapshot", "entity_id", entityID, "error", err)
 		writeJSON(w, http.StatusBadGateway, models.ErrorResponse{Error: "failed to get snapshot"})
 		return
 	}

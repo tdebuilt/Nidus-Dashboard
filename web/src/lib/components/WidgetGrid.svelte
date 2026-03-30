@@ -1,11 +1,8 @@
 <script lang="ts">
   import { Plus } from 'lucide-svelte'
-  import { api } from '../api/client'
-  import { toasts } from '../stores/toast'
-  import { confirm } from '../stores/confirm'
   import { editMode } from '../stores/editMode'
   import { breakpoint } from '../stores/breakpoint'
-  import { t, translate } from '../i18n'
+  import { t } from '../i18n'
   import AddWidgetDialog from './AddWidgetDialog.svelte'
   import EditWidgetDialog from './EditWidgetDialog.svelte'
   import WidgetPlaceholder from './WidgetPlaceholder.svelte'
@@ -21,6 +18,8 @@
   import {
     handleResizeStart, handleResizeReset, toggleAutoHeight,
   } from './widgets/widgetResize'
+  import { saveAllWidgetLayouts, updateGridMinHeight } from './widgets/layoutPersistence'
+  import { saveTitleEdit, toggleCollapse, deleteWidget } from './widgets/widgetActions'
 
   type Widget = GridWidget
 
@@ -32,7 +31,7 @@
     showAddDialog?: boolean
   }
 
-  let { categoryId, widgets = [], active = true, onUpdate, showAddDialog = $bindable(false) }: Props = $props()  
+  let { categoryId, widgets = [], active = true, onUpdate, showAddDialog = $bindable(false) }: Props = $props()
   let gridRef = $state<HTMLElement | null>(null)
   let draggingId = $state<number | null>(null)
   let resizingId = $state<number | null>(null)
@@ -82,39 +81,22 @@
     }
   })
 
-  // --- Layout persistence (debounced) ---
+  // --- Layout persistence wrappers ---
 
-  let _saveTimer: ReturnType<typeof setTimeout> | null = null
-  function saveAllWidgetLayouts() {
-    if (_saveTimer) clearTimeout(_saveTimer)
-    _saveTimer = setTimeout(() => {
-      const layouts = widgets.map((w) => ({
-        id: w.id, pos_x: w.pos_x, pos_y: w.pos_y, width: w.width, height: w.height,
-      }))
-      api.put('/api/widgets/layout', { widgets: layouts })
-        .then(() => onUpdate?.())
-        .catch(() => toasts.error(translate('widget.moveError')))
-    }, 500)
+  function saveLayouts() {
+    saveAllWidgetLayouts(widgets, onUpdate)
   }
 
-  // --- Grid min-height (auto-height widgets don't stretch grid) ---
-
-  function updateGridMinHeight() {
-    if (!gridRef || resizingId !== null || !active) return
-    let maxBottom = 0
-    const gridTop = gridRef.getBoundingClientRect().top
-    gridRef.querySelectorAll('.widget-card').forEach((c) => {
-      maxBottom = Math.max(maxBottom, c.getBoundingClientRect().bottom - gridTop)
-    })
-    if (maxBottom > 0) gridRef.style.minHeight = maxBottom + 'px'
+  function refreshGridHeight() {
+    updateGridMinHeight(gridRef, resizingId, active)
   }
 
   $effect(() => {
     if (!gridRef || widgets.length === 0) return
     if (typeof ResizeObserver === 'undefined') return
-    const observer = new ResizeObserver(updateGridMinHeight)
+    const observer = new ResizeObserver(refreshGridHeight)
     gridRef.querySelectorAll('.widget-card').forEach((c) => observer.observe(c))
-    const timer = setTimeout(updateGridMinHeight, 500)
+    const timer = setTimeout(refreshGridHeight, 500)
     return () => { observer.disconnect(); clearTimeout(timer) }
   })
 
@@ -139,41 +121,14 @@
     editingTitleValue = widget.title
   }
 
-  async function saveTitleEdit(widget: Widget) {
-    const newTitle = editingTitleValue.trim()
-    if (!newTitle || newTitle === widget.title) { editingTitleId = null; return }
-    try {
-      await api.put(`/api/widgets/${widget.id}`, { type: widget.type, title: newTitle, config: widget.config })
-      onUpdate?.()
-    } catch { toasts.error(translate('widget.renameError')) }
+  async function onSaveTitleEdit(widget: Widget) {
+    await saveTitleEdit(widget, editingTitleValue, onUpdate)
     editingTitleId = null
   }
 
   function handleTitleKeydown(e: KeyboardEvent, widget: Widget) {
-    if (e.key === 'Enter') { e.preventDefault(); saveTitleEdit(widget) }
+    if (e.key === 'Enter') { e.preventDefault(); onSaveTitleEdit(widget) }
     else if (e.key === 'Escape') editingTitleId = null
-  }
-
-  async function onToggleCollapse(widget: Widget) {
-    try {
-      await api.patch(`/api/widgets/${widget.id}/toggle-collapse`, { collapsed: !widget.collapsed })
-      onUpdate?.()
-    } catch { toasts.error(translate('widget.collapseError')) }
-  }
-
-  async function onDeleteWidget(widget: Widget) {
-    const confirmed = await confirm({
-      title: translate('widget.deleteTitle'),
-      message: translate('widget.deleteMessage', { name: widget.title }),
-      confirmLabel: translate('common.delete'),
-      destructive: true,
-    })
-    if (!confirmed) return
-    try {
-      await api.delete(`/api/widgets/${widget.id}`)
-      toasts.success(translate('widget.deleted'))
-      onUpdate?.()
-    } catch { toasts.error(translate('widget.deleteError')) }
   }
 
   // --- Drag handler wiring ---
@@ -184,7 +139,7 @@
       onDragStart: (id, w, h) => { draggingId = id; previewWidth = w; previewHeight = h },
       onPreviewUpdate: (col, row) => { previewCol = col; previewRow = row },
       onDragEnd: () => { draggingId = null; previewCol = null; previewRow = null },
-      onSaveLayouts: saveAllWidgetLayouts,
+      onSaveLayouts: saveLayouts,
     })
   }
 
@@ -195,17 +150,17 @@
       gridRef, effectiveCols, widgets, widget,
       onResizeStart: (id) => { resizingId = id },
       onResizeEnd: () => { resizingId = null },
-      onSaveLayouts: saveAllWidgetLayouts,
-      onUpdateGridHeight: updateGridMinHeight,
+      onSaveLayouts: saveLayouts,
+      onUpdateGridHeight: refreshGridHeight,
     })
   }
 
   function onWidgetResizeReset(widget: Widget) {
-    handleResizeReset(widget, widgets, gridRef, saveAllWidgetLayouts, updateGridMinHeight)
+    handleResizeReset(widget, widgets, gridRef, saveLayouts, refreshGridHeight)
   }
 
   function onWidgetAutoHeight(widget: Widget) {
-    toggleAutoHeight(widget, widgets, gridRef, saveAllWidgetLayouts, updateGridMinHeight)
+    toggleAutoHeight(widget, widgets, gridRef, saveLayouts, refreshGridHeight)
   }
 </script>
 
@@ -231,13 +186,13 @@
               {editingTitleValue}
               {draggingId}
               collapsed={widget.collapsed}
-              onCollapse={() => onToggleCollapse(widget)}
+              onCollapse={() => toggleCollapse(widget, onUpdate)}
               onTitleStartEdit={() => startTitleEdit(widget)}
-              onTitleSave={() => saveTitleEdit(widget)}
+              onTitleSave={() => onSaveTitleEdit(widget)}
               onTitleValueChange={(v) => { editingTitleValue = v }}
               onTitleKeydown={(e) => handleTitleKeydown(e, widget)}
               onEdit={() => { editingWidget = widget; showEditDialog = true }}
-              onDelete={() => onDeleteWidget(widget)}
+              onDelete={() => deleteWidget(widget, onUpdate)}
               onAutoHeight={() => onWidgetAutoHeight(widget)}
               onDragStart={(e) => onWidgetDragStart(e, widget)}
             />

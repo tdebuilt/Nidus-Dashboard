@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -11,6 +12,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
+	"github.com/tdebuilt/nidus/internal/database"
 	"github.com/tdebuilt/nidus/internal/models"
 )
 
@@ -418,7 +420,7 @@ func TestWidgetCascadeDeleteWithCategory(t *testing.T) {
 
 	// Widget should be gone (CASCADE)
 	got, err := h.DB.GetWidget(ctx, widget.ID)
-	if err != nil {
+	if err != nil && !errors.Is(err, database.ErrNotFound) {
 		t.Fatalf("error querying widget: %v", err)
 	}
 	if got != nil {

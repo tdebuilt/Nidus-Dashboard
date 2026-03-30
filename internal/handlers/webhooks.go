@@ -3,6 +3,7 @@ package handlers
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
@@ -45,6 +46,7 @@ func validateSignature(body []byte, secret, signature string) bool {
 func (h *WebhooksHandler) List(w http.ResponseWriter, r *http.Request) {
 	webhooks, err := h.DB.ListWebhooks(r.Context())
 	if err != nil {
+		slog.Error("webhooks: failed to list webhooks", "error", err)
 		writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "failed to list webhooks"})
 		return
 	}
@@ -75,16 +77,19 @@ func (h *WebhooksHandler) Create(w http.ResponseWriter, r *http.Request) {
 
 	secret, err := generateSecret()
 	if err != nil {
+		slog.Error("webhooks: failed to generate secret", "error", err)
 		writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "failed to generate secret"})
 		return
 	}
 
 	webhook, err := h.DB.CreateWebhook(r.Context(), req.Name, secret)
 	if err != nil {
+		slog.Error("webhooks: failed to create webhook", "name", req.Name, "error", err)
 		writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "failed to create webhook"})
 		return
 	}
 
+	slog.Info("webhooks: webhook created", "id", webhook.ID, "name", webhook.Name)
 	writeJSON(w, http.StatusCreated, models.CreateWebhookResponse{
 		ID:     webhook.ID,
 		Name:   webhook.Name,
@@ -119,9 +124,11 @@ func (h *WebhooksHandler) Update(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := h.DB.UpdateWebhook(r.Context(), id, req); err != nil {
+		slog.Error("webhooks: failed to update webhook", "id", id, "error", err)
 		writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "failed to update webhook"})
 		return
 	}
+	slog.Info("webhooks: webhook updated", "id", id)
 	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 }
 
@@ -141,9 +148,11 @@ func (h *WebhooksHandler) Delete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := h.DB.DeleteWebhook(r.Context(), id); err != nil {
+		slog.Error("webhooks: failed to delete webhook", "id", id, "error", err)
 		writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "failed to delete webhook"})
 		return
 	}
+	slog.Info("webhooks: webhook deleted", "id", id)
 	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 }
 
@@ -165,6 +174,7 @@ func (h *WebhooksHandler) ListActions(w http.ResponseWriter, r *http.Request) {
 	}
 	actions, err := h.DB.ListWebhookActions(r.Context(), id)
 	if err != nil {
+		slog.Error("webhooks: failed to list actions", "webhook_id", id, "error", err)
 		writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "failed to list actions"})
 		return
 	}
@@ -202,9 +212,11 @@ func (h *WebhooksHandler) CreateAction(w http.ResponseWriter, r *http.Request) {
 
 	action, err := h.DB.CreateWebhookAction(r.Context(), webhookID, req.ActionType, req.Config)
 	if err != nil {
+		slog.Error("webhooks: failed to create action", "webhook_id", webhookID, "action_type", req.ActionType, "error", err)
 		writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "failed to create action"})
 		return
 	}
+	slog.Info("webhooks: action created", "webhook_id", webhookID, "action_type", req.ActionType)
 	writeJSON(w, http.StatusCreated, action)
 }
 
@@ -225,9 +237,11 @@ func (h *WebhooksHandler) DeleteAction(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := h.DB.DeleteWebhookAction(r.Context(), actionID); err != nil {
+		slog.Error("webhooks: failed to delete action", "action_id", actionID, "error", err)
 		writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "failed to delete action"})
 		return
 	}
+	slog.Info("webhooks: action deleted", "action_id", actionID)
 	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 }
 
@@ -265,7 +279,13 @@ func (h *WebhooksHandler) Receive(w http.ResponseWriter, r *http.Request) {
 	}
 
 	webhook, err := h.DB.GetWebhook(r.Context(), id)
-	if err != nil {
+	if err != nil && !errors.Is(err, database.ErrNotFound) {
+		slog.Error("webhooks: database error fetching webhook", "id", id, "error", err)
+		writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "database error"})
+		return
+	}
+	if webhook == nil {
+		slog.Warn("webhooks: webhook not found for receive", "id", id)
 		writeJSON(w, http.StatusNotFound, models.ErrorResponse{Error: "webhook not found"})
 		return
 	}
@@ -282,6 +302,7 @@ func (h *WebhooksHandler) Receive(w http.ResponseWriter, r *http.Request) {
 
 	actions, err := h.DB.ListWebhookActions(r.Context(), id)
 	if err != nil {
+		slog.Error("webhooks: failed to load actions for receive", "webhook_id", id, "error", err)
 		writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "failed to load actions"})
 		return
 	}
@@ -290,6 +311,7 @@ func (h *WebhooksHandler) Receive(w http.ResponseWriter, r *http.Request) {
 		h.executeAction(r.Context(), action, body)
 	}
 
+	slog.Info("webhooks: webhook received and processed", "webhook_id", id, "actions", len(actions))
 	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 }
 

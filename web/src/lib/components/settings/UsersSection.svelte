@@ -64,6 +64,7 @@
             onclick={() => onResetUser(user.id, user.username)}
             class="rounded p-1 text-[var(--color-text-muted)] hover:text-[var(--color-primary)]"
             title={$t('users.resetUser')}
+            aria-label={$t('users.resetUser')}
           >
             <RotateCcw size={16} />
           </button>
@@ -71,6 +72,7 @@
             onclick={() => onDeleteUser(user.id, user.username)}
             class="rounded p-1 text-[var(--color-text-muted)] hover:text-[var(--color-danger)]"
             title={$t('common.delete')}
+            aria-label={$t('common.delete')}
           >
             <Trash2 size={16} />
           </button>
@@ -93,6 +95,7 @@
         onclick={() => onCopyResetLink(generatedResetCode)}
         class="rounded p-1 text-[var(--color-text-muted)] hover:text-[var(--color-primary)]"
         title={$t('users.copyResetLink')}
+        aria-label={$t('users.copyResetLink')}
       >
         <Copy size={16} />
       </button>

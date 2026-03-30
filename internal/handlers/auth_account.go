@@ -2,10 +2,13 @@ package handlers
 
 import (
 	"encoding/json"
+	"errors"
+	"log/slog"
 	"net/http"
 
 	"golang.org/x/crypto/bcrypt"
 
+	"github.com/tdebuilt/nidus/internal/database"
 	"github.com/tdebuilt/nidus/internal/models"
 )
 
@@ -30,6 +33,7 @@ func (h *AuthHandler) UpdateAccount(w http.ResponseWriter, r *http.Request) {
 
 	// Verify current password
 	if err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(req.CurrentPassword)); err != nil {
+		slog.Warn("account: incorrect current password", "user_id", user.ID, "ip", r.RemoteAddr)
 		writeJSON(w, http.StatusUnauthorized, models.ErrorResponse{Error: "incorrect current password"})
 		return
 	}
@@ -44,7 +48,7 @@ func (h *AuthHandler) UpdateAccount(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		existing, err := h.DB.GetUserByUsername(r.Context(), *req.Username)
-		if err != nil {
+		if err != nil && !errors.Is(err, database.ErrNotFound) {
 			writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "database error"})
 			return
 		}
@@ -86,16 +90,22 @@ func (h *AuthHandler) UpdateAccount(w http.ResponseWriter, r *http.Request) {
 	// Invalidate old JWTs and re-issue a new one
 	h.DB.IncrementTokenVersion(r.Context(), user.ID)
 	updatedUser, err := h.DB.GetUserByID(r.Context(), user.ID)
-	if err != nil || updatedUser == nil {
+	if err != nil && !errors.Is(err, database.ErrNotFound) {
+		writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "failed to refresh user"})
+		return
+	}
+	if updatedUser == nil {
 		writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "failed to refresh user"})
 		return
 	}
 
 	if err := h.issueJWTCookie(w, r, updatedUser); err != nil {
+		slog.Error("account: failed to issue JWT after update", "user_id", user.ID, "error", err)
 		writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "failed to generate token"})
 		return
 	}
 
+	slog.Info("account: updated", "user_id", user.ID, "changed_username", req.Username != nil, "changed_password", req.NewPassword != nil)
 	writeJSON(w, http.StatusOK, models.UpdateAccountResponse{
 		Message: "account updated",
 		User: models.User{

@@ -67,13 +67,13 @@
   </div>
   {#if !$isViewer}
     <div class="flex gap-1">
-      <button onclick={() => sendCommand('open_cover')} class="rounded p-1 hover:bg-[var(--color-border)]" title={$t('homeassistant.openCover')}>
+      <button onclick={() => sendCommand('open_cover')} class="rounded p-1 hover:bg-[var(--color-border)]" title={$t('homeassistant.openCover')} aria-label={$t('homeassistant.openCover')}>
         <ChevronUp size={16} class="text-[var(--color-text)]" />
       </button>
-      <button onclick={() => sendCommand('stop_cover')} class="rounded p-1 hover:bg-[var(--color-border)]" title={$t('homeassistant.stopCover')}>
+      <button onclick={() => sendCommand('stop_cover')} class="rounded p-1 hover:bg-[var(--color-border)]" title={$t('homeassistant.stopCover')} aria-label={$t('homeassistant.stopCover')}>
         <Square size={14} class="text-[var(--color-text)]" />
       </button>
-      <button onclick={() => sendCommand('close_cover')} class="rounded p-1 hover:bg-[var(--color-border)]" title={$t('homeassistant.closeCover')}>
+      <button onclick={() => sendCommand('close_cover')} class="rounded p-1 hover:bg-[var(--color-border)]" title={$t('homeassistant.closeCover')} aria-label={$t('homeassistant.closeCover')}>
         <ChevronDown size={16} class="text-[var(--color-text)]" />
       </button>
     </div>

@@ -4,6 +4,7 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"log/slog"
 	"net/http"
 	"strconv"
@@ -89,6 +90,7 @@ func (h *UsersHandler) UpdateRole(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := h.DB.UpdateUserRole(r.Context(), userID, req.Role); err != nil {
+		slog.Warn("users: role update failed, user not found", "user_id", userID)
 		writeJSON(w, http.StatusNotFound, models.ErrorResponse{Error: "user not found"})
 		return
 	}
@@ -98,6 +100,7 @@ func (h *UsersHandler) UpdateRole(w http.ResponseWriter, r *http.Request) {
 		slog.Warn("failed to increment token version", "user_id", userID, "error", err)
 	}
 
+	slog.Info("users: role updated", "user_id", userID, "new_role", req.Role)
 	writeJSON(w, http.StatusOK, map[string]string{"message": "role updated"})
 }
 
@@ -128,10 +131,12 @@ func (h *UsersHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := h.DB.DeleteUser(r.Context(), userID); err != nil {
+		slog.Warn("users: delete failed, user not found", "user_id", userID)
 		writeJSON(w, http.StatusNotFound, models.ErrorResponse{Error: "user not found"})
 		return
 	}
 
+	slog.Info("users: deleted", "user_id", userID)
 	writeJSON(w, http.StatusOK, map[string]string{"message": "user deleted"})
 }
 
@@ -267,18 +272,19 @@ func (h *UsersHandler) Register(w http.ResponseWriter, r *http.Request) {
 
 	// Check invitation
 	inv, err := h.DB.GetInvitationByCode(r.Context(), req.Code)
-	if err != nil {
+	if err != nil && !errors.Is(err, database.ErrNotFound) {
 		writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "database error"})
 		return
 	}
 	if inv == nil {
+		slog.Warn("register: invalid or expired invitation code", "ip", r.RemoteAddr)
 		writeJSON(w, http.StatusBadRequest, models.ErrorResponse{Error: "invalid or expired invitation code"})
 		return
 	}
 
 	// Check username not taken
 	existing, err := h.DB.GetUserByUsername(r.Context(), req.Username)
-	if err != nil {
+	if err != nil && !errors.Is(err, database.ErrNotFound) {
 		writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "database error"})
 		return
 	}
@@ -307,6 +313,7 @@ func (h *UsersHandler) Register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	slog.Info("register: new user created", "user_id", userID, "username", req.Username, "role", inv.Role)
 	writeJSON(w, http.StatusCreated, models.SetupResponse{
 		Message: "account created",
 		User: models.User{
@@ -335,7 +342,11 @@ func (h *UsersHandler) CreateReset(w http.ResponseWriter, r *http.Request) {
 
 	// Verify target user exists
 	target, err := h.DB.GetUserByID(r.Context(), userID)
-	if err != nil || target == nil {
+	if err != nil && !errors.Is(err, database.ErrNotFound) {
+		writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "database error"})
+		return
+	}
+	if target == nil {
 		writeJSON(w, http.StatusNotFound, models.ErrorResponse{Error: "user not found"})
 		return
 	}
@@ -380,18 +391,23 @@ func (h *UsersHandler) ResetPassword(w http.ResponseWriter, r *http.Request) {
 
 	// Validate reset code
 	reset, err := h.DB.GetPasswordResetByCode(r.Context(), req.Code)
-	if err != nil {
+	if err != nil && !errors.Is(err, database.ErrNotFound) {
 		writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "database error"})
 		return
 	}
 	if reset == nil {
+		slog.Warn("password-reset: invalid or expired code", "ip", r.RemoteAddr)
 		writeJSON(w, http.StatusBadRequest, models.ErrorResponse{Error: "invalid or expired reset code"})
 		return
 	}
 
 	// Verify user still exists
 	user, err := h.DB.GetUserByID(r.Context(), reset.UserID)
-	if err != nil || user == nil {
+	if err != nil && !errors.Is(err, database.ErrNotFound) {
+		writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "database error"})
+		return
+	}
+	if user == nil {
 		writeJSON(w, http.StatusBadRequest, models.ErrorResponse{Error: "user not found"})
 		return
 	}
@@ -428,5 +444,6 @@ func (h *UsersHandler) ResetPassword(w http.ResponseWriter, r *http.Request) {
 		slog.Warn("failed to mark password reset as used", "error", err)
 	}
 
+	slog.Info("password-reset: completed", "user_id", user.ID)
 	writeJSON(w, http.StatusOK, map[string]string{"message": "password reset successful"})
 }

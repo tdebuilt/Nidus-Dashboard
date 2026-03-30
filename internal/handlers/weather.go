@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"log/slog"
 	"net/http"
 
 	"github.com/tdebuilt/nidus/internal/cache"
@@ -65,6 +66,7 @@ func (h *WeatherHandler) GetWeather(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err != nil {
+		slog.Error("weather: failed to fetch weather", "error", err)
 		writeJSON(w, http.StatusBadGateway, map[string]string{"error": "failed to fetch weather: " + err.Error()})
 		return
 	}
