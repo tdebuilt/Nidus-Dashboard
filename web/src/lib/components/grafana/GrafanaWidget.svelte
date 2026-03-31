@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { untrack } from 'svelte'
   import { Settings, AlertCircle } from 'lucide-svelte'
   import { api } from '../../api/client'
   import { t } from '../../i18n'
@@ -60,10 +61,12 @@
 
   $effect(() => {
     if (active && panels.length > 0) {
-      fetchEmbedUrls()
+      untrack(() => { fetchEmbedUrls() })
     } else if (panels.length === 0) {
-      error = 'not_configured'
-      loading = false
+      untrack(() => {
+        error = 'not_configured'
+        loading = false
+      })
     }
   })
 </script>

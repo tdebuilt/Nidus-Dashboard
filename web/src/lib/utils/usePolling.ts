@@ -1,3 +1,4 @@
+import { untrack } from 'svelte'
 import { pollingInterval as defaultPollingStore } from '../stores/polling'
 
 type Subscribable = {
@@ -25,7 +26,7 @@ export function usePolling(opts: UsePollingOptions) {
     if (running) return
     running = true
 
-    opts.fetchFn()
+    untrack(() => { opts.fetchFn() })
 
     if (opts.fixedIntervalMs != null) {
       interval = setInterval(opts.fetchFn, opts.fixedIntervalMs)

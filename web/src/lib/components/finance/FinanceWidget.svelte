@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { untrack } from 'svelte'
   import { Loader2, Settings, TrendingUp, TrendingDown, Minus } from 'lucide-svelte'
   import { api } from '../../api/client'
   import { toasts } from '../../stores/toast'
@@ -136,7 +137,7 @@
   const symbolsKey = $derived(symbols.join(','))
   $effect(() => {
     void symbolsKey
-    fetchData()
+    untrack(() => { fetchData() })
   })
 </script>
 
