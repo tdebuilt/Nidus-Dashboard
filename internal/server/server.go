@@ -11,6 +11,7 @@ import (
 	"os"
 	"os/signal"
 	"strconv"
+	"sync"
 	"syscall"
 	"time"
 
@@ -20,6 +21,7 @@ import (
 	"github.com/tdebuilt/nidus/internal/database"
 	nidusmw "github.com/tdebuilt/nidus/internal/middleware"
 	"github.com/tdebuilt/nidus/internal/services/go2rtc"
+	"github.com/tdebuilt/nidus/internal/services/notifications"
 	nidusws "github.com/tdebuilt/nidus/internal/websocket"
 )
 
@@ -28,19 +30,24 @@ const (
 	serverWriteTimeout   = 15 * time.Second
 	serverIdleTimeout    = 60 * time.Second
 	shutdownTimeout      = 10 * time.Second
-	defaultCacheTTL      = 30 * time.Second
-	cacheCleanupInterval = time.Minute
-	authRateLimitWindow  = 15 * time.Minute
+	defaultCacheTTL             = 30 * time.Second
+	cacheCleanupInterval        = time.Minute
+	authRateLimitWindow         = 15 * time.Minute
+	dockerBgOpsShutdownTimeout  = 30 * time.Second
 )
 
 // Server holds all shared dependencies for the Nidus server.
 type Server struct {
 	AppVersion      string
+	BaseURL         string
 	Go2RTCManager   *go2rtc.Manager
 	ServiceCache    *cache.Cache
 	AuthRateLimiter *nidusmw.RateLimiter
 	WSHub           *nidusws.Hub
+	NotifSender     *notifications.Sender
 	StaticFiles     fs.FS
+	// DockerBgOps tracks background Docker goroutines for graceful shutdown.
+	DockerBgOps sync.WaitGroup
 }
 
 // NewServer creates a Server with default values for cache, hub, and rate limiter.
@@ -50,6 +57,7 @@ func NewServer(version string) *Server {
 		ServiceCache:    cache.New(defaultCacheTTL, cacheCleanupInterval),
 		AuthRateLimiter: newAuthRateLimiter(),
 		WSHub:           nidusws.NewHub(),
+		NotifSender:     notifications.NewSender(),
 	}
 }
 
@@ -65,6 +73,7 @@ func newAuthRateLimiter() *nidusmw.RateLimiter {
 
 // New creates a chi router with all routes configured.
 func New(srv *Server, cfg config.Config, db *database.DB) *chi.Mux {
+	srv.BaseURL = cfg.Server.BaseURL
 	r := chi.NewRouter()
 	registerMiddleware(r, srv, db)
 	go srv.WSHub.Run()
@@ -89,7 +98,7 @@ func NewFromEmbed(srv *Server, cfg config.Config, db *database.DB, staticFS embe
 func healthHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	w.Write([]byte(`{"status":"ok"}`))
+	_, _ = w.Write([]byte(`{"status":"ok"}`))
 }
 
 func versionHandler(srv *Server) http.HandlerFunc {
@@ -163,4 +172,16 @@ func stopServices(srv *Server) {
 	srv.WSHub.Stop()
 	srv.ServiceCache.Stop()
 	srv.AuthRateLimiter.Stop()
+
+	// Wait for background Docker operations (recreate, stack update) with a timeout.
+	done := make(chan struct{})
+	go func() {
+		srv.DockerBgOps.Wait()
+		close(done)
+	}()
+	select {
+	case <-done:
+	case <-time.After(dockerBgOpsShutdownTimeout):
+		slog.Warn("timed out waiting for background Docker operations")
+	}
 }

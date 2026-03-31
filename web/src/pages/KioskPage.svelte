@@ -48,7 +48,8 @@
   async function loadWidgets(categoryId: number) {
     try {
       widgets[categoryId] = await api.get<Widget[]>(`/api/categories/${categoryId}/widgets`)
-    } catch {
+    } catch (e) {
+      console.error('kiosk: failed to load widgets', categoryId, e)
       widgets[categoryId] = []
     }
   }

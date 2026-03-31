@@ -25,11 +25,12 @@ async function loadThemes(set: SetFn) {
         if (typeof theme !== 'string') {
           registerTheme(theme)
         }
-      } catch {
-        // skip invalid themes
+      } catch (e) {
+        console.error('customThemes: failed to parse theme', record.name, e)
       }
     }
-  } catch {
+  } catch (e) {
+    console.error('customThemes: failed to load themes', e)
     set([])
   }
 }
@@ -47,7 +48,8 @@ async function createThemeRecord(
     }
     update(list => [...list, record])
     return record
-  } catch {
+  } catch (e) {
+    console.error('customThemes: failed to create theme', e)
     return null
   }
 }
@@ -66,7 +68,8 @@ async function updateThemeRecord(
     }
     update(list => list.map(t => t.id === id ? { ...t, name, theme_json: themeJSON } : t))
     return true
-  } catch {
+  } catch (e) {
+    console.error('customThemes: failed to update theme', id, e)
     return false
   }
 }
@@ -81,7 +84,8 @@ async function removeThemeRecord(
     unregisterTheme(themeId)
     update(list => list.filter(t => t.id !== id))
     return true
-  } catch {
+  } catch (e) {
+    console.error('customThemes: failed to remove theme', id, e)
     return false
   }
 }

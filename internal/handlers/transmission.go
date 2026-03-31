@@ -6,9 +6,6 @@ import (
 	"errors"
 	"log/slog"
 	"net/http"
-	"strconv"
-
-	"github.com/go-chi/chi/v5"
 
 	"github.com/tdebuilt/nidus/internal/cache"
 	"github.com/tdebuilt/nidus/internal/crypto"
@@ -172,9 +169,8 @@ func (h *TransmissionHandler) AddTorrent(w http.ResponseWriter, r *http.Request)
 // @Router /transmission/torrents/{id}/start [post]
 // @Security BearerAuth
 func (h *TransmissionHandler) StartTorrent(w http.ResponseWriter, r *http.Request) {
-	id, err := strconv.Atoi(chi.URLParam(r, "id"))
-	if err != nil {
-		writeJSON(w, http.StatusBadRequest, models.ErrorResponse{Error: "invalid torrent ID"})
+	id, ok := parseIntIDParam(w, r, "id")
+	if !ok {
 		return
 	}
 
@@ -207,9 +203,8 @@ func (h *TransmissionHandler) StartTorrent(w http.ResponseWriter, r *http.Reques
 // @Router /transmission/torrents/{id}/stop [post]
 // @Security BearerAuth
 func (h *TransmissionHandler) StopTorrent(w http.ResponseWriter, r *http.Request) {
-	id, err := strconv.Atoi(chi.URLParam(r, "id"))
-	if err != nil {
-		writeJSON(w, http.StatusBadRequest, models.ErrorResponse{Error: "invalid torrent ID"})
+	id, ok := parseIntIDParam(w, r, "id")
+	if !ok {
 		return
 	}
 

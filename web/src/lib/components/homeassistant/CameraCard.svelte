@@ -91,9 +91,12 @@
   {/if}
   <!-- Resize handle -->
   {#if onResize}
-    <!-- svelte-ignore a11y_no_static_element_interactions -->
     <div
       class="absolute end-0 bottom-0 cursor-se-resize p-1"
+      role="slider"
+      tabindex="0"
+      aria-label={$t('homeassistant.resize')}
+      aria-valuenow={width ?? 0}
       onpointerdown={handlePointerDown}
       onpointermove={handlePointerMove}
       onpointerup={handlePointerUp}

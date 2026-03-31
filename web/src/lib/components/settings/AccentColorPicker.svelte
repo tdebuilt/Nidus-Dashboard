@@ -21,6 +21,7 @@
     <input type="color"
       value={accentColor || defaultColor}
       oninput={onChange}
+      aria-label={$t('settings.accentSection')}
       class="h-10 w-14 cursor-pointer rounded border border-[var(--color-border)] bg-transparent"
       data-testid="settings-accent-picker"
     />

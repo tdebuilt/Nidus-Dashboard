@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"encoding/json"
 	"log/slog"
 	"net/http"
@@ -136,52 +137,15 @@ func (h *UserPreferencesHandler) UpdatePreferences(w http.ResponseWriter, r *htt
 		writeJSON(w, http.StatusBadRequest, models.ErrorResponse{Error: "invalid request body"})
 		return
 	}
-
-	if req.RefreshInterval != nil {
-		if *req.RefreshInterval < 5 || *req.RefreshInterval > 300 {
-			writeJSON(w, http.StatusBadRequest, models.ErrorResponse{Error: "refresh_interval must be between 5 and 300 seconds"})
-			return
-		}
+	if req.RefreshInterval != nil && (*req.RefreshInterval < 5 || *req.RefreshInterval > 300) {
+		writeJSON(w, http.StatusBadRequest, models.ErrorResponse{Error: "refresh_interval must be between 5 and 300 seconds"})
+		return
 	}
 
-	if req.Theme != nil {
-		if err := h.DB.SaveUserPreference(r.Context(), userID, "setting_theme", *req.Theme); err != nil {
-			slog.Error("settings: failed to save theme preference", "user_id", userID, "error", err)
-			writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "failed to save preference"})
-			return
-		}
-	}
-	if req.Language != nil {
-		if err := h.DB.SaveUserPreference(r.Context(), userID, "setting_language", *req.Language); err != nil {
-			slog.Error("settings: failed to save language preference", "user_id", userID, "error", err)
-			writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "failed to save preference"})
-			return
-		}
-	}
-	if req.RefreshInterval != nil {
-		if err := h.DB.SaveUserPreference(r.Context(), userID, "setting_refresh_interval", strconv.Itoa(*req.RefreshInterval)); err != nil {
-			slog.Error("settings: failed to save refresh_interval preference", "user_id", userID, "error", err)
-			writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "failed to save preference"})
-			return
-		}
-	}
-	if req.AccentColor != nil {
-		if err := h.DB.SaveUserPreference(r.Context(), userID, "setting_accent_color", *req.AccentColor); err != nil {
-			slog.Error("settings: failed to save accent_color preference", "user_id", userID, "error", err)
-			writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "failed to save preference"})
-			return
-		}
-	}
-	if req.EnableKeyboardShortcuts != nil {
-		val := "false"
-		if *req.EnableKeyboardShortcuts {
-			val = "true"
-		}
-		if err := h.DB.SaveUserPreference(r.Context(), userID, "setting_keyboard_shortcuts", val); err != nil {
-			slog.Error("settings: failed to save keyboard_shortcuts preference", "user_id", userID, "error", err)
-			writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "failed to save preference"})
-			return
-		}
+	if err := h.savePreferences(r.Context(), userID, req); err != nil {
+		slog.Error("settings: failed to save preferences", "user_id", userID, "error", err)
+		writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "failed to save preference"})
+		return
 	}
 
 	prefs, err := h.DB.GetUserPreferences(r.Context(), userID)
@@ -192,4 +156,35 @@ func (h *UserPreferencesHandler) UpdatePreferences(w http.ResponseWriter, r *htt
 	}
 	slog.Info("settings: user preferences updated", "user_id", userID)
 	writeJSON(w, http.StatusOK, prefs)
+}
+
+// savePreferences persists each non-nil preference field.
+func (h *UserPreferencesHandler) savePreferences(ctx context.Context, userID int64, req models.UpdateUserPreferencesRequest) error {
+	entries := map[string]string{}
+	if req.Theme != nil {
+		entries["setting_theme"] = *req.Theme
+	}
+	if req.Language != nil {
+		entries["setting_language"] = *req.Language
+	}
+	if req.RefreshInterval != nil {
+		entries["setting_refresh_interval"] = strconv.Itoa(*req.RefreshInterval)
+	}
+	if req.AccentColor != nil {
+		entries["setting_accent_color"] = *req.AccentColor
+	}
+	if req.EnableKeyboardShortcuts != nil {
+		val := "false"
+		if *req.EnableKeyboardShortcuts {
+			val = "true"
+		}
+		entries["setting_keyboard_shortcuts"] = val
+	}
+	for key, val := range entries {
+		if err := h.DB.SaveUserPreference(ctx, userID, key, val); err != nil {
+			slog.Error("settings: failed to save preference", "user_id", userID, "key", key, "error", err)
+			return err
+		}
+	}
+	return nil
 }

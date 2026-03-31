@@ -72,12 +72,9 @@ func (c *Client) SetToken(token string) {
 	c.token = token
 }
 
-// GetTokenPrefix returns the first 10 chars of the token for debug logging.
-func (c *Client) GetTokenPrefix() string {
-	if len(c.token) > 10 {
-		return c.token[:10]
-	}
-	return c.token
+// HasToken reports whether the client has an authentication token set.
+func (c *Client) HasToken() bool {
+	return c.token != ""
 }
 
 // ListEnvironments returns all Portainer environments (endpoints).
@@ -264,7 +261,7 @@ func (c *Client) doRequest(req *http.Request, result any) error {
 
 	// 409 Conflict is OK for idempotent actions (e.g. "stack already running")
 	if resp.StatusCode == http.StatusConflict {
-		io.ReadAll(resp.Body)
+		_, _ = io.ReadAll(resp.Body)
 		return nil
 	}
 

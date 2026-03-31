@@ -28,8 +28,14 @@ type contextKey string
 const UserIDKey contextKey = "user_id"
 const UserRoleKey contextKey = "user_role"
 
+// userInfo holds the verified user identity extracted from a JWT token.
+type userInfo struct {
+	ID   int64
+	Role string
+}
+
 // Auth returns a middleware that validates JWT tokens from cookies or Bearer header.
-// On success, it injects the user_id into the request context.
+// On success, it injects the user_id and user_role into the request context.
 func Auth(db *database.DB) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -39,67 +45,110 @@ func Auth(db *database.DB) func(http.Handler) http.Handler {
 				return
 			}
 
-			jwtSecretHex, err := db.GetSystemSetting(r.Context(), "jwt_secret")
-			if err != nil || jwtSecretHex == "" {
-				writeErrorJSON(w, http.StatusInternalServerError, "JWT secret not configured")
-				return
-			}
-
-			jwtSecret, err := hex.DecodeString(jwtSecretHex)
+			jwtSecret, err := loadJWTSecret(r.Context(), db)
 			if err != nil {
-				writeErrorJSON(w, http.StatusInternalServerError, "invalid JWT secret")
+				slog.Error("auth: JWT secret error", "error", err)
+				writeErrorJSON(w, http.StatusInternalServerError, err.Error())
 				return
 			}
 
-			token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
-				if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-					return nil, jwt.ErrSignatureInvalid
+			claims, err := validateJWTToken(tokenString, jwtSecret)
+			if err != nil {
+				writeErrorJSON(w, http.StatusUnauthorized, err.Error())
+				return
+			}
+
+			info, err := verifyTokenUser(r.Context(), db, claims)
+			if err != nil {
+				var ae *authError
+				if errors.As(err, &ae) {
+					writeErrorJSON(w, http.StatusUnauthorized, ae.Error())
+				} else {
+					writeErrorJSON(w, http.StatusInternalServerError, err.Error())
 				}
-				return jwtSecret, nil
-			})
-			if err != nil || !token.Valid {
-				writeErrorJSON(w, http.StatusUnauthorized, "invalid or expired token")
 				return
 			}
 
-			claims, ok := token.Claims.(jwt.MapClaims)
-			if !ok {
-				writeErrorJSON(w, http.StatusUnauthorized, "invalid token claims")
-				return
-			}
-
-			userIDFloat, ok := claims["sub"].(float64)
-			if !ok {
-				writeErrorJSON(w, http.StatusUnauthorized, "invalid token claims")
-				return
-			}
-
-			userID := int64(userIDFloat)
-
-			// Verify user still exists
-			user, err := db.GetUserByID(r.Context(), userID)
-			if err != nil && !errors.Is(err, database.ErrNotFound) {
-				writeErrorJSON(w, http.StatusInternalServerError, "database error")
-				return
-			}
-			if user == nil {
-				writeErrorJSON(w, http.StatusUnauthorized, "user not found")
-				return
-			}
-
-			// Validate token version (invalidated on password/role change)
-			if tvClaim, ok := claims["tv"].(float64); ok {
-				if int64(tvClaim) != user.TokenVersion {
-					writeErrorJSON(w, http.StatusUnauthorized, "token revoked")
-					return
-				}
-			}
-
-			ctx := context.WithValue(r.Context(), UserIDKey, userID)
-			ctx = context.WithValue(ctx, UserRoleKey, user.Role)
+			ctx := context.WithValue(r.Context(), UserIDKey, info.ID)
+			ctx = context.WithValue(ctx, UserRoleKey, info.Role)
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	}
+}
+
+// loadJWTSecret retrieves and decodes the JWT secret from the database.
+func loadJWTSecret(ctx context.Context, db *database.DB) ([]byte, error) {
+	jwtSecretHex, err := db.GetSystemSetting(ctx, "jwt_secret")
+	if err != nil {
+		return nil, errors.New("JWT secret not configured")
+	}
+	if jwtSecretHex == "" {
+		return nil, errors.New("JWT secret not configured")
+	}
+
+	secret, err := hex.DecodeString(jwtSecretHex)
+	if err != nil {
+		return nil, errors.New("invalid JWT secret")
+	}
+	return secret, nil
+}
+
+// validateJWTToken parses and validates a JWT token string, returning the claims.
+// Returns a user-facing error message distinguishing expired vs invalid tokens.
+func validateJWTToken(tokenString string, jwtSecret []byte) (jwt.MapClaims, error) {
+	parser := jwt.NewParser(
+		jwt.WithValidMethods([]string{"HS256"}),
+		jwt.WithExpirationRequired(),
+	)
+	token, err := parser.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
+		return jwtSecret, nil
+	})
+	if err != nil {
+		if errors.Is(err, jwt.ErrTokenExpired) {
+			return nil, errors.New("token expired")
+		}
+		return nil, errors.New("invalid token")
+	}
+
+	claims, ok := token.Claims.(jwt.MapClaims)
+	if !ok {
+		return nil, errors.New("invalid token claims")
+	}
+	return claims, nil
+}
+
+// authError represents an authentication failure (401) with a user-facing message.
+// It is distinguished from server errors (500) via errors.As in the caller.
+type authError struct{ msg string }
+
+func (e *authError) Error() string { return e.msg }
+
+// verifyTokenUser checks that the user from the JWT claims still exists and that
+// the token version is current. Returns *authError for 401 cases (invalid claims,
+// user not found, token revoked) and plain errors for 500 cases (database error).
+func verifyTokenUser(ctx context.Context, db *database.DB, claims jwt.MapClaims) (*userInfo, error) {
+	userIDFloat, ok := claims["sub"].(float64)
+	if !ok {
+		return nil, &authError{"invalid token claims"}
+	}
+	userID := int64(userIDFloat)
+
+	user, err := db.GetUserByID(ctx, userID)
+	if errors.Is(err, database.ErrNotFound) || user == nil {
+		return nil, &authError{"user not found"}
+	}
+	if err != nil {
+		return nil, errors.New("database error")
+	}
+
+	// Validate token version (invalidated on password/role change)
+	if tvClaim, ok := claims["tv"].(float64); ok {
+		if int64(tvClaim) != user.TokenVersion {
+			return nil, &authError{"token revoked"}
+		}
+	}
+
+	return &userInfo{ID: userID, Role: user.Role}, nil
 }
 
 // extractToken gets the JWT token from cookie or Authorization Bearer header.

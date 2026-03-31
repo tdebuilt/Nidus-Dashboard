@@ -11,7 +11,8 @@ function createPollingStore() {
       const prefs = await api.get<{ refresh_interval: number }>('/api/preferences')
       const interval = prefs?.refresh_interval ?? 30
       set(Math.max(5, interval) * 1000)
-    } catch {
+    } catch (e) {
+      console.error('polling: failed to load interval', e)
       set(DEFAULT_INTERVAL)
     }
   }
@@ -20,8 +21,8 @@ function createPollingStore() {
     set(seconds * 1000)
     try {
       await api.put('/api/preferences', { refresh_interval: seconds })
-    } catch {
-      // Keep local value even if save fails
+    } catch (e) {
+      console.error('polling: failed to save interval', e)
     }
   }
 

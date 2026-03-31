@@ -151,9 +151,9 @@
 
 <!-- Fullscreen backdrop -->
 {#if fullscreen}
+  <!-- svelte-ignore a11y_no_static_element_interactions -->
   <div
     class="fixed inset-0 z-50 bg-black/95"
-    role="presentation"
     ondblclick={toggleFullscreen}
   ></div>
 {/if}

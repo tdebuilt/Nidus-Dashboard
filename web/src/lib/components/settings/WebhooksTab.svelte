@@ -118,6 +118,7 @@
     {#if showAddWebhook}
       <div class="mb-3 rounded-lg border border-[var(--color-border)] p-3">
         <input type="text" bind:value={newWebhookName} placeholder={$t('webhooks.name')}
+          aria-label={$t('webhooks.name')}
           class="mb-2 w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-2 text-sm text-[var(--color-text)]"
           onkeydown={(e) => { if (e.key === 'Enter') createWebhook() }} />
         <button onclick={createWebhook}
@@ -190,12 +191,14 @@
                 {/if}
                 <div class="flex gap-2">
                   <select bind:value={newActionType}
+                    aria-label="Action type"
                     class="rounded border border-[var(--color-border)] bg-[var(--color-bg)] px-2 py-1 text-xs text-[var(--color-text)]">
                     <option value="notify">{$t('webhooks.actionNotify')}</option>
                     <option value="refresh_widget">{$t('webhooks.actionRefreshWidget')}</option>
                     <option value="invalidate_cache">{$t('webhooks.actionInvalidateCache')}</option>
                   </select>
                   <input type="text" bind:value={newActionConfig} placeholder={'{"provider_id": 1}'}
+                    aria-label="Action config"
                     class="flex-1 rounded border border-[var(--color-border)] bg-[var(--color-bg)] px-2 py-1 text-xs text-[var(--color-text)]" />
                   <button onclick={() => addAction(wh.id)}
                     class="rounded bg-[var(--color-primary)] px-2 py-1 text-xs text-white hover:bg-[var(--color-primary-hover)]"

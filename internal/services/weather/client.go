@@ -132,33 +132,39 @@ func convertCurrent(resp *owmCurrentResponse) CurrentWeather {
 	return cw
 }
 
+type dayData struct {
+	date    string
+	tempMin float64
+	tempMax float64
+	icon    string
+	desc    string
+	hum     int
+	wind    float64
+	count   int
+}
+
 // aggregateForecast groups 3-hour forecasts into daily summaries.
 func aggregateForecast(resp *owmForecastResponse) []ForecastDay {
-	type dayData struct {
-		date    string
-		tempMin float64
-		tempMax float64
-		icon    string
-		desc    string
-		hum     int
-		wind    float64
-		count   int
+	days, order := groupByDay(resp.List)
+	result := buildForecastDays(days, order, resp.List)
+	if len(result) > 5 {
+		result = result[:5]
 	}
+	return result
+}
 
+// groupByDay groups forecast items by date, tracking min/max temps and averages.
+func groupByDay(items []owmForecastItem) (map[string]*dayData, []string) {
 	days := make(map[string]*dayData)
 	var order []string
 
-	for _, item := range resp.List {
+	for _, item := range items {
 		t := time.Unix(item.Dt, 0)
 		date := t.Format("2006-01-02")
 
 		d, exists := days[date]
 		if !exists {
-			d = &dayData{
-				date:    date,
-				tempMin: item.Main.TempMin,
-				tempMax: item.Main.TempMax,
-			}
+			d = &dayData{date: date, tempMin: item.Main.TempMin, tempMax: item.Main.TempMax}
 			days[date] = d
 			order = append(order, date)
 		}
@@ -169,34 +175,29 @@ func aggregateForecast(resp *owmForecastResponse) []ForecastDay {
 		if item.Main.TempMax > d.tempMax {
 			d.tempMax = item.Main.TempMax
 		}
-
 		d.hum += item.Main.Humidity
 		d.wind += item.Wind.Speed
 		d.count++
 
 		// Use midday icon/description as representative
-		hour := t.Hour()
-		if hour >= 11 && hour <= 14 {
-			if len(item.Weather) > 0 {
-				d.icon = item.Weather[0].Icon
-				d.desc = item.Weather[0].Description
-			}
+		if hour := t.Hour(); hour >= 11 && hour <= 14 && len(item.Weather) > 0 {
+			d.icon = item.Weather[0].Icon
+			d.desc = item.Weather[0].Description
 		}
 	}
+	return days, order
+}
 
+// buildForecastDays converts grouped day data into ForecastDay slices.
+func buildForecastDays(days map[string]*dayData, order []string, items []owmForecastItem) []ForecastDay {
 	result := make([]ForecastDay, 0, len(order))
 	for _, date := range order {
 		d := days[date]
-		// Use first available icon if midday wasn't found
+		if d.count == 0 {
+			continue
+		}
 		if d.icon == "" {
-			for _, item := range resp.List {
-				t := time.Unix(item.Dt, 0)
-				if t.Format("2006-01-02") == date && len(item.Weather) > 0 {
-					d.icon = item.Weather[0].Icon
-					d.desc = item.Weather[0].Description
-					break
-				}
-			}
+			fillFallbackIcon(d, items)
 		}
 		result = append(result, ForecastDay{
 			Date:        d.date,
@@ -208,13 +209,19 @@ func aggregateForecast(resp *owmForecastResponse) []ForecastDay {
 			WindSpeed:   d.wind / float64(d.count),
 		})
 	}
-
-	// Limit to 5 days
-	if len(result) > 5 {
-		result = result[:5]
-	}
-
 	return result
+}
+
+// fillFallbackIcon uses the first available icon for a day when midday wasn't found.
+func fillFallbackIcon(d *dayData, items []owmForecastItem) {
+	for _, item := range items {
+		t := time.Unix(item.Dt, 0)
+		if t.Format("2006-01-02") == d.date && len(item.Weather) > 0 {
+			d.icon = item.Weather[0].Icon
+			d.desc = item.Weather[0].Description
+			return
+		}
+	}
 }
 
 func (c *Client) get(ctx context.Context, url string, result any) error {

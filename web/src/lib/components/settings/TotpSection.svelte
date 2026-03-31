@@ -85,6 +85,7 @@
       <p class="mb-3 text-xs text-[var(--color-text-muted)]">{$t('settings.totpSecret', { secret: totpSecret })}</p>
       <div class="flex items-center gap-2">
         <input type="text" bind:value={totpCode} placeholder={$t('settings.totpCodePlaceholder')} maxlength="6" inputmode="numeric"
+          aria-label={$t('settings.totpCodePlaceholder')}
           class="w-32 rounded-lg border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-2 text-center text-[var(--color-text)] outline-none"
           data-testid="totp-code-input" />
         <button onclick={handleTotpEnable}

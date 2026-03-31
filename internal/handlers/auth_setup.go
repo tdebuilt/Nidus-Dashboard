@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"encoding/json"
+	"fmt"
 	"log/slog"
 	"net/http"
 
@@ -24,7 +25,6 @@ import (
 // @Failure 500 {object} models.ErrorResponse "Server error"
 // @Router /auth/setup [post]
 func (h *AuthHandler) Setup(w http.ResponseWriter, r *http.Request) {
-	// Check if admin already exists
 	count, err := h.DB.CountUsers(r.Context())
 	if err != nil {
 		slog.Error("setup: database error counting users", "error", err)
@@ -37,32 +37,18 @@ func (h *AuthHandler) Setup(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Parse request
 	var req models.SetupRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		writeJSON(w, http.StatusBadRequest, models.ErrorResponse{Error: "invalid request body"})
 		return
 	}
 
-	// Validate
-	if req.Username == "" {
-		writeJSON(w, http.StatusBadRequest, models.ErrorResponse{Error: "username is required"})
-		return
-	}
-	if len(req.Password) < 8 {
-		writeJSON(w, http.StatusBadRequest, models.ErrorResponse{Error: "password must be at least 8 characters"})
-		return
-	}
-
-	// Hash password with bcrypt
-	hash, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
+	hash, err := validateSetupCredentials(req)
 	if err != nil {
-		slog.Error("setup: failed to hash password", "error", err)
-		writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "failed to hash password"})
+		writeHandlerError(w, err)
 		return
 	}
 
-	// Create user
 	userID, err := h.DB.CreateUser(r.Context(), req.Username, string(hash), models.RoleAdmin)
 	if err != nil {
 		slog.Error("setup: failed to create admin user", "username", req.Username, "error", err)
@@ -70,40 +56,49 @@ func (h *AuthHandler) Setup(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Generate JWT secret if not already set
-	if existing, _ := h.DB.GetSystemSetting(r.Context(), "jwt_secret"); existing == "" {
-		jwtSecret, err := crypto.GenerateKey()
-		if err != nil {
-			writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "failed to generate JWT secret"})
-			return
-		}
-		if err := h.DB.SetSystemSetting(r.Context(), "jwt_secret", jwtSecret); err != nil {
-			writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "failed to store JWT secret"})
-			return
-		}
+	if err := h.ensureSystemKey(r, "jwt_secret"); err != nil {
+		writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: sanitizeError(err)})
+		return
 	}
-
-	// Generate encryption key if not already set
-	if existing, _ := h.DB.GetSystemSetting(r.Context(), "encryption_key"); existing == "" {
-		encKey, err := crypto.GenerateKey()
-		if err != nil {
-			writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "failed to generate encryption key"})
-			return
-		}
-		if err := h.DB.SetSystemSetting(r.Context(), "encryption_key", encKey); err != nil {
-			writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "failed to store encryption key"})
-			return
-		}
-	}
-
-	user := models.User{
-		ID:       userID,
-		Username: req.Username,
+	if err := h.ensureSystemKey(r, "encryption_key"); err != nil {
+		writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: sanitizeError(err)})
+		return
 	}
 
 	slog.Info("setup: admin account created", "user_id", userID, "username", req.Username)
 	writeJSON(w, http.StatusCreated, models.SetupResponse{
 		Message: "admin account created",
-		User:    user,
+		User:    models.User{ID: userID, Username: req.Username},
 	})
+}
+
+// validateSetupCredentials validates username/password and returns the bcrypt hash.
+func validateSetupCredentials(req models.SetupRequest) ([]byte, error) {
+	if req.Username == "" {
+		return nil, &accountError{http.StatusBadRequest, "username is required"}
+	}
+	if len(req.Password) < 8 {
+		return nil, &accountError{http.StatusBadRequest, "password must be at least 8 characters"}
+	}
+	hash, err := bcrypt.GenerateFromPassword([]byte(req.Password), BcryptCost)
+	if err != nil {
+		slog.Error("setup: failed to hash password", "error", err)
+		return nil, &accountError{http.StatusInternalServerError, "failed to hash password"}
+	}
+	return hash, nil
+}
+
+// ensureSystemKey generates and stores a cryptographic key if not already set.
+func (h *AuthHandler) ensureSystemKey(r *http.Request, settingName string) error {
+	if existing, _ := h.DB.GetSystemSetting(r.Context(), settingName); existing != "" {
+		return nil
+	}
+	key, err := crypto.GenerateKey()
+	if err != nil {
+		return fmt.Errorf("failed to generate %s: %w", settingName, err)
+	}
+	if err := h.DB.SetSystemSetting(r.Context(), settingName, key); err != nil {
+		return fmt.Errorf("failed to store %s: %w", settingName, err)
+	}
+	return nil
 }

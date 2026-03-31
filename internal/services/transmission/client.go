@@ -194,12 +194,7 @@ func statusString(status int) string {
 }
 
 func (c *Client) doRPC(ctx context.Context, method string, args interface{}, result interface{}) error {
-	rpcReq := RPCRequest{
-		Method:    method,
-		Arguments: args,
-	}
-
-	data, err := json.Marshal(rpcReq)
+	data, err := json.Marshal(RPCRequest{Method: method, Arguments: args})
 	if err != nil {
 		return fmt.Errorf("marshaling RPC request: %w", err)
 	}
@@ -223,30 +218,34 @@ func (c *Client) doRPC(ctx context.Context, method string, args interface{}, res
 	}
 	defer resp.Body.Close()
 
+	return decodeRPCResponse(resp, result)
+}
+
+// decodeRPCResponse reads and validates the RPC response body.
+func decodeRPCResponse(resp *http.Response, result interface{}) error {
 	if resp.StatusCode == http.StatusUnauthorized {
+		_, _ = io.Copy(io.Discard, resp.Body)
 		return fmt.Errorf("unauthorized: invalid credentials")
 	}
-
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		bodyBytes, _ := io.ReadAll(resp.Body)
+		bodyBytes, readErr := io.ReadAll(resp.Body)
+		if readErr != nil {
+			return fmt.Errorf("unexpected status %d", resp.StatusCode)
+		}
 		return fmt.Errorf("unexpected status %d: %s", resp.StatusCode, string(bodyBytes))
 	}
-
 	var rpcResp RPCResponse
 	if err := json.NewDecoder(resp.Body).Decode(&rpcResp); err != nil {
 		return fmt.Errorf("decoding RPC response: %w", err)
 	}
-
 	if rpcResp.Result != "success" {
 		return fmt.Errorf("RPC error: %s", rpcResp.Result)
 	}
-
 	if result != nil && rpcResp.Arguments != nil {
 		if err := json.Unmarshal(rpcResp.Arguments, result); err != nil {
 			return fmt.Errorf("decoding arguments: %w", err)
 		}
 	}
-
 	return nil
 }
 

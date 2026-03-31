@@ -15,8 +15,8 @@ async function fetchStatuses(): Promise<void> {
       result[type] = reachable ? 'up' : 'down'
     }
     serviceStatuses.set(result)
-  } catch {
-    // Keep existing statuses on error
+  } catch (e) {
+    console.error('serviceStatus: failed to fetch statuses', e)
   }
 }
 

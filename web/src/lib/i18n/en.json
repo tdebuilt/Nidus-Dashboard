@@ -469,6 +469,7 @@
     "brightness": "Brightness",
     "stream": "Live stream",
     "snapshot": "Snapshot",
+    "resize": "Resize camera",
     "actionSuccess": "Action completed",
     "actionError": "Action failed",
     "light": "Light",

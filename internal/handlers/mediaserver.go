@@ -37,27 +37,7 @@ func (h *MediaServerHandler) getMediaClient(ctx context.Context, serverType stri
 		return nil, nil
 	}
 
-	// Decrypt credentials to get the token/API key
-	token := ""
-	if svc.Credentials != "" {
-		encKey, err := h.DB.GetSystemSetting(ctx, "encryption_key")
-		if err == nil && encKey != "" {
-			decrypted, err := crypto.Decrypt(svc.Credentials, encKey)
-			if err == nil {
-				var creds struct {
-					Token  string `json:"token"`
-					APIKey string `json:"api_key"`
-				}
-				if json.Unmarshal([]byte(decrypted), &creds) == nil {
-					if creds.Token != "" {
-						token = creds.Token
-					} else if creds.APIKey != "" {
-						token = creds.APIKey
-					}
-				}
-			}
-		}
-	}
+	token := h.extractServiceToken(ctx, svc.Credentials)
 
 	switch serverType {
 	case "plex":
@@ -67,6 +47,32 @@ func (h *MediaServerHandler) getMediaClient(ctx context.Context, serverType stri
 	default:
 		return nil, nil
 	}
+}
+
+// extractServiceToken decrypts credentials and returns the token or API key.
+func (h *MediaServerHandler) extractServiceToken(ctx context.Context, encrypted string) string {
+	if encrypted == "" {
+		return ""
+	}
+	encKey, err := h.DB.GetSystemSetting(ctx, "encryption_key")
+	if err != nil || encKey == "" {
+		return ""
+	}
+	decrypted, err := crypto.Decrypt(encrypted, encKey)
+	if err != nil {
+		return ""
+	}
+	var creds struct {
+		Token  string `json:"token"`
+		APIKey string `json:"api_key"`
+	}
+	if json.Unmarshal([]byte(decrypted), &creds) != nil {
+		return ""
+	}
+	if creds.Token != "" {
+		return creds.Token
+	}
+	return creds.APIKey
 }
 
 // GetSessions godoc
@@ -221,5 +227,5 @@ func (h *MediaServerHandler) ProxyImage(w http.ResponseWriter, r *http.Request) 
 		w.Header().Set("Content-Type", contentType)
 	}
 	w.Header().Set("Cache-Control", "public, max-age=3600")
-	w.Write(body)
+	_, _ = w.Write(body)
 }

@@ -11,21 +11,10 @@ import (
 // It handles VEVENT blocks with DTSTART, DTEND, SUMMARY, DESCRIPTION, LOCATION.
 // Recurring events (RRULE) are not supported in this version.
 func ParseICal(data string, from, to time.Time) ([]parsedEvent, error) {
-	scanner := bufio.NewScanner(strings.NewReader(data))
+	lines := unfoldICalLines(data)
 	var events []parsedEvent
 	var current *parsedEvent
 	inEvent := false
-
-	// Handle line unfolding (RFC 5545 §3.1): lines starting with space/tab are continuations
-	var lines []string
-	for scanner.Scan() {
-		line := scanner.Text()
-		if len(line) > 0 && (line[0] == ' ' || line[0] == '\t') && len(lines) > 0 {
-			lines[len(lines)-1] += line[1:]
-		} else {
-			lines = append(lines, line)
-		}
-	}
 
 	for _, line := range lines {
 		line = strings.TrimRight(line, "\r")
@@ -35,57 +24,78 @@ func ParseICal(data string, from, to time.Time) ([]parsedEvent, error) {
 			current = &parsedEvent{}
 			continue
 		}
-
 		if line == "END:VEVENT" && inEvent {
 			inEvent = false
-			if current.summary != "" && !current.dtStart.IsZero() {
-				// Filter by time range
-				if current.dtEnd.IsZero() {
-					if current.allDay {
-						current.dtEnd = current.dtStart.Add(24 * time.Hour)
-					} else {
-						current.dtEnd = current.dtStart.Add(time.Hour)
-					}
-				}
-				// Include event if it overlaps with our time range
-				if current.dtEnd.After(from) && current.dtStart.Before(to) {
-					events = append(events, *current)
-				}
+			if ev := finalizeEvent(current, from, to); ev != nil {
+				events = append(events, *ev)
 			}
 			current = nil
 			continue
 		}
-
 		if !inEvent || current == nil {
 			continue
 		}
-
-		// Parse property
-		key, value := splitICalLine(line)
-		switch {
-		case key == "SUMMARY":
-			current.summary = unescapeICal(value)
-		case key == "DESCRIPTION":
-			current.description = unescapeICal(value)
-		case key == "LOCATION":
-			current.location = unescapeICal(value)
-		case key == "UID":
-			current.uid = value
-		case strings.HasPrefix(key, "DTSTART"):
-			t, allDay, err := parseICalDate(key, value)
-			if err == nil {
-				current.dtStart = t
-				current.allDay = allDay
-			}
-		case strings.HasPrefix(key, "DTEND"):
-			t, _, err := parseICalDate(key, value)
-			if err == nil {
-				current.dtEnd = t
-			}
-		}
+		parseICalProperty(current, line)
 	}
 
 	return events, nil
+}
+
+// unfoldICalLines handles RFC 5545 §3.1 line unfolding (continuation lines).
+func unfoldICalLines(data string) []string {
+	scanner := bufio.NewScanner(strings.NewReader(data))
+	var lines []string
+	for scanner.Scan() {
+		line := scanner.Text()
+		if len(line) > 0 && (line[0] == ' ' || line[0] == '\t') && len(lines) > 0 {
+			lines[len(lines)-1] += line[1:]
+		} else {
+			lines = append(lines, line)
+		}
+	}
+	return lines
+}
+
+// finalizeEvent validates and filters a parsed event against the time range.
+func finalizeEvent(ev *parsedEvent, from, to time.Time) *parsedEvent {
+	if ev == nil || ev.summary == "" || ev.dtStart.IsZero() {
+		return nil
+	}
+	if ev.dtEnd.IsZero() {
+		if ev.allDay {
+			ev.dtEnd = ev.dtStart.Add(24 * time.Hour)
+		} else {
+			ev.dtEnd = ev.dtStart.Add(time.Hour)
+		}
+	}
+	if ev.dtEnd.After(from) && ev.dtStart.Before(to) {
+		return ev
+	}
+	return nil
+}
+
+// parseICalProperty parses a single iCal property line into the event.
+func parseICalProperty(ev *parsedEvent, line string) {
+	key, value := splitICalLine(line)
+	switch {
+	case key == "SUMMARY":
+		ev.summary = unescapeICal(value)
+	case key == "DESCRIPTION":
+		ev.description = unescapeICal(value)
+	case key == "LOCATION":
+		ev.location = unescapeICal(value)
+	case key == "UID":
+		ev.uid = value
+	case strings.HasPrefix(key, "DTSTART"):
+		if t, allDay, err := parseICalDate(key, value); err == nil {
+			ev.dtStart = t
+			ev.allDay = allDay
+		}
+	case strings.HasPrefix(key, "DTEND"):
+		if t, _, err := parseICalDate(key, value); err == nil {
+			ev.dtEnd = t
+		}
+	}
 }
 
 // splitICalLine splits "KEY;PARAM=val:value" into (key with params, value).
@@ -105,18 +115,7 @@ func parseICalDate(key, value string) (time.Time, bool, error) {
 	// Check for VALUE=DATE (all-day event)
 	isDate := strings.Contains(key, "VALUE=DATE") && !strings.Contains(key, "VALUE=DATE-TIME")
 
-	// Extract TZID if present
-	var loc *time.Location
-	if strings.Contains(key, "TZID=") {
-		for _, param := range strings.Split(key, ";") {
-			if strings.HasPrefix(param, "TZID=") {
-				tzName := strings.TrimPrefix(param, "TZID=")
-				if l, err := time.LoadLocation(tzName); err == nil {
-					loc = l
-				}
-			}
-		}
-	}
+	loc := extractTZID(key)
 
 	if isDate || len(value) == 8 {
 		// Date only: 20240101
@@ -148,6 +147,23 @@ func parseICalDate(key, value string) (time.Time, bool, error) {
 	}
 
 	return t, false, nil
+}
+
+// extractTZID extracts a TZID time.Location from an iCal property key, if present.
+func extractTZID(key string) *time.Location {
+	if !strings.Contains(key, "TZID=") {
+		return nil
+	}
+	for _, param := range strings.Split(key, ";") {
+		if !strings.HasPrefix(param, "TZID=") {
+			continue
+		}
+		tzName := strings.TrimPrefix(param, "TZID=")
+		if loc, err := time.LoadLocation(tzName); err == nil {
+			return loc
+		}
+	}
+	return nil
 }
 
 // unescapeICal unescapes iCal text values.

@@ -112,17 +112,7 @@ func (h *ServicesHandler) List(w http.ResponseWriter, r *http.Request) {
 
 	responses := make([]models.ServiceResponse, 0, len(services))
 	for _, s := range services {
-		responses = append(responses, models.ServiceResponse{
-			ID:        s.ID,
-			Type:      s.Type,
-			Name:      s.Name,
-			URL:       s.URL,
-			Enabled:   s.Enabled,
-			Config:    s.Config,
-			HasCreds:  s.Credentials != "",
-			CreatedAt: s.CreatedAt,
-			UpdatedAt: s.UpdatedAt,
-		})
+		responses = append(responses, toServiceResponse(&s))
 	}
 
 	writeJSON(w, http.StatusOK, responses)
@@ -153,13 +143,8 @@ func (h *ServicesHandler) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if req.Name == "" {
-		writeJSON(w, http.StatusBadRequest, models.ErrorResponse{Error: "name is required"})
-		return
-	}
-	def := ServiceRegistry[serviceType]
-	if req.URL == "" && def.NeedsURL {
-		writeJSON(w, http.StatusBadRequest, models.ErrorResponse{Error: "url is required"})
+	if err := validateServiceRequest(req, serviceType); err != nil {
+		writeJSON(w, http.StatusBadRequest, models.ErrorResponse{Error: err.Error()})
 		return
 	}
 
@@ -168,21 +153,10 @@ func (h *ServicesHandler) Update(w http.ResponseWriter, r *http.Request) {
 		enabled = *req.Enabled
 	}
 
-	// Encrypt credentials if provided
-	encryptedCreds := ""
-	if req.Credentials != "" {
-		encKey, err := h.getEncryptionKey(r.Context())
-		if err != nil || encKey == "" {
-			slog.Error("services: encryption key not configured", "service_type", serviceType)
-			writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "encryption key not configured"})
-			return
-		}
-		encryptedCreds, err = crypto.Encrypt(req.Credentials, encKey)
-		if err != nil {
-			slog.Error("services: failed to encrypt credentials", "service_type", serviceType, "error", err)
-			writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "failed to encrypt credentials"})
-			return
-		}
+	encryptedCreds, err := h.encryptCredentials(r.Context(), req.Credentials, serviceType)
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: sanitizeError(err)})
+		return
 	}
 
 	svc, err := h.DB.UpsertService(r.Context(), serviceType, req.Name, req.URL, encryptedCreds, req.Config, enabled)
@@ -192,11 +166,23 @@ func (h *ServicesHandler) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Invalidate cached data for this service
 	h.invalidateServiceCache(serviceType)
-
 	slog.Info("services: service updated", "service_type", serviceType, "name", req.Name)
-	writeJSON(w, http.StatusOK, models.ServiceResponse{
+	writeJSON(w, http.StatusOK, toServiceResponse(svc))
+}
+
+func validateServiceRequest(req models.UpdateServiceRequest, serviceType string) error {
+	if req.Name == "" {
+		return fmt.Errorf("name is required")
+	}
+	if def := ServiceRegistry[serviceType]; req.URL == "" && def.NeedsURL {
+		return fmt.Errorf("url is required")
+	}
+	return nil
+}
+
+func toServiceResponse(svc *models.Service) models.ServiceResponse {
+	return models.ServiceResponse{
 		ID:        svc.ID,
 		Type:      svc.Type,
 		Name:      svc.Name,
@@ -206,7 +192,7 @@ func (h *ServicesHandler) Update(w http.ResponseWriter, r *http.Request) {
 		HasCreds:  svc.Credentials != "",
 		CreatedAt: svc.CreatedAt,
 		UpdatedAt: svc.UpdatedAt,
-	})
+	}
 }
 
 // Delete godoc
@@ -268,42 +254,31 @@ func (h *ServicesHandler) Test(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusNotFound, models.ErrorResponse{Error: "service not configured"})
 		return
 	}
-
 	if svc.URL == "" {
 		writeJSON(w, http.StatusBadRequest, models.ErrorResponse{Error: "service URL not configured"})
 		return
 	}
 
-	// Real connectivity test — HTTP GET to the service URL
-	testClient := &http.Client{Timeout: serviceTestTimeout}
-	testURL := svc.URL
+	writeJSON(w, http.StatusOK, testServiceConnectivity(svc.URL, serviceType))
+}
+
+// testServiceConnectivity probes a service URL and returns the result.
+func testServiceConnectivity(baseURL, serviceType string) models.TestServiceResponse {
+	testURL := baseURL
 	if def, ok := ServiceRegistry[serviceType]; ok && def.TestPath != "" {
 		testURL += def.TestPath
 	}
-
-	resp, err := testClient.Get(testURL)
+	client := &http.Client{Timeout: serviceTestTimeout}
+	resp, err := client.Get(testURL)
 	if err != nil {
-		writeJSON(w, http.StatusOK, models.TestServiceResponse{
-			Success: false,
-			Message: "connection failed: " + sanitizeError(err),
-		})
-		return
+		return models.TestServiceResponse{Success: false, Message: "connection failed: " + sanitizeError(err)}
 	}
-	resp.Body.Close()
-
-	// 401/403 means the server is reachable (auth issue is separate)
-	// 409 is normal for Transmission (session-id)
+	defer resp.Body.Close()
+	// 401/403 means reachable (auth issue is separate); 409 is normal for Transmission
 	if resp.StatusCode >= 200 && resp.StatusCode < 500 {
-		writeJSON(w, http.StatusOK, models.TestServiceResponse{
-			Success: true,
-			Message: fmt.Sprintf("connected successfully (HTTP %d)", resp.StatusCode),
-		})
-	} else {
-		writeJSON(w, http.StatusOK, models.TestServiceResponse{
-			Success: false,
-			Message: fmt.Sprintf("server returned HTTP %d", resp.StatusCode),
-		})
+		return models.TestServiceResponse{Success: true, Message: fmt.Sprintf("connected successfully (HTTP %d)", resp.StatusCode)}
 	}
+	return models.TestServiceResponse{Success: false, Message: fmt.Sprintf("server returned HTTP %d", resp.StatusCode)}
 }
 
 // BatchStatus returns connectivity status for all configured services.
@@ -328,34 +303,10 @@ func (h *ServicesHandler) BatchStatus(w http.ResponseWriter, r *http.Request) {
 		if svc.URL == "" {
 			continue
 		}
-
 		wg.Add(1)
 		go func(svcType, svcURL string) {
 			defer wg.Done()
-
-			testURL := svcURL
-			if def, ok := ServiceRegistry[svcType]; ok && def.TestPath != "" {
-				testURL += def.TestPath
-			}
-
-			req, err := http.NewRequestWithContext(ctx, http.MethodGet, testURL, nil)
-			if err != nil {
-				mu.Lock()
-				statuses[svcType] = false
-				mu.Unlock()
-				return
-			}
-
-			resp, err := client.Do(req)
-			if err != nil {
-				mu.Lock()
-				statuses[svcType] = false
-				mu.Unlock()
-				return
-			}
-			resp.Body.Close()
-
-			reachable := resp.StatusCode >= 200 && resp.StatusCode < 500
+			reachable := checkSingleService(ctx, client, svcType, svcURL)
 			mu.Lock()
 			statuses[svcType] = reachable
 			mu.Unlock()
@@ -364,6 +315,42 @@ func (h *ServicesHandler) BatchStatus(w http.ResponseWriter, r *http.Request) {
 
 	wg.Wait()
 	writeJSON(w, http.StatusOK, map[string]interface{}{"statuses": statuses})
+}
+
+// checkSingleService probes a service URL and returns whether it is reachable.
+func checkSingleService(ctx context.Context, client *http.Client, svcType, svcURL string) bool {
+	testURL := svcURL
+	if def, ok := ServiceRegistry[svcType]; ok && def.TestPath != "" {
+		testURL += def.TestPath
+	}
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, testURL, nil)
+	if err != nil {
+		return false
+	}
+	resp, err := client.Do(req)
+	if err != nil {
+		return false
+	}
+	defer resp.Body.Close()
+	return resp.StatusCode >= 200 && resp.StatusCode < 500
+}
+
+// encryptCredentials encrypts credentials if provided, returning the encrypted string.
+func (h *ServicesHandler) encryptCredentials(ctx context.Context, creds, serviceType string) (string, error) {
+	if creds == "" {
+		return "", nil
+	}
+	encKey, err := h.getEncryptionKey(ctx)
+	if err != nil || encKey == "" {
+		slog.Error("services: encryption key not configured", "service_type", serviceType)
+		return "", fmt.Errorf("encryption key not configured")
+	}
+	encrypted, err := crypto.Encrypt(creds, encKey)
+	if err != nil {
+		slog.Error("services: failed to encrypt credentials", "service_type", serviceType, "error", err)
+		return "", fmt.Errorf("failed to encrypt credentials")
+	}
+	return encrypted, nil
 }
 
 // invalidateServiceCache clears cached data for a given service type.

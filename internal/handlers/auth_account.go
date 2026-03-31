@@ -3,6 +3,7 @@ package handlers
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"log/slog"
 	"net/http"
 
@@ -26,82 +27,24 @@ func (h *AuthHandler) UpdateAccount(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if req.CurrentPassword == "" {
-		writeJSON(w, http.StatusBadRequest, models.ErrorResponse{Error: "current password is required"})
+	if err := verifyCurrentPassword(r, user, req.CurrentPassword); err != nil {
+		writeHandlerError(w, err)
 		return
 	}
 
-	// Verify current password
-	if err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(req.CurrentPassword)); err != nil {
-		slog.Warn("account: incorrect current password", "user_id", user.ID, "ip", r.RemoteAddr)
-		writeJSON(w, http.StatusUnauthorized, models.ErrorResponse{Error: "incorrect current password"})
+	newUsername, hasChanges, err := h.applyAccountChanges(r, user, &req)
+	if err != nil {
+		writeHandlerError(w, err)
 		return
 	}
-
-	hasChanges := false
-	newUsername := user.Username
-
-	// Update username if provided
-	if req.Username != nil && *req.Username != user.Username {
-		if *req.Username == "" {
-			writeJSON(w, http.StatusBadRequest, models.ErrorResponse{Error: "username cannot be empty"})
-			return
-		}
-		existing, err := h.DB.GetUserByUsername(r.Context(), *req.Username)
-		if err != nil && !errors.Is(err, database.ErrNotFound) {
-			writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "database error"})
-			return
-		}
-		if existing != nil {
-			writeJSON(w, http.StatusConflict, models.ErrorResponse{Error: "username already taken"})
-			return
-		}
-		if err := h.DB.UpdateUserUsername(r.Context(), user.ID, *req.Username); err != nil {
-			writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "failed to update username"})
-			return
-		}
-		newUsername = *req.Username
-		hasChanges = true
-	}
-
-	// Update password if provided
-	if req.NewPassword != nil {
-		if len(*req.NewPassword) < 8 {
-			writeJSON(w, http.StatusBadRequest, models.ErrorResponse{Error: "password must be at least 8 characters"})
-			return
-		}
-		hash, err := bcrypt.GenerateFromPassword([]byte(*req.NewPassword), bcrypt.DefaultCost)
-		if err != nil {
-			writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "failed to hash password"})
-			return
-		}
-		if err := h.DB.UpdateUserPassword(r.Context(), user.ID, string(hash)); err != nil {
-			writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "failed to update password"})
-			return
-		}
-		hasChanges = true
-	}
-
 	if !hasChanges {
 		writeJSON(w, http.StatusBadRequest, models.ErrorResponse{Error: "no changes provided"})
 		return
 	}
 
-	// Invalidate old JWTs and re-issue a new one
-	h.DB.IncrementTokenVersion(r.Context(), user.ID)
-	updatedUser, err := h.DB.GetUserByID(r.Context(), user.ID)
-	if err != nil && !errors.Is(err, database.ErrNotFound) {
-		writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "failed to refresh user"})
-		return
-	}
-	if updatedUser == nil {
-		writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "failed to refresh user"})
-		return
-	}
-
-	if err := h.issueJWTCookie(w, r, updatedUser); err != nil {
-		slog.Error("account: failed to issue JWT after update", "user_id", user.ID, "error", err)
-		writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "failed to generate token"})
+	updatedUser, err := h.refreshUserToken(w, r, user.ID)
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: sanitizeError(err)})
 		return
 	}
 
@@ -115,4 +58,79 @@ func (h *AuthHandler) UpdateAccount(w http.ResponseWriter, r *http.Request) {
 			TOTPEnabled: updatedUser.TOTPEnabled,
 		},
 	})
+}
+
+// verifyCurrentPassword checks that the provided password matches the user's hash.
+func verifyCurrentPassword(r *http.Request, user *models.User, password string) error {
+	if password == "" {
+		return &accountError{http.StatusBadRequest, "current password is required"}
+	}
+	if err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(password)); err != nil {
+		slog.Warn("account: incorrect current password", "user_id", user.ID, "ip", r.RemoteAddr)
+		return &accountError{http.StatusUnauthorized, "incorrect current password"}
+	}
+	return nil
+}
+
+type accountError struct {
+	Status  int
+	Message string
+}
+
+func (e *accountError) Error() string { return e.Message }
+
+// applyAccountChanges updates username and/or password, returning the new username and whether changes were made.
+func (h *AuthHandler) applyAccountChanges(r *http.Request, user *models.User, req *models.UpdateAccountRequest) (string, bool, error) {
+	hasChanges := false
+	newUsername := user.Username
+
+	if req.Username != nil && *req.Username != user.Username {
+		if *req.Username == "" {
+			return "", false, &accountError{http.StatusBadRequest, "username cannot be empty"}
+		}
+		existing, err := h.DB.GetUserByUsername(r.Context(), *req.Username)
+		if err != nil && !errors.Is(err, database.ErrNotFound) {
+			return "", false, &accountError{http.StatusInternalServerError, "database error"}
+		}
+		if existing != nil {
+			return "", false, &accountError{http.StatusConflict, "username already taken"}
+		}
+		if err := h.DB.UpdateUserUsername(r.Context(), user.ID, *req.Username); err != nil {
+			return "", false, &accountError{http.StatusInternalServerError, "failed to update username"}
+		}
+		newUsername = *req.Username
+		hasChanges = true
+	}
+
+	if req.NewPassword != nil {
+		if len(*req.NewPassword) < 8 {
+			return "", false, &accountError{http.StatusBadRequest, "password must be at least 8 characters"}
+		}
+		hash, err := bcrypt.GenerateFromPassword([]byte(*req.NewPassword), BcryptCost)
+		if err != nil {
+			return "", false, &accountError{http.StatusInternalServerError, "failed to hash password"}
+		}
+		if err := h.DB.UpdateUserPassword(r.Context(), user.ID, string(hash)); err != nil {
+			return "", false, &accountError{http.StatusInternalServerError, "failed to update password"}
+		}
+		hasChanges = true
+	}
+
+	return newUsername, hasChanges, nil
+}
+
+// refreshUserToken invalidates old JWTs, re-issues a new one, and returns the updated user.
+func (h *AuthHandler) refreshUserToken(w http.ResponseWriter, r *http.Request, userID int64) (*models.User, error) {
+	if err := h.DB.IncrementTokenVersion(r.Context(), userID); err != nil {
+		slog.Error("account: failed to increment token version", "user_id", userID, "error", err)
+	}
+	updatedUser, err := h.DB.GetUserByID(r.Context(), userID)
+	if err != nil || updatedUser == nil {
+		return nil, fmt.Errorf("failed to refresh user")
+	}
+	if err := h.issueJWTCookie(w, r, updatedUser); err != nil {
+		slog.Error("account: failed to issue JWT after update", "user_id", userID, "error", err)
+		return nil, fmt.Errorf("failed to generate token")
+	}
+	return updatedUser, nil
 }

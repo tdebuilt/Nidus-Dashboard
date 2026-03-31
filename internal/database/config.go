@@ -12,25 +12,9 @@ import (
 
 // ExportConfig exports the full configuration (categories, widgets, services, settings).
 func (db *DB) ExportConfig(ctx context.Context) (*models.ConfigExport, error) {
-	settings, err := db.GetSettings(ctx)
+	settings, categories, widgets, err := db.exportCoreData(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("exporting settings: %w", err)
-	}
-
-	categories, err := db.GetCategories(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("exporting categories: %w", err)
-	}
-	if categories == nil {
-		categories = []models.Category{}
-	}
-
-	widgets, err := db.GetAllWidgets(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("exporting widgets: %w", err)
-	}
-	if widgets == nil {
-		widgets = []models.Widget{}
+		return nil, err
 	}
 
 	rawServices, err := db.GetServices(ctx)
@@ -40,15 +24,9 @@ func (db *DB) ExportConfig(ctx context.Context) (*models.ConfigExport, error) {
 	services := make([]models.ServiceResponse, 0, len(rawServices))
 	for _, s := range rawServices {
 		services = append(services, models.ServiceResponse{
-			ID:        s.ID,
-			Type:      s.Type,
-			Name:      s.Name,
-			URL:       s.URL,
-			Enabled:   s.Enabled,
-			Config:    s.Config,
-			HasCreds:  s.Credentials != "",
-			CreatedAt: s.CreatedAt,
-			UpdatedAt: s.UpdatedAt,
+			ID: s.ID, Type: s.Type, Name: s.Name, URL: s.URL,
+			Enabled: s.Enabled, Config: s.Config, HasCreds: s.Credentials != "",
+			CreatedAt: s.CreatedAt, UpdatedAt: s.UpdatedAt,
 		})
 	}
 
@@ -63,49 +41,16 @@ func (db *DB) ExportConfig(ctx context.Context) (*models.ConfigExport, error) {
 
 // ExportConfigFull exports the full configuration including decrypted credentials.
 func (db *DB) ExportConfigFull(ctx context.Context, encryptionKey string) (*models.EncryptedExport, error) {
-	settings, err := db.GetSettings(ctx)
+	settings, categories, widgets, err := db.exportCoreData(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("exporting settings: %w", err)
-	}
-
-	categories, err := db.GetCategories(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("exporting categories: %w", err)
-	}
-	if categories == nil {
-		categories = []models.Category{}
-	}
-
-	widgets, err := db.GetAllWidgets(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("exporting widgets: %w", err)
-	}
-	if widgets == nil {
-		widgets = []models.Widget{}
+		return nil, err
 	}
 
 	rawServices, err := db.GetServices(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("exporting services: %w", err)
 	}
-	services := make([]models.ServiceExport, 0, len(rawServices))
-	for _, s := range rawServices {
-		creds := ""
-		if s.Credentials != "" {
-			decrypted, err := crypto.Decrypt(s.Credentials, encryptionKey)
-			if err == nil {
-				creds = decrypted
-			}
-		}
-		services = append(services, models.ServiceExport{
-			Type:        s.Type,
-			Name:        s.Name,
-			URL:         s.URL,
-			Credentials: creds,
-			Enabled:     s.Enabled,
-			Config:      s.Config,
-		})
-	}
+	services := decryptServiceExports(rawServices, encryptionKey)
 
 	return &models.EncryptedExport{
 		Version:    2,
@@ -114,6 +59,47 @@ func (db *DB) ExportConfigFull(ctx context.Context, encryptionKey string) (*mode
 		Widgets:    widgets,
 		Services:   services,
 	}, nil
+}
+
+// exportCoreData fetches settings, categories, and widgets for export.
+func (db *DB) exportCoreData(ctx context.Context) (models.Settings, []models.Category, []models.Widget, error) {
+	settings, err := db.GetSettings(ctx)
+	if err != nil {
+		return models.Settings{}, nil, nil, fmt.Errorf("exporting settings: %w", err)
+	}
+	categories, err := db.GetCategories(ctx)
+	if err != nil {
+		return models.Settings{}, nil, nil, fmt.Errorf("exporting categories: %w", err)
+	}
+	if categories == nil {
+		categories = []models.Category{}
+	}
+	widgets, err := db.GetAllWidgets(ctx)
+	if err != nil {
+		return models.Settings{}, nil, nil, fmt.Errorf("exporting widgets: %w", err)
+	}
+	if widgets == nil {
+		widgets = []models.Widget{}
+	}
+	return settings, categories, widgets, nil
+}
+
+// decryptServiceExports converts raw services to export format with decrypted credentials.
+func decryptServiceExports(services []models.Service, encryptionKey string) []models.ServiceExport {
+	exports := make([]models.ServiceExport, 0, len(services))
+	for _, s := range services {
+		creds := ""
+		if s.Credentials != "" {
+			if decrypted, err := crypto.Decrypt(s.Credentials, encryptionKey); err == nil {
+				creds = decrypted
+			}
+		}
+		exports = append(exports, models.ServiceExport{
+			Type: s.Type, Name: s.Name, URL: s.URL,
+			Credentials: creds, Enabled: s.Enabled, Config: s.Config,
+		})
+	}
+	return exports
 }
 
 // clearImportData deletes all existing categories, widgets, and services inside a transaction.

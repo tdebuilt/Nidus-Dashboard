@@ -41,8 +41,8 @@
 
 {#if open}
   <!-- svelte-ignore a11y_no_static_element_interactions -->
-  <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onclick={onClose} onkeydown={() => {}}>
-    <div class="mx-4 w-full max-w-md rounded-xl bg-[var(--color-bg-secondary)] p-6 shadow-xl animate-[dialogIn_0.2s_ease-out]" onclick={(e) => e.stopPropagation()} onkeydown={() => {}} role="dialog" aria-modal="true" use:focusTrap={{ onClose: onClose }}>
+  <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onclick={onClose} onkeydown={(e) => { if (e.key === 'Escape') onClose() }}>
+    <div class="mx-4 w-full max-w-md rounded-xl bg-[var(--color-bg-secondary)] p-6 shadow-xl animate-[dialogIn_0.2s_ease-out]" onclick={(e) => e.stopPropagation()} onkeydown={(e) => e.stopPropagation()} role="dialog" aria-modal="true" tabindex="-1" use:focusTrap={{ onClose: onClose }}>
       <div class="mb-4 flex items-center justify-between">
         <h2 class="text-lg font-semibold text-[var(--color-text)]">{$t('jdownloader.addLinks')}</h2>
         <button onclick={onClose} class="touch-action-btn rounded p-2 text-[var(--color-text-muted)] hover:text-[var(--color-text)]" aria-label={$t('common.close')}>

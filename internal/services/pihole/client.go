@@ -59,7 +59,10 @@ func (c *Client) authenticate(ctx context.Context) error {
 	}
 
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		bodyBytes, _ := io.ReadAll(resp.Body)
+		bodyBytes, readErr := io.ReadAll(resp.Body)
+		if readErr != nil {
+			return fmt.Errorf("auth failed with status %d", resp.StatusCode)
+		}
 		return fmt.Errorf("auth failed with status %d: %s", resp.StatusCode, string(bodyBytes))
 	}
 
@@ -209,7 +212,10 @@ func (c *Client) doRequest(req *http.Request, result any) (int, error) {
 	}
 
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		bodyBytes, _ := io.ReadAll(resp.Body)
+		bodyBytes, readErr := io.ReadAll(resp.Body)
+		if readErr != nil {
+			return resp.StatusCode, fmt.Errorf("unexpected status %d", resp.StatusCode)
+		}
 		return resp.StatusCode, fmt.Errorf("unexpected status %d: %s", resp.StatusCode, string(bodyBytes))
 	}
 

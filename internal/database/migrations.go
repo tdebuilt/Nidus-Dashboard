@@ -8,7 +8,6 @@ import (
 // migrate runs all database migrations in order.
 // Each migration is idempotent (uses IF NOT EXISTS).
 func (db *DB) Migrate(ctx context.Context) error {
-	// Create migrations tracking table
 	if _, err := db.ExecContext(ctx, `
 		CREATE TABLE IF NOT EXISTS migrations (
 			id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -23,47 +22,40 @@ func (db *DB) Migrate(ctx context.Context) error {
 		version int
 		sql     string
 	}{
-		{1, migrationV1},
-		{2, migrationV2},
-		{3, migrationV3},
-		{4, migrationV4},
-		{5, migrationV5},
-		{6, migrationV6},
-		{7, migrationV7},
-		{8, migrationV8},
-		{9, migrationV9},
-		{10, migrationV10},
-		{11, migrationV11},
-		{12, migrationV12},
-		{13, migrationV13},
-		{14, migrationV14},
+		{1, migrationV1}, {2, migrationV2}, {3, migrationV3}, {4, migrationV4},
+		{5, migrationV5}, {6, migrationV6}, {7, migrationV7}, {8, migrationV8},
+		{9, migrationV9}, {10, migrationV10}, {11, migrationV11}, {12, migrationV12},
+		{13, migrationV13}, {14, migrationV14},
 	}
 
 	for _, m := range migrations {
-		var count int
-		if err := db.QueryRowContext(ctx, "SELECT COUNT(*) FROM migrations WHERE version = ?", m.version).Scan(&count); err != nil {
-			return fmt.Errorf("checking migration %d: %w", m.version, err)
-		}
-		if count > 0 {
-			continue
-		}
-
-		if _, err := db.ExecContext(ctx, m.sql); err != nil {
-			return fmt.Errorf("running migration %d: %w", m.version, err)
-		}
-
-		// Post-migration Go logic for V12: generate slugs for existing categories
-		if m.version == 12 {
-			if err := db.migrateV12Slugs(ctx); err != nil {
-				return fmt.Errorf("post-migration V12 slugs: %w", err)
-			}
-		}
-
-		if _, err := db.ExecContext(ctx, "INSERT INTO migrations (version) VALUES (?)", m.version); err != nil {
-			return fmt.Errorf("recording migration %d: %w", m.version, err)
+		if err := db.applyMigration(ctx, m.version, m.sql); err != nil {
+			return err
 		}
 	}
+	return nil
+}
 
+// applyMigration runs a single migration if not already applied.
+func (db *DB) applyMigration(ctx context.Context, version int, sqlStr string) error {
+	var count int
+	if err := db.QueryRowContext(ctx, "SELECT COUNT(*) FROM migrations WHERE version = ?", version).Scan(&count); err != nil {
+		return fmt.Errorf("checking migration %d: %w", version, err)
+	}
+	if count > 0 {
+		return nil
+	}
+	if _, err := db.ExecContext(ctx, sqlStr); err != nil {
+		return fmt.Errorf("running migration %d: %w", version, err)
+	}
+	if version == 12 {
+		if err := db.migrateV12Slugs(ctx); err != nil {
+			return fmt.Errorf("post-migration V12 slugs: %w", err)
+		}
+	}
+	if _, err := db.ExecContext(ctx, "INSERT INTO migrations (version) VALUES (?)", version); err != nil {
+		return fmt.Errorf("recording migration %d: %w", version, err)
+	}
 	return nil
 }
 

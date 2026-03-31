@@ -61,20 +61,22 @@ type owmCurrentResponse struct {
 	Name string `json:"name"`
 }
 
+type owmForecastItem struct {
+	Dt   int64 `json:"dt"`
+	Main struct {
+		TempMin  float64 `json:"temp_min"`
+		TempMax  float64 `json:"temp_max"`
+		Humidity int     `json:"humidity"`
+	} `json:"main"`
+	Wind struct {
+		Speed float64 `json:"speed"`
+	} `json:"wind"`
+	Weather []struct {
+		Description string `json:"description"`
+		Icon        string `json:"icon"`
+	} `json:"weather"`
+}
+
 type owmForecastResponse struct {
-	List []struct {
-		Dt   int64 `json:"dt"`
-		Main struct {
-			TempMin  float64 `json:"temp_min"`
-			TempMax  float64 `json:"temp_max"`
-			Humidity int     `json:"humidity"`
-		} `json:"main"`
-		Wind struct {
-			Speed float64 `json:"speed"`
-		} `json:"wind"`
-		Weather []struct {
-			Description string `json:"description"`
-			Icon        string `json:"icon"`
-		} `json:"weather"`
-	} `json:"list"`
+	List []owmForecastItem `json:"list"`
 }

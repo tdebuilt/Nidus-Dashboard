@@ -44,7 +44,11 @@
     parsedConfig.entitySize === 'sm' ? 'sm' : parsedConfig.entitySize === 'lg' ? 'lg' : 'md'
   )
   const columns = $derived(getResponsiveColumns(parsedConfig, $breakpoint, 1))
-  let cameraSizes = $derived<Record<string, number>>(parsedConfig.cameraSizes ?? {})
+  let cameraSizes = $state<Record<string, number>>({})
+  const configCameraSizes = $derived<Record<string, number>>(parsedConfig.cameraSizes ?? {})
+  // cameraSizes is also mutated locally in handleCameraResize, so writable $derived won't work
+  // eslint-disable-next-line svelte/prefer-writable-derived
+  $effect(() => { cameraSizes = configCameraSizes })
 
   async function handleCameraResize(entityId: string, width: number) {
     cameraSizes = { ...cameraSizes, [entityId]: width }

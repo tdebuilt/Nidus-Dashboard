@@ -29,6 +29,40 @@ function createWebSocketStore() {
     return `${protocol}//${window.location.host}/api/ws`
   }
 
+  function attachSocketHandlers(ws: WebSocket) {
+    ws.onopen = () => {
+      set({ status: 'connected', reconnectAttempts: 0 })
+    }
+
+    ws.onclose = () => {
+      update((s) => ({ ...s, status: 'disconnected' }))
+      if (!intentionalClose) {
+        scheduleReconnect()
+      }
+    }
+
+    ws.onerror = () => {
+      ws.close()
+    }
+
+    ws.onmessage = (event) => {
+      try {
+        const msg = JSON.parse(event.data) as { type: string; payload?: unknown }
+        const typeHandlers = handlers.get(msg.type)
+        if (typeHandlers) {
+          typeHandlers.forEach((handler) => handler(msg.payload))
+        }
+
+        const wildcardHandlers = handlers.get('*')
+        if (wildcardHandlers) {
+          wildcardHandlers.forEach((handler) => handler(msg))
+        }
+      } catch {
+        // Ignore malformed messages
+      }
+    }
+  }
+
   function connect() {
     if (socket?.readyState === WebSocket.OPEN || socket?.readyState === WebSocket.CONNECTING) {
       return
@@ -44,39 +78,7 @@ function createWebSocketStore() {
       return
     }
 
-    socket.onopen = () => {
-      set({ status: 'connected', reconnectAttempts: 0 })
-    }
-
-    socket.onclose = () => {
-      update((s) => ({ ...s, status: 'disconnected' }))
-      if (!intentionalClose) {
-        scheduleReconnect()
-      }
-    }
-
-    socket.onerror = () => {
-      socket?.close()
-    }
-
-    socket.onmessage = (event) => {
-      try {
-        const msg = JSON.parse(event.data) as { type: string; payload?: unknown }
-        const typeHandlers = handlers.get(msg.type)
-        if (typeHandlers) {
-          typeHandlers.forEach((handler) => handler(msg.payload))
-        }
-
-        // Also notify wildcard handlers
-        const wildcardHandlers = handlers.get('*')
-        if (wildcardHandlers) {
-          wildcardHandlers.forEach((handler) => handler(msg))
-        }
-      } catch {
-        // Ignore malformed messages
-      }
-    }
-
+    attachSocketHandlers(socket)
   }
 
   function disconnect() {

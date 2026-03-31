@@ -82,65 +82,24 @@ func TestGetCurrentWeather(t *testing.T) {
 func TestAggregateForecast(t *testing.T) {
 	t.Parallel()
 	resp := &owmForecastResponse{
-		List: []struct {
-			Dt   int64 `json:"dt"`
-			Main struct {
-				TempMin  float64 `json:"temp_min"`
-				TempMax  float64 `json:"temp_max"`
-				Humidity int     `json:"humidity"`
-			} `json:"main"`
-			Wind struct {
-				Speed float64 `json:"speed"`
-			} `json:"wind"`
-			Weather []struct {
-				Description string `json:"description"`
-				Icon        string `json:"icon"`
-			} `json:"weather"`
-		}{
+		List: []owmForecastItem{
 			{
-				Dt: 1700006400, // 2023-11-15 00:00
-				Main: struct {
-					TempMin  float64 `json:"temp_min"`
-					TempMax  float64 `json:"temp_max"`
-					Humidity int     `json:"humidity"`
-				}{TempMin: 10, TempMax: 15, Humidity: 60},
-				Wind: struct {
-					Speed float64 `json:"speed"`
-				}{Speed: 2.0},
-				Weather: []struct {
-					Description string `json:"description"`
-					Icon        string `json:"icon"`
-				}{{Description: "clair", Icon: "01d"}},
+				Dt:      1700006400, // 2023-11-15 00:00
+				Main:    struct{ TempMin float64 `json:"temp_min"`; TempMax float64 `json:"temp_max"`; Humidity int `json:"humidity"` }{TempMin: 10, TempMax: 15, Humidity: 60},
+				Wind:    struct{ Speed float64 `json:"speed"` }{Speed: 2.0},
+				Weather: []struct{ Description string `json:"description"`; Icon string `json:"icon"` }{{Description: "clair", Icon: "01d"}},
 			},
 			{
-				Dt: 1700049600, // 2023-11-15 12:00
-				Main: struct {
-					TempMin  float64 `json:"temp_min"`
-					TempMax  float64 `json:"temp_max"`
-					Humidity int     `json:"humidity"`
-				}{TempMin: 12, TempMax: 18, Humidity: 50},
-				Wind: struct {
-					Speed float64 `json:"speed"`
-				}{Speed: 3.0},
-				Weather: []struct {
-					Description string `json:"description"`
-					Icon        string `json:"icon"`
-				}{{Description: "ensoleillé", Icon: "02d"}},
+				Dt:      1700049600, // 2023-11-15 12:00
+				Main:    struct{ TempMin float64 `json:"temp_min"`; TempMax float64 `json:"temp_max"`; Humidity int `json:"humidity"` }{TempMin: 12, TempMax: 18, Humidity: 50},
+				Wind:    struct{ Speed float64 `json:"speed"` }{Speed: 3.0},
+				Weather: []struct{ Description string `json:"description"`; Icon string `json:"icon"` }{{Description: "ensoleillé", Icon: "02d"}},
 			},
 			{
-				Dt: 1700092800, // 2023-11-16 00:00
-				Main: struct {
-					TempMin  float64 `json:"temp_min"`
-					TempMax  float64 `json:"temp_max"`
-					Humidity int     `json:"humidity"`
-				}{TempMin: 8, TempMax: 14, Humidity: 70},
-				Wind: struct {
-					Speed float64 `json:"speed"`
-				}{Speed: 4.0},
-				Weather: []struct {
-					Description string `json:"description"`
-					Icon        string `json:"icon"`
-				}{{Description: "pluie", Icon: "10d"}},
+				Dt:      1700092800, // 2023-11-16 00:00
+				Main:    struct{ TempMin float64 `json:"temp_min"`; TempMax float64 `json:"temp_max"`; Humidity int `json:"humidity"` }{TempMin: 8, TempMax: 14, Humidity: 70},
+				Wind:    struct{ Speed float64 `json:"speed"` }{Speed: 4.0},
+				Weather: []struct{ Description string `json:"description"`; Icon string `json:"icon"` }{{Description: "pluie", Icon: "10d"}},
 			},
 		},
 	}

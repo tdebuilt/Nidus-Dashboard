@@ -2,6 +2,7 @@ package notifications
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -22,14 +23,14 @@ func NewSender() *Sender {
 }
 
 // Send dispatches a notification to the given provider.
-func (s *Sender) Send(providerType, url, token, config, title, message string) error {
+func (s *Sender) Send(ctx context.Context, providerType, url, token, config, title, message string) error {
 	switch providerType {
 	case "gotify":
-		return s.sendGotify(url, token, title, message)
+		return s.sendGotify(ctx, url, token, title, message)
 	case "ntfy":
-		return s.sendNtfy(url, config, title, message)
+		return s.sendNtfy(ctx, url, config, title, message)
 	case "apprise":
-		return s.sendApprise(url, config, title, message)
+		return s.sendApprise(ctx, url, config, title, message)
 	default:
 		return fmt.Errorf("unknown provider type: %s", providerType)
 	}
@@ -37,17 +38,26 @@ func (s *Sender) Send(providerType, url, token, config, title, message string) e
 
 // sendGotify sends a notification via Gotify.
 // POST {url}/message?token={token}
-func (s *Sender) sendGotify(baseURL, token, title, message string) error {
+func (s *Sender) sendGotify(ctx context.Context, baseURL, token, title, message string) error {
 	baseURL = strings.TrimRight(baseURL, "/")
 	endpoint := fmt.Sprintf("%s/message?token=%s", baseURL, token)
 
-	body, _ := json.Marshal(map[string]any{
+	body, err := json.Marshal(map[string]any{
 		"title":    title,
 		"message":  message,
 		"priority": 5,
 	})
+	if err != nil {
+		return fmt.Errorf("marshal gotify payload: %w", err)
+	}
 
-	resp, err := s.httpClient.Post(endpoint, "application/json", bytes.NewReader(body))
+	req, err := http.NewRequestWithContext(ctx, "POST", endpoint, bytes.NewReader(body))
+	if err != nil {
+		return fmt.Errorf("gotify request creation failed: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := s.httpClient.Do(req)
 	if err != nil {
 		return fmt.Errorf("gotify request failed: %w", err)
 	}
@@ -61,14 +71,16 @@ func (s *Sender) sendGotify(baseURL, token, title, message string) error {
 
 // sendNtfy sends a notification via Ntfy.
 // POST {url}/{topic}
-func (s *Sender) sendNtfy(baseURL, configJSON, title, message string) error {
+func (s *Sender) sendNtfy(ctx context.Context, baseURL, configJSON, title, message string) error {
 	baseURL = strings.TrimRight(baseURL, "/")
 
 	var cfg struct {
 		Topic string `json:"topic"`
 	}
 	if configJSON != "" && configJSON != "{}" {
-		json.Unmarshal([]byte(configJSON), &cfg)
+		if err := json.Unmarshal([]byte(configJSON), &cfg); err != nil {
+			return fmt.Errorf("invalid ntfy config: %w", err)
+		}
 	}
 	if cfg.Topic == "" {
 		cfg.Topic = "nidus"
@@ -76,7 +88,7 @@ func (s *Sender) sendNtfy(baseURL, configJSON, title, message string) error {
 
 	endpoint := fmt.Sprintf("%s/%s", baseURL, cfg.Topic)
 
-	req, err := http.NewRequest("POST", endpoint, strings.NewReader(message))
+	req, err := http.NewRequestWithContext(ctx, "POST", endpoint, strings.NewReader(message))
 	if err != nil {
 		return fmt.Errorf("ntfy request creation failed: %w", err)
 	}
@@ -97,14 +109,16 @@ func (s *Sender) sendNtfy(baseURL, configJSON, title, message string) error {
 
 // sendApprise sends a notification via Apprise API.
 // POST {url}/notify
-func (s *Sender) sendApprise(baseURL, configJSON, title, message string) error {
+func (s *Sender) sendApprise(ctx context.Context, baseURL, configJSON, title, message string) error {
 	baseURL = strings.TrimRight(baseURL, "/")
 
 	var cfg struct {
 		URLs []string `json:"urls"`
 	}
 	if configJSON != "" && configJSON != "{}" {
-		json.Unmarshal([]byte(configJSON), &cfg)
+		if err := json.Unmarshal([]byte(configJSON), &cfg); err != nil {
+			return fmt.Errorf("invalid apprise config: %w", err)
+		}
 	}
 
 	payload := map[string]any{
@@ -116,10 +130,19 @@ func (s *Sender) sendApprise(baseURL, configJSON, title, message string) error {
 		payload["urls"] = strings.Join(cfg.URLs, ",")
 	}
 
-	body, _ := json.Marshal(payload)
+	body, err := json.Marshal(payload)
+	if err != nil {
+		return fmt.Errorf("marshal apprise payload: %w", err)
+	}
 	endpoint := fmt.Sprintf("%s/notify", baseURL)
 
-	resp, err := s.httpClient.Post(endpoint, "application/json", bytes.NewReader(body))
+	req, err := http.NewRequestWithContext(ctx, "POST", endpoint, bytes.NewReader(body))
+	if err != nil {
+		return fmt.Errorf("apprise request creation failed: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := s.httpClient.Do(req)
 	if err != nil {
 		return fmt.Errorf("apprise request failed: %w", err)
 	}

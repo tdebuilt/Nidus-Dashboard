@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"sync"
 	"time"
 )
@@ -27,7 +28,10 @@ type Client struct {
 	tokenT time.Time
 }
 
-const tokenTTL = 30 * time.Minute
+const (
+	tokenTTL        = 30 * time.Minute
+	contentTypeJPEG = "image/jpeg"
+)
 
 // NewClient creates a new Reolink camera client.
 // When insecureSkipTLS is true and no custom httpClient is provided,
@@ -67,7 +71,7 @@ func (c *Client) GetSnapshot(ctx context.Context) ([]byte, string, error) {
 	if token != "" && tokenAge < tokenTTL && scheme != "" {
 		body, err := c.snapWithToken(ctx, scheme, rs, token)
 		if err == nil && isJPEG(body) {
-			return body, "image/jpeg", nil
+			return body, contentTypeJPEG, nil
 		}
 		// Token may have expired, clear and retry
 		c.mu.Lock()
@@ -75,26 +79,37 @@ func (c *Client) GetSnapshot(ctx context.Context) ([]byte, string, error) {
 		c.mu.Unlock()
 	}
 
-	// If we know the scheme, try direct auth then token auth
-	if scheme != "" {
-		body, err := c.snapDirect(ctx, scheme, rs)
-		if err == nil && isJPEG(body) {
-			return body, "image/jpeg", nil
-		}
-		if err == nil {
-			data, ct, loginErr := c.loginAndSnap(ctx, scheme, rs)
-			if loginErr == nil {
-				return data, ct, nil
-			}
-		}
-		// Cached scheme failed completely, reset and rediscover
-		c.mu.Lock()
-		c.scheme = ""
-		c.token = ""
-		c.mu.Unlock()
+	// If we don't know the scheme, discover from scratch
+	if scheme == "" {
+		return c.discoverScheme(ctx, rs)
 	}
 
-	// Discover working scheme: try direct auth, then token auth per scheme
+	// Try direct auth with cached scheme
+	body, err := c.snapDirect(ctx, scheme, rs)
+	if err == nil && isJPEG(body) {
+		return body, contentTypeJPEG, nil
+	}
+
+	// Direct auth returned non-JPEG; try token-based auth
+	if err == nil {
+		data, ct, loginErr := c.loginAndSnap(ctx, scheme, rs)
+		if loginErr == nil {
+			return data, ct, nil
+		}
+	}
+
+	// Cached scheme failed completely, reset and rediscover
+	c.mu.Lock()
+	c.scheme = ""
+	c.token = ""
+	c.mu.Unlock()
+
+	return c.discoverScheme(ctx, rs)
+}
+
+// discoverScheme tries each scheme (http, https) with direct and token auth
+// to find a working combination, caching the result for future calls.
+func (c *Client) discoverScheme(ctx context.Context, rs int64) ([]byte, string, error) {
 	for _, s := range []string{"http", "https"} {
 		body, err := c.snapDirect(ctx, s, rs)
 		if err != nil {
@@ -104,9 +119,8 @@ func (c *Client) GetSnapshot(ctx context.Context) ([]byte, string, error) {
 			c.mu.Lock()
 			c.scheme = s
 			c.mu.Unlock()
-			return body, "image/jpeg", nil
+			return body, contentTypeJPEG, nil
 		}
-		// Not JPEG — try token auth on this scheme
 		data, ct, loginErr := c.loginAndSnap(ctx, s, rs)
 		if loginErr == nil {
 			c.mu.Lock()
@@ -114,15 +128,13 @@ func (c *Client) GetSnapshot(ctx context.Context) ([]byte, string, error) {
 			c.mu.Unlock()
 			return data, ct, nil
 		}
-		// Login failed on this scheme, try next
 	}
-
 	return nil, "", fmt.Errorf("snapshot failed: camera at %s unreachable", c.ip)
 }
 
 func (c *Client) snapDirect(ctx context.Context, scheme string, rs int64) ([]byte, error) {
 	u := fmt.Sprintf("%s://%s/cgi-bin/api.cgi?cmd=Snap&channel=%d&rs=%d&user=%s&password=%s",
-		scheme, c.ip, c.channel, rs, c.username, c.password)
+		scheme, c.ip, c.channel, rs, url.QueryEscape(c.username), url.QueryEscape(c.password))
 	return c.fetchSnapshot(ctx, u)
 }
 
@@ -143,7 +155,7 @@ func (c *Client) loginAndSnap(ctx context.Context, scheme string, rs int64) ([]b
 		return nil, "", fmt.Errorf("token snapshot failed: %w", err)
 	}
 	if isJPEG(body) {
-		return body, "image/jpeg", nil
+		return body, contentTypeJPEG, nil
 	}
 	return nil, "", fmt.Errorf("camera returned non-image response after token auth")
 }
@@ -234,5 +246,6 @@ func FormatRTSPURL(username, password, ip string, channel int, streamType string
 		streamType = "main"
 	}
 	ch := fmt.Sprintf("%02d", channel+1)
-	return fmt.Sprintf("rtsp://%s:%s@%s/Preview_%s_%s", username, password, ip, ch, streamType)
+	return fmt.Sprintf("rtsp://%s:%s@%s/Preview_%s_%s",
+		url.PathEscape(username), url.PathEscape(password), ip, ch, streamType)
 }

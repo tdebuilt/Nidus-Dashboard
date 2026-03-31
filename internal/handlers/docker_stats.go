@@ -6,8 +6,6 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/go-chi/chi/v5"
-
 	"github.com/tdebuilt/nidus/internal/models"
 	"github.com/tdebuilt/nidus/internal/services/portainer"
 )
@@ -23,9 +21,8 @@ import (
 // @Router /docker/environments/{envId}/stats [get]
 // @Security BearerAuth
 func (h *DockerHandler) ContainerStatsAll(w http.ResponseWriter, r *http.Request) {
-	envID, err := strconv.Atoi(chi.URLParam(r, "envId"))
-	if err != nil {
-		writeJSON(w, http.StatusBadRequest, models.ErrorResponse{Error: "invalid environment ID"})
+	envID, ok := parseIntIDParam(w, r, "envId")
+	if !ok {
 		return
 	}
 
@@ -77,10 +74,15 @@ func (h *DockerHandler) ContainerStatsAll(w http.ResponseWriter, r *http.Request
 // @Failure 502 {object} models.ErrorResponse
 // @Router /docker/environments/{envId}/updates [get]
 // @Security BearerAuth
+type updateInfo struct {
+	ContainerID string `json:"container_id"`
+	Image       string `json:"image"`
+	HasUpdate   bool   `json:"has_update"`
+}
+
 func (h *DockerHandler) CheckUpdates(w http.ResponseWriter, r *http.Request) {
-	envID, err := strconv.Atoi(chi.URLParam(r, "envId"))
-	if err != nil {
-		writeJSON(w, http.StatusBadRequest, models.ErrorResponse{Error: "invalid environment ID"})
+	envID, ok := parseIntIDParam(w, r, "envId")
+	if !ok {
 		return
 	}
 
@@ -104,62 +106,49 @@ func (h *DockerHandler) CheckUpdates(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	type UpdateInfo struct {
-		ContainerID string `json:"container_id"`
-		Image       string `json:"image"`
-		HasUpdate   bool   `json:"has_update"`
-	}
+	results := h.checkContainerUpdates(r, envID, client, containers)
+	h.Cache.Set(cacheKey, results)
+	writeJSON(w, http.StatusOK, results)
+}
 
+// checkContainerUpdates compares local image digests with remote registry digests for each container.
+func (h *DockerHandler) checkContainerUpdates(r *http.Request, envID int, client *portainer.Client, containers []portainer.Container) []updateInfo {
 	imageChecked := make(map[string]bool)
-	results := make([]UpdateInfo, 0)
+	results := make([]updateInfo, 0, len(containers))
 
 	for _, c := range containers {
 		imageName := c.Image
 		if checked, done := imageChecked[imageName]; done {
-			results = append(results, UpdateInfo{
-				ContainerID: c.ID,
-				Image:       imageName,
-				HasUpdate:   checked,
-			})
+			results = append(results, updateInfo{ContainerID: c.ID, Image: imageName, HasUpdate: checked})
 			continue
 		}
 
-		hasUpdate := false
-
-		localImg, err := client.InspectImage(r.Context(), envID, c.ImageID)
-		if err != nil {
-			imageChecked[imageName] = false
-			results = append(results, UpdateInfo{ContainerID: c.ID, Image: imageName})
-			continue
-		}
-
-		remoteInfo, err := client.GetDistribution(r.Context(), envID, imageName)
-		if err != nil {
-			imageChecked[imageName] = false
-			results = append(results, UpdateInfo{ContainerID: c.ID, Image: imageName})
-			continue
-		}
-
-		remoteDigest := remoteInfo.Descriptor.Digest
-		if remoteDigest != "" {
-			hasUpdate = true
-			for _, rd := range localImg.RepoDigests {
-				parts := strings.SplitN(rd, "@", 2)
-				if len(parts) == 2 && parts[1] == remoteDigest {
-					hasUpdate = false
-					break
-				}
-			}
-		}
-
+		hasUpdate := h.checkImageUpdate(r, envID, client, c.ImageID, imageName)
 		imageChecked[imageName] = hasUpdate
-		results = append(results, UpdateInfo{
-			ContainerID: c.ID,
-			Image:       imageName,
-			HasUpdate:   hasUpdate,
-		})
+		results = append(results, updateInfo{ContainerID: c.ID, Image: imageName, HasUpdate: hasUpdate})
 	}
+	return results
+}
 
-	h.Cache.Set(cacheKey, results)
-	writeJSON(w, http.StatusOK, results)
+// checkImageUpdate checks if a single image has a newer version in the remote registry.
+func (h *DockerHandler) checkImageUpdate(r *http.Request, envID int, client *portainer.Client, imageID, imageName string) bool {
+	localImg, err := client.InspectImage(r.Context(), envID, imageID)
+	if err != nil {
+		return false
+	}
+	remoteInfo, err := client.GetDistribution(r.Context(), envID, imageName)
+	if err != nil {
+		return false
+	}
+	remoteDigest := remoteInfo.Descriptor.Digest
+	if remoteDigest == "" {
+		return false
+	}
+	for _, rd := range localImg.RepoDigests {
+		parts := strings.SplitN(rd, "@", 2)
+		if len(parts) == 2 && parts[1] == remoteDigest {
+			return false
+		}
+	}
+	return true
 }

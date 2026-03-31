@@ -469,6 +469,7 @@
     "brightness": "Luminosité",
     "stream": "Flux vidéo",
     "snapshot": "Capture",
+    "resize": "Redimensionner la caméra",
     "actionSuccess": "Action effectuée",
     "actionError": "Échec de l'action",
     "light": "Lumière",

@@ -16,7 +16,8 @@ function createCategoriesStore() {
     try {
       const data = await api.get<Category[]>('/api/categories')
       set(data ?? [])
-    } catch {
+    } catch (e) {
+      console.error('categories: failed to load', e)
       set([])
     }
   }

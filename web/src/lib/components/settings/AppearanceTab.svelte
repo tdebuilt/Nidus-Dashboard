@@ -7,6 +7,7 @@
   import { getAllThemes, getTheme, builtinThemes } from '../../themes'
   import { openThemeEditor } from '../../stores/themeEditor'
   import { customThemes } from '../../stores/customThemes'
+  import { get } from 'svelte/store'
   import { t, translate } from '../../i18n'
   import ThemeSelector from './ThemeSelector.svelte'
   import AccentColorPicker from './AccentColorPicker.svelte'
@@ -19,17 +20,14 @@
   }
 
   function getCustomDbId(themeId: string): number | null {
-    let dbId: number | null = null
-    customThemes.subscribe(list => {
-      const record = list.find(r => {
-        try {
-          const parsed = JSON.parse(r.theme_json)
-          return parsed.id === themeId
-        } catch { return false }
-      })
-      if (record) dbId = record.id
-    })()
-    return dbId
+    const list = get(customThemes)
+    const record = list.find(r => {
+      try {
+        const parsed = JSON.parse(r.theme_json)
+        return parsed.id === themeId
+      } catch { return false }
+    })
+    return record?.id ?? null
   }
 
   async function handleDeleteCustomTheme(themeId: string, themeName: string) {

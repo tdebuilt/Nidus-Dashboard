@@ -45,51 +45,65 @@ func main() {
 	if err != nil {
 		log.Fatalf("Failed to load config: %v", err)
 	}
-
 	if *desktop {
 		applyDesktopMode(&cfg)
 	}
 
-	db, err := database.Open(cfg.Database.Path)
+	db, err := initDatabase(cfg)
 	if err != nil {
-		log.Fatalf("Failed to open database: %v", err)
-	}
-
-	if err := db.Migrate(context.Background()); err != nil {
-		db.Close()
-		log.Fatalf("Failed to run migrations: %v", err)
+		log.Fatalf("Failed to initialize database: %v", err)
 	}
 	defer db.Close()
 
-	// Auto-import dashboard config from config.yaml on first startup
-	if cfg.HasDashboardConfig() && db.IsEmpty(context.Background()) {
-		encKey, err := db.GetSystemSetting(context.Background(), "encryption_key")
-		if err == nil && encKey != "" {
-			dashCfg := cfg.DashboardConfig()
-			if importErr := db.ImportYAMLConfig(context.Background(), dashCfg, encKey); importErr != nil {
-				slog.Warn("failed to auto-import dashboard config from config.yaml", "error", importErr)
-			} else {
-				slog.Info("dashboard configuration imported from config.yaml")
-			}
-		}
-	}
-
-	// Initialize go2rtc manager if binary is available
-	if _, lookErr := exec.LookPath("go2rtc"); lookErr == nil {
-		dataDir := filepath.Dir(cfg.Database.Path)
-		srv.Go2RTCManager = go2rtc.NewManager(db, dataDir)
-		slog.Info("go2rtc binary found, streaming manager available")
-
-		// Auto-start go2rtc if cameras are configured
-		if err := srv.Go2RTCManager.Start(); err != nil {
-			slog.Error("go2rtc auto-start failed", "error", err)
-		}
-	}
+	autoImportConfig(cfg, db)
+	initGo2RTC(srv, cfg, db)
 
 	r := server.NewFromEmbed(srv, cfg, db, web.StaticFS, "static")
-
 	if err := server.Run(srv, cfg, r); err != nil {
 		slog.Error("server error", "error", err)
+	}
+}
+
+// initDatabase opens the SQLite database and runs migrations.
+func initDatabase(cfg config.Config) (*database.DB, error) {
+	db, err := database.Open(cfg.Database.Path)
+	if err != nil {
+		return nil, fmt.Errorf("opening database: %w", err)
+	}
+	if err := db.Migrate(context.Background()); err != nil {
+		db.Close()
+		return nil, fmt.Errorf("running migrations: %w", err)
+	}
+	return db, nil
+}
+
+// autoImportConfig imports dashboard config from config.yaml on first startup.
+func autoImportConfig(cfg config.Config, db *database.DB) {
+	if !cfg.HasDashboardConfig() || !db.IsEmpty(context.Background()) {
+		return
+	}
+	encKey, err := db.GetSystemSetting(context.Background(), "encryption_key")
+	if err != nil || encKey == "" {
+		return
+	}
+	dashCfg := cfg.DashboardConfig()
+	if err := db.ImportYAMLConfig(context.Background(), dashCfg, encKey); err != nil {
+		slog.Warn("failed to auto-import dashboard config from config.yaml", "error", err)
+	} else {
+		slog.Info("dashboard configuration imported from config.yaml")
+	}
+}
+
+// initGo2RTC sets up the go2rtc streaming manager if the binary is available.
+func initGo2RTC(srv *server.Server, cfg config.Config, db *database.DB) {
+	if _, err := exec.LookPath("go2rtc"); err != nil {
+		return
+	}
+	dataDir := filepath.Dir(cfg.Database.Path)
+	srv.Go2RTCManager = go2rtc.NewManager(db, dataDir)
+	slog.Info("go2rtc binary found, streaming manager available")
+	if err := srv.Go2RTCManager.Start(); err != nil {
+		slog.Error("go2rtc auto-start failed", "error", err)
 	}
 }
 

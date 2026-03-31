@@ -133,6 +133,14 @@
   }
 
   $effect(() => {
+    const handler = (e: PromiseRejectionEvent) => {
+      console.error('Unhandled rejection:', e.reason)
+    }
+    window.addEventListener('unhandledrejection', handler)
+    return () => window.removeEventListener('unhandledrejection', handler)
+  })
+
+  $effect(() => {
     applyBrowserLocale()
     checkAuth().then(() => {
       if (get(auth).authenticated) {

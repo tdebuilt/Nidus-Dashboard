@@ -20,7 +20,7 @@
     collapsed: boolean
   }
 
-  const widgets = $state<Record<number, Widget[]>>({})
+  let widgets = $state.raw<Record<number, Widget[]>>({})
   let selectedCategoryId = $state<number | null>(null)
   let loading = $state(true)
 
@@ -68,9 +68,10 @@
 
   async function loadWidgets(categoryId: number) {
     try {
-      widgets[categoryId] = await api.get<Widget[]>(`/api/categories/${categoryId}/widgets`)
-    } catch {
-      widgets[categoryId] = []
+      widgets = { ...widgets, [categoryId]: await api.get<Widget[]>(`/api/categories/${categoryId}/widgets`) }
+    } catch (e) {
+      console.error('dashboard: failed to load widgets', categoryId, e)
+      widgets = { ...widgets, [categoryId]: [] }
     }
   }
 

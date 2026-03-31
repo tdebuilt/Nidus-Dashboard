@@ -11,7 +11,8 @@ function createVersionStore() {
       const data = await api.get<{ version: string; is_docker: boolean }>('/api/version')
       set(data?.version ?? 'dev')
       isDocker.set(data?.is_docker ?? false)
-    } catch {
+    } catch (e) {
+      console.error('version: failed to load', e)
       set('dev')
     }
   }

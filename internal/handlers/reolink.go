@@ -166,55 +166,19 @@ func (h *ReolinkHandler) GetSnapshot(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", contentType)
 	w.Header().Set("Cache-Control", "no-cache")
-	w.Write(data)
+	_, _ = w.Write(data)
 }
 
 func (h *ReolinkHandler) proxyHASnapshot(w http.ResponseWriter, r *http.Request, entityID string) {
-	// Reuse HA handler logic
-	svc, err := h.DB.GetServiceByType(r.Context(), "homeassistant")
-	if err != nil && !errors.Is(err, database.ErrNotFound) {
-		slog.Error("reolink: database error", "error", err)
-		writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "database error"})
-		return
-	}
-	if svc == nil {
-		slog.Error("reolink: Home Assistant not configured for HA proxy")
-		writeJSON(w, http.StatusBadGateway, models.ErrorResponse{Error: "Home Assistant not configured"})
-		return
-	}
-
-	encKey, _ := h.DB.GetSystemSetting(r.Context(), "encryption_key")
-	if encKey == "" {
-		slog.Error("reolink: encryption key not found for HA proxy")
-		writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "encryption key not found"})
-		return
-	}
-	creds, err := crypto.Decrypt(svc.Credentials, encKey)
+	haReq, err := h.buildHASnapshotRequest(r.Context(), entityID)
 	if err != nil {
-		slog.Error("reolink: failed to decrypt HA credentials", "error", err)
-		writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "failed to decrypt credentials"})
+		slog.Error("reolink: HA proxy setup failed", "entity_id", entityID, "error", err)
+		writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: err.Error()})
 		return
 	}
-	var authData struct {
-		Token string `json:"token"`
-	}
-	if err := json.Unmarshal([]byte(creds), &authData); err != nil {
-		slog.Error("reolink: invalid HA credentials format", "error", err)
-		writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "invalid HA credentials format"})
-		return
-	}
-
-	url := fmt.Sprintf("%s/api/camera_proxy/%s", svc.URL, entityID)
-	req, err := http.NewRequest("GET", url, nil)
-	if err != nil {
-		slog.Error("reolink: failed to build HA request", "error", err)
-		writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "failed to build HA request"})
-		return
-	}
-	req.Header.Set("Authorization", "Bearer "+authData.Token)
 
 	client := &http.Client{Timeout: 10 * time.Second}
-	resp, err := client.Do(req)
+	resp, err := client.Do(haReq)
 	if err != nil {
 		slog.Error("reolink: HA request failed", "entity_id", entityID, "error", err)
 		writeJSON(w, http.StatusBadGateway, models.ErrorResponse{Error: "HA request failed"})
@@ -227,14 +191,47 @@ func (h *ReolinkHandler) proxyHASnapshot(w http.ResponseWriter, r *http.Request,
 	w.WriteHeader(resp.StatusCode)
 	buf := make([]byte, 32*1024)
 	for {
-		n, err := resp.Body.Read(buf)
+		n, readErr := resp.Body.Read(buf)
 		if n > 0 {
-			w.Write(buf[:n])
+			_, _ = w.Write(buf[:n])
 		}
-		if err != nil {
+		if readErr != nil {
 			break
 		}
 	}
+}
+
+// buildHASnapshotRequest creates an authenticated HTTP request to Home Assistant's camera proxy.
+func (h *ReolinkHandler) buildHASnapshotRequest(ctx context.Context, entityID string) (*http.Request, error) {
+	svc, err := h.DB.GetServiceByType(ctx, "homeassistant")
+	if err != nil && !errors.Is(err, database.ErrNotFound) {
+		return nil, fmt.Errorf("querying reolink config: %w", err)
+	}
+	if svc == nil {
+		return nil, fmt.Errorf("home assistant not configured")
+	}
+
+	encKey, _ := h.DB.GetSystemSetting(ctx, "encryption_key")
+	if encKey == "" {
+		return nil, fmt.Errorf("credentials not configured")
+	}
+	creds, err := crypto.Decrypt(svc.Credentials, encKey)
+	if err != nil {
+		return nil, fmt.Errorf("decrypting credentials: %w", err)
+	}
+	var authData struct {
+		Token string `json:"token"`
+	}
+	if err := json.Unmarshal([]byte(creds), &authData); err != nil {
+		return nil, fmt.Errorf("parsing HA credentials: %w", err)
+	}
+
+	req, err := http.NewRequestWithContext(ctx, "GET", fmt.Sprintf("%s/api/camera_proxy/%s", svc.URL, entityID), nil)
+	if err != nil {
+		return nil, fmt.Errorf("building HA request: %w", err)
+	}
+	req.Header.Set("Authorization", "Bearer "+authData.Token)
+	return req, nil
 }
 
 // GetStreamURL godoc

@@ -40,6 +40,7 @@
   <select
     value={activeTab}
     onchange={(e) => onTabChange((e.target as HTMLSelectElement).value)}
+    aria-label="Settings"
     class="w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-2 text-sm text-[var(--color-text)]"
     data-testid="settings-nav-mobile"
   >

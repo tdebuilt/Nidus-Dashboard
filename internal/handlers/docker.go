@@ -7,8 +7,7 @@ import (
 	"log/slog"
 	"net/http"
 	"strconv"
-
-	"github.com/go-chi/chi/v5"
+	"sync"
 
 	"github.com/tdebuilt/nidus/internal/cache"
 	"github.com/tdebuilt/nidus/internal/crypto"
@@ -21,6 +20,8 @@ import (
 type DockerHandler struct {
 	DB    *database.DB
 	Cache *cache.Cache
+	// BgOps tracks background goroutines (recreate, stack update) for graceful shutdown.
+	BgOps *sync.WaitGroup
 }
 
 func (h *DockerHandler) getPortainerClient(ctx context.Context) (*portainer.Client, error) {
@@ -33,35 +34,43 @@ func (h *DockerHandler) getPortainerClient(ctx context.Context) (*portainer.Clie
 	}
 
 	client := portainer.NewClient(svc.URL, nil)
-
-	if svc.Credentials != "" {
-		encKey, err := h.DB.GetSystemSetting(ctx, "encryption_key")
-		if err != nil || encKey == "" {
-			return nil, err
-		}
-		creds, err := crypto.Decrypt(svc.Credentials, encKey)
-		if err != nil {
-			return nil, err
-		}
-		var authData struct {
-			Username string `json:"username"`
-			Password string `json:"password"`
-			Token    string `json:"token"`
-		}
-		if err := json.Unmarshal([]byte(creds), &authData); err != nil {
-			// Not JSON — treat the raw string as an API token
-			client.SetToken(creds)
-			return client, nil
-		}
-		if authData.Token != "" {
-			client.SetToken(authData.Token)
-		} else if authData.Username != "" {
-			if err := client.Authenticate(ctx, authData.Username, authData.Password); err != nil {
-				return nil, err
-			}
-		}
+	if svc.Credentials == "" {
+		return client, nil
 	}
 
+	encKey, err := h.DB.GetSystemSetting(ctx, "encryption_key")
+	if err != nil || encKey == "" {
+		return nil, err
+	}
+	creds, err := crypto.Decrypt(svc.Credentials, encKey)
+	if err != nil {
+		return nil, err
+	}
+
+	return h.applyPortainerAuth(ctx, client, creds)
+}
+
+// applyPortainerAuth configures authentication on the Portainer client from decrypted credentials.
+func (h *DockerHandler) applyPortainerAuth(ctx context.Context, client *portainer.Client, creds string) (*portainer.Client, error) {
+	var authData struct {
+		Username string `json:"username"`
+		Password string `json:"password"`
+		Token    string `json:"token"`
+	}
+	if err := json.Unmarshal([]byte(creds), &authData); err != nil {
+		// Not JSON — treat the raw string as an API token
+		client.SetToken(creds)
+		return client, nil
+	}
+	if authData.Token != "" {
+		client.SetToken(authData.Token)
+		return client, nil
+	}
+	if authData.Username != "" {
+		if err := client.Authenticate(ctx, authData.Username, authData.Password); err != nil {
+			return nil, err
+		}
+	}
 	return client, nil
 }
 
@@ -100,43 +109,48 @@ func (h *DockerHandler) ListEnvironments(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	// Get Portainer server IP as fallback for unix socket endpoints
 	portainerHost := ""
 	svc, _ := h.DB.GetServiceByType(r.Context(), "portainer")
 	if svc != nil {
 		portainerHost = portainer.ResolveToIP(portainer.ExtractHost(svc.URL))
 	}
 
+	result := buildEnvironmentInfos(envs, portainerHost)
+	h.Cache.Set("docker:environments", result)
+	writeJSON(w, http.StatusOK, result)
+}
+
+// buildEnvironmentInfos converts raw Portainer environments to API responses.
+func buildEnvironmentInfos(envs []portainer.Environment, fallbackHost string) []portainer.EnvironmentInfo {
 	result := make([]portainer.EnvironmentInfo, 0, len(envs))
 	for _, e := range envs {
 		status := "up"
 		if e.Status != 1 {
 			status = "down"
 		}
-		// Priority: PublicURL > endpoint URL > Portainer server IP
-		host := ""
-		if e.PublicURL != "" {
-			host = portainer.ExtractHost(e.PublicURL)
-			if host == "" {
-				host = e.PublicURL // PublicURL might be just an IP without scheme
-			}
-		}
-		if host == "" {
-			host = portainer.ExtractHost(e.URL)
-		}
-		if host == "" {
-			host = portainerHost
-		}
 		result = append(result, portainer.EnvironmentInfo{
 			ID:     e.ID,
 			Name:   e.Name,
 			Status: status,
-			Host:   host,
+			Host:   resolveEnvHost(e, fallbackHost),
 		})
 	}
+	return result
+}
 
-	h.Cache.Set("docker:environments", result)
-	writeJSON(w, http.StatusOK, result)
+// resolveEnvHost determines the best host for an environment.
+// Priority: PublicURL > endpoint URL > Portainer server IP.
+func resolveEnvHost(e portainer.Environment, fallbackHost string) string {
+	if e.PublicURL != "" {
+		if host := portainer.ExtractHost(e.PublicURL); host != "" {
+			return host
+		}
+		return e.PublicURL
+	}
+	if host := portainer.ExtractHost(e.URL); host != "" {
+		return host
+	}
+	return fallbackHost
 }
 
 // ListContainers godoc
@@ -151,9 +165,8 @@ func (h *DockerHandler) ListEnvironments(w http.ResponseWriter, r *http.Request)
 // @Router /docker/environments/{envId}/containers [get]
 // @Security BearerAuth
 func (h *DockerHandler) ListContainers(w http.ResponseWriter, r *http.Request) {
-	envID, err := strconv.Atoi(chi.URLParam(r, "envId"))
-	if err != nil {
-		writeJSON(w, http.StatusBadRequest, models.ErrorResponse{Error: "invalid environment ID"})
+	envID, ok := parseIntIDParam(w, r, "envId")
+	if !ok {
 		return
 	}
 
@@ -175,7 +188,7 @@ func (h *DockerHandler) ListContainers(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	slog.Info("docker fetching containers", "env_id", envID, "token_prefix", client.GetTokenPrefix())
+	slog.Info("docker fetching containers", "env_id", envID, "authenticated", client.HasToken())
 	containers, err := client.ListContainers(r.Context(), envID)
 	if err != nil {
 		slog.Error("docker ListContainers failed", "error", err)

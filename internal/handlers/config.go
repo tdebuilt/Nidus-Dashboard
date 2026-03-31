@@ -69,33 +69,36 @@ func (h *ConfigHandler) Export(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	jsonData, err := json.Marshal(cfg)
+	result, err := encryptExportPayload(cfg, req.Password)
 	if err != nil {
-		slog.Error("config: failed to serialize config", "error", err)
-		writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "failed to serialize config"})
-		return
-	}
-
-	derivedKey, salt, err := crypto.DeriveKeyArgon2(req.Password)
-	if err != nil {
-		slog.Error("config: failed to derive key for export", "error", err)
-		writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "failed to derive key"})
-		return
-	}
-
-	encrypted, err := crypto.Encrypt(string(jsonData), derivedKey)
-	if err != nil {
-		slog.Error("config: failed to encrypt config", "error", err)
-		writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "failed to encrypt config"})
+		slog.Error("config: export encryption failed", "error", err)
+		writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: err.Error()})
 		return
 	}
 
 	slog.Info("config: configuration exported")
-	writeJSON(w, http.StatusOK, map[string]string{
+	writeJSON(w, http.StatusOK, result)
+}
+
+// encryptExportPayload serializes, derives a key, and encrypts the config payload.
+func encryptExportPayload(cfg *models.EncryptedExport, password string) (map[string]string, error) {
+	jsonData, err := json.Marshal(cfg)
+	if err != nil {
+		return nil, fmt.Errorf("serializing config: %w", err)
+	}
+	derivedKey, salt, err := crypto.DeriveKeyArgon2(password)
+	if err != nil {
+		return nil, fmt.Errorf("deriving encryption key: %w", err)
+	}
+	encrypted, err := crypto.Encrypt(string(jsonData), derivedKey)
+	if err != nil {
+		return nil, fmt.Errorf("encrypting config: %w", err)
+	}
+	return map[string]string{
 		"data": encrypted,
 		"salt": hex.EncodeToString(salt),
 		"kdf":  "argon2id",
-	})
+	}, nil
 }
 
 // Import godoc
@@ -124,37 +127,9 @@ func (h *ConfigHandler) Import(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var derivedKey string
-	if req.KDF == "argon2id" && req.Salt != "" {
-		salt, err := hex.DecodeString(req.Salt)
-		if err != nil {
-			writeJSON(w, http.StatusBadRequest, models.ErrorResponse{Error: "invalid salt"})
-			return
-		}
-		derivedKey = crypto.DeriveKeyWithSalt(req.Password, salt)
-	} else {
-		derivedKey = crypto.DeriveKey(req.Password) //nolint:staticcheck // backward compat for old exports
-	}
-
-	decrypted, err := crypto.Decrypt(req.Data, derivedKey)
+	cfg, err := decryptImportPayload(&req)
 	if err != nil {
-		writeJSON(w, http.StatusBadRequest, models.ErrorResponse{Error: "invalid password or corrupted file"})
-		return
-	}
-
-	var cfg models.EncryptedExport
-	if err := json.Unmarshal([]byte(decrypted), &cfg); err != nil {
-		writeJSON(w, http.StatusBadRequest, models.ErrorResponse{Error: "invalid config data"})
-		return
-	}
-
-	if cfg.Version != 2 {
-		writeJSON(w, http.StatusBadRequest, models.ErrorResponse{Error: "unsupported config version"})
-		return
-	}
-
-	if err := validateEncryptedImport(&cfg); err != nil {
-		writeJSON(w, http.StatusBadRequest, models.ErrorResponse{Error: err.Error()})
+		writeJSON(w, http.StatusBadRequest, models.ErrorResponse{Error: sanitizeError(err)})
 		return
 	}
 
@@ -165,7 +140,7 @@ func (h *ConfigHandler) Import(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := h.DB.ImportConfigFull(r.Context(),cfg, encKey); err != nil {
+	if err := h.DB.ImportConfigFull(r.Context(), *cfg, encKey); err != nil {
 		slog.Error("config: failed to import config", "error", err)
 		writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "failed to import config"})
 		return
@@ -173,6 +148,39 @@ func (h *ConfigHandler) Import(w http.ResponseWriter, r *http.Request) {
 
 	slog.Info("config: configuration imported")
 	writeJSON(w, http.StatusOK, map[string]string{"message": "config imported successfully"})
+}
+
+// decryptImportPayload derives the encryption key, decrypts and validates the import payload.
+func decryptImportPayload(req *models.ImportRequest) (*models.EncryptedExport, error) {
+	var derivedKey string
+	if req.KDF == "argon2id" && req.Salt != "" {
+		salt, err := hex.DecodeString(req.Salt)
+		if err != nil {
+			return nil, fmt.Errorf("invalid salt")
+		}
+		derivedKey = crypto.DeriveKeyWithSalt(req.Password, salt)
+	} else {
+		derivedKey = crypto.DeriveKey(req.Password) //nolint:staticcheck // backward compat for old exports
+	}
+
+	decrypted, err := crypto.Decrypt(req.Data, derivedKey)
+	if err != nil {
+		return nil, fmt.Errorf("invalid password or corrupted file")
+	}
+
+	var cfg models.EncryptedExport
+	if err := json.Unmarshal([]byte(decrypted), &cfg); err != nil {
+		return nil, fmt.Errorf("invalid config data")
+	}
+
+	if cfg.Version != 2 {
+		return nil, fmt.Errorf("unsupported config version")
+	}
+
+	if err := validateEncryptedImport(&cfg); err != nil {
+		return nil, err
+	}
+	return &cfg, nil
 }
 
 // validateEncryptedImport validates the encrypted import data.
@@ -234,6 +242,12 @@ func validateWidgets(widgets []models.Widget, categories []models.Category) erro
 		}
 		if w.Height < 0 || w.Height > MaxWidgetHeight {
 			return fmt.Errorf("widget at index %d: height must be between 0 and %d", i, MaxWidgetHeight)
+		}
+		if w.PosX < 0 || w.PosX >= 24 {
+			return fmt.Errorf("widget at index %d: pos_x must be between 0 and 23", i)
+		}
+		if w.PosY < 0 {
+			return fmt.Errorf("widget at index %d: pos_y must be >= 0", i)
 		}
 	}
 	return nil
@@ -302,7 +316,7 @@ func (h *ConfigHandler) ExportYAML(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/x-yaml")
 	w.Header().Set("Content-Disposition", "attachment; filename=nidus-config.yaml")
 	w.WriteHeader(http.StatusOK)
-	w.Write(data)
+	_, _ = w.Write(data)
 }
 
 // ImportYAML godoc
@@ -325,7 +339,7 @@ func (h *ConfigHandler) ImportYAML(w http.ResponseWriter, r *http.Request) {
 
 	var yamlCfg models.YAMLConfig
 	if err := yaml.Unmarshal(body, &yamlCfg); err != nil {
-		writeJSON(w, http.StatusBadRequest, models.ErrorResponse{Error: "invalid YAML: " + err.Error()})
+		writeJSON(w, http.StatusBadRequest, models.ErrorResponse{Error: "invalid YAML: " + sanitizeError(err)})
 		return
 	}
 
@@ -335,7 +349,7 @@ func (h *ConfigHandler) ImportYAML(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := validateYAMLConfig(&yamlCfg); err != nil {
-		writeJSON(w, http.StatusBadRequest, models.ErrorResponse{Error: err.Error()})
+		writeJSON(w, http.StatusBadRequest, models.ErrorResponse{Error: sanitizeError(err)})
 		return
 	}
 
@@ -348,7 +362,7 @@ func (h *ConfigHandler) ImportYAML(w http.ResponseWriter, r *http.Request) {
 
 	encExport := convertFromYAMLConfig(&yamlCfg)
 
-	if err := h.DB.ImportConfigFull(r.Context(),encExport, encKey); err != nil {
+	if err := h.DB.ImportConfigFull(r.Context(), encExport, encKey); err != nil {
 		slog.Error("config: failed to import YAML config", "error", err)
 		writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "failed to import config"})
 		return

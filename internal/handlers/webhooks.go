@@ -300,19 +300,27 @@ func (h *WebhooksHandler) Receive(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	actions, err := h.DB.ListWebhookActions(r.Context(), id)
+	count, err := h.runWebhookActions(r.Context(), id, body)
 	if err != nil {
 		slog.Error("webhooks: failed to load actions for receive", "webhook_id", id, "error", err)
 		writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "failed to load actions"})
 		return
 	}
 
-	for _, action := range actions {
-		h.executeAction(r.Context(), action, body)
-	}
-
-	slog.Info("webhooks: webhook received and processed", "webhook_id", id, "actions", len(actions))
+	slog.Info("webhooks: webhook received and processed", "webhook_id", id, "actions", count)
 	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
+}
+
+// runWebhookActions loads and executes all actions for a webhook.
+func (h *WebhooksHandler) runWebhookActions(ctx context.Context, webhookID int64, body []byte) (int, error) {
+	actions, err := h.DB.ListWebhookActions(ctx, webhookID)
+	if err != nil {
+		return 0, err
+	}
+	for _, action := range actions {
+		h.executeAction(ctx, action, body)
+	}
+	return len(actions), nil
 }
 
 func (h *WebhooksHandler) executeAction(ctx context.Context, action models.WebhookAction, body []byte) {
@@ -333,14 +341,17 @@ func (h *WebhooksHandler) executeNotify(ctx context.Context, config string) {
 		Message    string `json:"message"`
 	}
 	if err := json.Unmarshal([]byte(config), &cfg); err != nil {
+		slog.Warn("webhook: failed to parse notify config", "error", err)
 		return
 	}
 	if cfg.ProviderID == 0 || h.Sender == nil {
+		slog.Warn("webhook: notify action skipped, missing provider_id or sender")
 		return
 	}
 
 	provider, err := h.DB.GetNotificationProvider(ctx, cfg.ProviderID)
 	if err != nil || provider == nil {
+		slog.Warn("webhook: notify action skipped, provider not found", "provider_id", cfg.ProviderID, "error", err)
 		return
 	}
 
@@ -353,7 +364,7 @@ func (h *WebhooksHandler) executeNotify(ctx context.Context, config string) {
 		message = "Webhook event received"
 	}
 
-	if err := h.Sender.Send(provider.Type, provider.URL, provider.Token, provider.Config, title, message); err != nil {
+	if err := h.Sender.Send(ctx, provider.Type, provider.URL, provider.Token, provider.Config, title, message); err != nil {
 		slog.Warn("webhook notification failed", "error", err)
 	}
 }
@@ -362,7 +373,12 @@ func (h *WebhooksHandler) executeRefreshWidget(config string) {
 	var cfg struct {
 		WidgetID int64 `json:"widget_id"`
 	}
-	if err := json.Unmarshal([]byte(config), &cfg); err != nil || cfg.WidgetID == 0 {
+	if err := json.Unmarshal([]byte(config), &cfg); err != nil {
+		slog.Warn("webhook: failed to parse refresh_widget config", "error", err)
+		return
+	}
+	if cfg.WidgetID == 0 {
+		slog.Warn("webhook: refresh_widget action skipped, missing widget_id")
 		return
 	}
 
@@ -375,7 +391,12 @@ func (h *WebhooksHandler) executeInvalidateCache(config string) {
 	var cfg struct {
 		Prefix string `json:"prefix"`
 	}
-	if err := json.Unmarshal([]byte(config), &cfg); err != nil || cfg.Prefix == "" {
+	if err := json.Unmarshal([]byte(config), &cfg); err != nil {
+		slog.Warn("webhook: failed to parse invalidate_cache config", "error", err)
+		return
+	}
+	if cfg.Prefix == "" {
+		slog.Warn("webhook: invalidate_cache action skipped, missing prefix")
 		return
 	}
 

@@ -64,6 +64,7 @@
       <h3 class="font-semibold text-[var(--color-text)]">{$t('settings.languageSection')}</h3>
     </div>
     <select onchange={handleLanguageChange} value={currentLanguage}
+      aria-label={$t('settings.languageSection')}
       class="rounded-lg border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-2 text-sm text-[var(--color-text)] outline-none"
       data-testid="settings-language-select">
       {#each getAvailableLocales() as loc (loc.code)}
@@ -79,6 +80,7 @@
       <h3 class="font-semibold text-[var(--color-text)]">{$t('settings.refreshSection')}</h3>
     </div>
     <select onchange={handleRefreshChange} value={refreshInterval}
+      aria-label={$t('settings.refreshSection')}
       class="rounded-lg border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-2 text-sm text-[var(--color-text)] outline-none"
       data-testid="settings-refresh-select">
       {#each refreshOptions as seconds (seconds)}

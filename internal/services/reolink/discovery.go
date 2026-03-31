@@ -63,8 +63,16 @@ func DiscoverCameras(timeout time.Duration) ([]DiscoveredCamera, error) {
 		return nil, fmt.Errorf("send probe: %w", err)
 	}
 
-	conn.SetReadDeadline(time.Now().Add(timeout))
+	_ = conn.SetReadDeadline(time.Now().Add(timeout))
+	cameras := collectProbeResponses(conn)
+	if cameras == nil {
+		cameras = []DiscoveredCamera{}
+	}
+	return cameras, nil
+}
 
+// collectProbeResponses reads and parses WS-Discovery probe responses from the connection.
+func collectProbeResponses(conn *net.UDPConn) []DiscoveredCamera {
 	seen := make(map[string]bool)
 	var cameras []DiscoveredCamera
 	buf := make([]byte, 8192)
@@ -72,34 +80,23 @@ func DiscoverCameras(timeout time.Duration) ([]DiscoveredCamera, error) {
 	for {
 		n, _, err := conn.ReadFromUDP(buf)
 		if err != nil {
-			break // timeout
+			break
 		}
-
 		var pm probeMatch
 		if err := xml.Unmarshal(buf[:n], &pm); err != nil {
 			continue
 		}
-
 		for _, match := range pm.Body.ProbeMatches.Match {
 			ip := extractIP(match.XAddrs)
 			if ip == "" || seen[ip] {
 				continue
 			}
 			seen[ip] = true
-
 			name, model := parseScopes(match.Scopes)
-			cameras = append(cameras, DiscoveredCamera{
-				IP:    ip,
-				Name:  name,
-				Model: model,
-			})
+			cameras = append(cameras, DiscoveredCamera{IP: ip, Name: name, Model: model})
 		}
 	}
-
-	if cameras == nil {
-		cameras = []DiscoveredCamera{}
-	}
-	return cameras, nil
+	return cameras
 }
 
 func extractIP(xaddrs string) string {

@@ -58,40 +58,27 @@ func (c *Client) GetMonitors(ctx context.Context, slug string) (*MonitorsOvervie
 		return nil, err
 	}
 
-	// Build a map of monitor ID → summary from the status page
-	monitorMap := make(map[int]MonitorSummary)
-	for _, group := range statusPage.PublicGroupList {
-		for _, m := range group.MonitorList {
-			monitorMap[m.ID] = m
-		}
-	}
+	monitors, totalUp, totalDown := buildMonitorInfos(statusPage, heartbeats)
 
+	return &MonitorsOverview{
+		Monitors:   monitors,
+		TotalUp:    totalUp,
+		TotalDown:  totalDown,
+		TotalCount: len(monitors),
+		StatusPage: slug,
+	}, nil
+}
+
+// buildMonitorInfos aggregates status page groups with heartbeat data
+// and returns monitor details with up/down counts.
+func buildMonitorInfos(statusPage *StatusPageResponse, heartbeats *HeartbeatResponse) ([]MonitorInfo, int, int) {
 	var monitors []MonitorInfo
 	totalUp := 0
 	totalDown := 0
 
 	for _, group := range statusPage.PublicGroupList {
 		for _, m := range group.MonitorList {
-			info := MonitorInfo{
-				ID:   m.ID,
-				Name: m.Name,
-				Type: m.Type,
-			}
-
-			// Get latest heartbeat
-			idStr := strconv.Itoa(m.ID)
-			if beats, ok := heartbeats.HeartbeatList[idStr]; ok && len(beats) > 0 {
-				latest := beats[len(beats)-1]
-				info.Status = latest.Status
-				info.Latency = latest.Ping
-				info.Message = latest.Msg
-			}
-
-			// Get 24h uptime
-			uptimeKey := fmt.Sprintf("%d_24", m.ID)
-			if uptime, ok := heartbeats.UptimeList[uptimeKey]; ok {
-				info.Uptime24h = uptime
-			}
+			info := buildMonitorInfo(m, heartbeats)
 
 			switch info.Status {
 			case 1:
@@ -103,14 +90,31 @@ func (c *Client) GetMonitors(ctx context.Context, slug string) (*MonitorsOvervie
 			monitors = append(monitors, info)
 		}
 	}
+	return monitors, totalUp, totalDown
+}
 
-	return &MonitorsOverview{
-		Monitors:   monitors,
-		TotalUp:    totalUp,
-		TotalDown:  totalDown,
-		TotalCount: len(monitors),
-		StatusPage: slug,
-	}, nil
+// buildMonitorInfo enriches a single monitor entry with heartbeat and uptime data.
+func buildMonitorInfo(m MonitorSummary, heartbeats *HeartbeatResponse) MonitorInfo {
+	info := MonitorInfo{
+		ID:   m.ID,
+		Name: m.Name,
+		Type: m.Type,
+	}
+
+	idStr := strconv.Itoa(m.ID)
+	if beats, ok := heartbeats.HeartbeatList[idStr]; ok && len(beats) > 0 {
+		latest := beats[len(beats)-1]
+		info.Status = latest.Status
+		info.Latency = latest.Ping
+		info.Message = latest.Msg
+	}
+
+	uptimeKey := fmt.Sprintf("%d_24", m.ID)
+	if uptime, ok := heartbeats.UptimeList[uptimeKey]; ok {
+		info.Uptime24h = uptime
+	}
+
+	return info
 }
 
 func (c *Client) get(ctx context.Context, path string, result any) error {

@@ -191,7 +191,7 @@ func (h *NotificationsHandler) TestProvider(w http.ResponseWriter, r *http.Reque
 	}
 
 	if err := h.Sender.Send(
-		provider.Type, provider.URL, provider.Token, provider.Config,
+		r.Context(), provider.Type, provider.URL, provider.Token, provider.Config,
 		"Nidus — Test",
 		"Notification de test depuis Nidus Dashboard",
 	); err != nil {

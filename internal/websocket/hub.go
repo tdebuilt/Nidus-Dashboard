@@ -205,7 +205,7 @@ func (c *Client) WritePump() {
 			if err != nil {
 				return
 			}
-			w.Write(message)
+			_, _ = w.Write(message)
 
 			if err := w.Close(); err != nil {
 				return

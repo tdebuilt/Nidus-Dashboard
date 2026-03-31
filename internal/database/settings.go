@@ -49,52 +49,34 @@ func (db *DB) SetSystemSetting(ctx context.Context, key, value string) error {
 
 // GetSettings retrieves all user-facing settings with defaults.
 func (db *DB) GetSettings(ctx context.Context) (models.Settings, error) {
-	theme, err := db.GetSystemSetting(ctx, SettingTheme)
+	theme, err := db.getSettingWithDefault(ctx, SettingTheme, DefaultTheme)
 	if err != nil {
-		return models.Settings{}, fmt.Errorf("getting theme: %w", err)
+		return models.Settings{}, err
 	}
-	if theme == "" {
-		theme = DefaultTheme
-	}
-
-	lang, err := db.GetSystemSetting(ctx, SettingLanguage)
+	lang, err := db.getSettingWithDefault(ctx, SettingLanguage, DefaultLanguage)
 	if err != nil {
-		return models.Settings{}, fmt.Errorf("getting language: %w", err)
+		return models.Settings{}, err
 	}
-	if lang == "" {
-		lang = DefaultLanguage
-	}
-
-	refreshStr, err := db.GetSystemSetting(ctx, SettingRefreshInterval)
+	refreshStr, err := db.getSettingWithDefault(ctx, SettingRefreshInterval, DefaultRefreshInterval)
 	if err != nil {
-		return models.Settings{}, fmt.Errorf("getting refresh_interval: %w", err)
+		return models.Settings{}, err
 	}
-	if refreshStr == "" {
-		refreshStr = DefaultRefreshInterval
-	}
-	refresh, err := strconv.Atoi(refreshStr)
-	if err != nil {
+	refresh, _ := strconv.Atoi(refreshStr)
+	if refresh == 0 {
 		refresh = 30
 	}
-
-	accentColor, err := db.GetSystemSetting(ctx, SettingAccentColor)
+	accentColor, err := db.getSettingWithDefault(ctx, SettingAccentColor, DefaultAccentColor)
 	if err != nil {
-		return models.Settings{}, fmt.Errorf("getting accent_color: %w", err)
+		return models.Settings{}, err
 	}
-
-	customCSS, err := db.GetSystemSetting(ctx, SettingCustomCSS)
+	customCSS, err := db.getSettingWithDefault(ctx, SettingCustomCSS, DefaultCustomCSS)
 	if err != nil {
-		return models.Settings{}, fmt.Errorf("getting custom_css: %w", err)
+		return models.Settings{}, err
 	}
-
-	kbShortcutsStr, err := db.GetSystemSetting(ctx, SettingKeyboardShortcuts)
+	kbStr, err := db.getSettingWithDefault(ctx, SettingKeyboardShortcuts, DefaultKeyboardShortcuts)
 	if err != nil {
-		return models.Settings{}, fmt.Errorf("getting keyboard_shortcuts: %w", err)
+		return models.Settings{}, err
 	}
-	if kbShortcutsStr == "" {
-		kbShortcutsStr = DefaultKeyboardShortcuts
-	}
-	kbShortcuts := kbShortcutsStr == "true"
 
 	return models.Settings{
 		Theme:                   theme,
@@ -102,8 +84,20 @@ func (db *DB) GetSettings(ctx context.Context) (models.Settings, error) {
 		RefreshInterval:         refresh,
 		AccentColor:             accentColor,
 		CustomCSS:               customCSS,
-		EnableKeyboardShortcuts: kbShortcuts,
+		EnableKeyboardShortcuts: kbStr == "true",
 	}, nil
+}
+
+// getSettingWithDefault retrieves a system setting, returning defaultVal if empty.
+func (db *DB) getSettingWithDefault(ctx context.Context, key, defaultVal string) (string, error) {
+	val, err := db.GetSystemSetting(ctx, key)
+	if err != nil {
+		return "", fmt.Errorf("getting %s: %w", key, err)
+	}
+	if val == "" {
+		return defaultVal, nil
+	}
+	return val, nil
 }
 
 // SaveSettings updates the given settings. Only non-nil fields are updated.

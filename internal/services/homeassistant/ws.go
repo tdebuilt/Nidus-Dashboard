@@ -2,6 +2,7 @@ package homeassistant
 
 import (
 	"encoding/json"
+	"fmt"
 	"log/slog"
 	"strings"
 	"sync"
@@ -59,54 +60,59 @@ func (w *WSClient) Connect() error {
 	w.nextID = 1
 	w.mu.Unlock()
 
-	// Read auth_required
-	var authReq WSMessage
-	if err := conn.ReadJSON(&authReq); err != nil {
-		conn.Close()
-		return err
-	}
-	if authReq.Type != "auth_required" {
-		conn.Close()
-		return nil
-	}
-
-	// Send auth
-	if err := conn.WriteJSON(WSAuthMessage{
-		Type:        "auth",
-		AccessToken: w.token,
-	}); err != nil {
+	if err := w.authenticate(conn); err != nil {
 		conn.Close()
 		return err
 	}
 
-	// Read auth result
-	var authResult WSMessage
-	if err := conn.ReadJSON(&authResult); err != nil {
-		conn.Close()
-		return err
-	}
-	if authResult.Type != "auth_ok" {
-		conn.Close()
-		return nil
-	}
-
-	// Subscribe to state_changed events
-	w.mu.Lock()
-	subID := w.nextID
-	w.nextID++
-	w.mu.Unlock()
-
-	if err := conn.WriteJSON(WSSubscribeMessage{
-		ID:        subID,
-		Type:      "subscribe_events",
-		EventType: "state_changed",
-	}); err != nil {
+	if err := w.subscribeEvents(conn); err != nil {
 		conn.Close()
 		return err
 	}
 
 	go w.readLoop()
 	return nil
+}
+
+// authenticate performs the auth handshake: reads auth_required, sends token, validates auth_ok.
+func (w *WSClient) authenticate(conn *gws.Conn) error {
+	var authReq WSMessage
+	if err := conn.ReadJSON(&authReq); err != nil {
+		return err
+	}
+	if authReq.Type != "auth_required" {
+		return nil
+	}
+
+	if err := conn.WriteJSON(WSAuthMessage{
+		Type:        "auth",
+		AccessToken: w.token,
+	}); err != nil {
+		return err
+	}
+
+	var authResult WSMessage
+	if err := conn.ReadJSON(&authResult); err != nil {
+		return err
+	}
+	if authResult.Type != "auth_ok" {
+		return fmt.Errorf("authentication failed: %s", authResult.Type)
+	}
+	return nil
+}
+
+// subscribeEvents sends a subscribe_events message for state_changed events.
+func (w *WSClient) subscribeEvents(conn *gws.Conn) error {
+	w.mu.Lock()
+	subID := w.nextID
+	w.nextID++
+	w.mu.Unlock()
+
+	return conn.WriteJSON(WSSubscribeMessage{
+		ID:        subID,
+		Type:      "subscribe_events",
+		EventType: "state_changed",
+	})
 }
 
 func (w *WSClient) readLoop() {
@@ -141,18 +147,23 @@ func (w *WSClient) readLoop() {
 			continue
 		}
 
-		if msg.Type == "event" && msg.Event != nil && msg.Event.EventType == "state_changed" {
-			w.hub.BroadcastType("ha:state_changed", msg.Event.Data)
-			if w.OnStateChanged != nil {
-				w.OnStateChanged()
-			}
+		if msg.Type != "event" || msg.Event == nil || msg.Event.EventType != "state_changed" {
+			continue
+		}
+		w.hub.BroadcastType("ha:state_changed", msg.Event.Data)
+		if w.OnStateChanged != nil {
+			w.OnStateChanged()
 		}
 	}
 }
 
 func (w *WSClient) scheduleReconnect() {
 	go func() {
-		time.Sleep(5 * time.Second)
+		select {
+		case <-w.done:
+			return
+		case <-time.After(5 * time.Second):
+		}
 		w.mu.Lock()
 		w.running = false
 		w.mu.Unlock()

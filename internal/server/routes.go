@@ -4,8 +4,8 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/base64"
-	"io"
 	"net/http"
+	"net/url"
 	"os"
 	"strings"
 	"time"
@@ -17,7 +17,6 @@ import (
 	"github.com/tdebuilt/nidus/internal/database"
 	"github.com/tdebuilt/nidus/internal/handlers"
 	nidusmw "github.com/tdebuilt/nidus/internal/middleware"
-	"github.com/tdebuilt/nidus/internal/services/notifications"
 )
 
 type contextKey string
@@ -40,9 +39,11 @@ func getNonce(ctx context.Context) string {
 }
 
 func registerMiddleware(r *chi.Mux, srv *Server, db *database.DB) {
+	r.Use(middleware.RequestID)
+	r.Use(middleware.RealIP)
 	r.Use(middleware.Logger)
 	r.Use(middleware.Recoverer)
-	r.Use(middleware.RealIP)
+	r.Use(middleware.CleanPath)
 
 	r.Use(func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -54,16 +55,10 @@ func registerMiddleware(r *chi.Mux, srv *Server, db *database.DB) {
 			w.Header().Set("X-Frame-Options", "DENY")
 			w.Header().Set("Referrer-Policy", "strict-origin-when-cross-origin")
 			w.Header().Set("X-XSS-Protection", "0")
+			w.Header().Set("Permissions-Policy", "camera=(), microphone=(), geolocation=()")
 			csp := "default-src 'self'; script-src 'self' 'nonce-" + nonce + "'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self' ws: wss:; media-src 'self' blob:; font-src 'self'"
-			if frameSrc, ok := srv.ServiceCache.Get("csp:frame-src"); ok {
-				if s, ok := frameSrc.(string); ok {
-					csp += "; frame-src 'self' " + s
-				}
-			} else if db != nil {
-				if svc, _ := db.GetServiceByType(r.Context(), "grafana"); svc != nil && svc.URL != "" {
-					srv.ServiceCache.Set("csp:frame-src", svc.URL)
-					csp += "; frame-src 'self' " + svc.URL
-				}
+			if frameSrc := srv.resolveCSPFrameSrc(r, db); frameSrc != "" {
+				csp += "; frame-src 'self' " + frameSrc
 			}
 			w.Header().Set("Content-Security-Policy", csp)
 			if r.TLS != nil || r.Header.Get("X-Forwarded-Proto") == "https" {
@@ -120,10 +115,10 @@ func registerAPIRoutes(r chi.Router, srv *Server, db *database.DB) {
 }
 
 func registerPublicRoutes(r chi.Router, srv *Server, db *database.DB) {
-	wsHandler := &handlers.WebSocketHandler{DB: db, Hub: srv.WSHub}
+	wsHandler := &handlers.WebSocketHandler{DB: db, Hub: srv.WSHub, BaseURL: srv.BaseURL}
 	r.Get("/ws", wsHandler.HandleWS)
 
-	webhookHandler := &handlers.WebhooksHandler{DB: db, Hub: srv.WSHub, Cache: srv.ServiceCache, Sender: notifications.NewSender()}
+	webhookHandler := &handlers.WebhooksHandler{DB: db, Hub: srv.WSHub, Cache: srv.ServiceCache, Sender: srv.NotifSender}
 	r.Post("/webhooks/{id}", webhookHandler.Receive)
 
 	authHandler := &handlers.AuthHandler{DB: db}
@@ -271,7 +266,7 @@ func registerEditorRoutes(r chi.Router, srv *Server, db *database.DB) {
 	r.Patch("/widgets/{id}/toggle-collapse", widgetHandler.ToggleCollapse)
 	r.Delete("/widgets/{id}", widgetHandler.Delete)
 
-	dockerHandler := &handlers.DockerHandler{DB: db, Cache: srv.ServiceCache}
+	dockerHandler := &handlers.DockerHandler{DB: db, Cache: srv.ServiceCache, BgOps: &srv.DockerBgOps}
 	r.Post("/docker/environments/{envId}/containers/{containerId}/{action}", dockerHandler.ContainerAction)
 	r.Post("/docker/environments/{envId}/containers/{containerId}/recreate", dockerHandler.RecreateContainer)
 	r.Post("/docker/stacks/{stackId}/update", dockerHandler.UpdateStack)
@@ -333,7 +328,7 @@ func registerAdminRoutes(r chi.Router, srv *Server, db *database.DB) {
 	r.Post("/invites", usersHandler.CreateInvite)
 	r.Delete("/invites/{id}", usersHandler.DeleteInvite)
 
-	webhookHandler := &handlers.WebhooksHandler{DB: db, Hub: srv.WSHub, Cache: srv.ServiceCache, Sender: notifications.NewSender()}
+	webhookHandler := &handlers.WebhooksHandler{DB: db, Hub: srv.WSHub, Cache: srv.ServiceCache, Sender: srv.NotifSender}
 	r.Get("/webhooks", webhookHandler.List)
 	r.Post("/webhooks", webhookHandler.Create)
 	r.Put("/webhooks/{id}", webhookHandler.Update)
@@ -342,7 +337,7 @@ func registerAdminRoutes(r chi.Router, srv *Server, db *database.DB) {
 	r.Post("/webhooks/{id}/actions", webhookHandler.CreateAction)
 	r.Delete("/webhooks/{id}/actions/{actionId}", webhookHandler.DeleteAction)
 
-	notifHandler := &handlers.NotificationsHandler{DB: db, Sender: notifications.NewSender()}
+	notifHandler := &handlers.NotificationsHandler{DB: db, Sender: srv.NotifSender}
 	r.Get("/notifications/providers", notifHandler.ListProviders)
 	r.Post("/notifications/providers", notifHandler.CreateProvider)
 	r.Put("/notifications/providers/{id}", notifHandler.UpdateProvider)
@@ -359,53 +354,32 @@ func registerAdminRoutes(r chi.Router, srv *Server, db *database.DB) {
 	r.Post("/go2rtc/restart", go2rtcHandler.Restart)
 }
 
-func serveStaticFiles(r *chi.Mux, srv *Server) {
-	if srv.StaticFiles == nil {
-		return
+// resolveCSPFrameSrc returns a sanitized frame-src origin for CSP, checking
+// the service cache first and falling back to a database lookup.
+// Only scheme://host is returned to prevent CSP header injection.
+func (srv *Server) resolveCSPFrameSrc(r *http.Request, db *database.DB) string {
+	if frameSrc, ok := srv.ServiceCache.Get("csp:frame-src"); ok {
+		if s, ok := frameSrc.(string); ok {
+			return s
+		}
 	}
-	fileServer := http.FileServer(http.FS(srv.StaticFiles))
-	r.Get("/*", func(w http.ResponseWriter, r *http.Request) {
-		path := r.URL.Path
-		if path == "/" {
-			path = "/index.html"
+	if db != nil {
+		if svc, _ := db.GetServiceByType(r.Context(), "grafana"); svc != nil && svc.URL != "" {
+			sanitized := sanitizeCSPOrigin(svc.URL)
+			if sanitized != "" {
+				srv.ServiceCache.Set("csp:frame-src", sanitized)
+				return sanitized
+			}
 		}
-		f, err := srv.StaticFiles.Open(path[1:])
-		if err != nil {
-			// SPA fallback: serve index.html with nonce injection
-			serveIndexWithNonce(w, r, srv)
-			return
-		}
-		f.Close()
-
-		// Serve index.html with nonce injection
-		if path == "/index.html" {
-			serveIndexWithNonce(w, r, srv)
-			return
-		}
-		fileServer.ServeHTTP(w, r)
-	})
+	}
+	return ""
 }
 
-func serveIndexWithNonce(w http.ResponseWriter, r *http.Request, srv *Server) {
-	f, err := srv.StaticFiles.Open("index.html")
-	if err != nil {
-		http.NotFound(w, r)
-		return
+// sanitizeCSPOrigin extracts only scheme://host from a URL to prevent CSP injection.
+func sanitizeCSPOrigin(rawURL string) string {
+	parsed, err := url.Parse(rawURL)
+	if err != nil || parsed.Host == "" {
+		return ""
 	}
-	defer f.Close()
-
-	data, err := io.ReadAll(f)
-	if err != nil {
-		http.Error(w, "internal error", http.StatusInternalServerError)
-		return
-	}
-
-	nonce := getNonce(r.Context())
-	html := string(data)
-	if nonce != "" {
-		html = strings.ReplaceAll(html, "<script", `<script nonce="`+nonce+`"`)
-	}
-
-	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	w.Write([]byte(html))
+	return parsed.Scheme + "://" + parsed.Host
 }

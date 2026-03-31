@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
+	"fmt"
 	"image/png"
 	"log/slog"
 	"net/http"
@@ -18,15 +19,17 @@ import (
 )
 
 // decryptTOTPSecret decrypts an encrypted TOTP secret.
-// Falls back to using the value as-is if decryption fails (legacy unencrypted secrets).
 func (h *AuthHandler) decryptTOTPSecret(ctx context.Context, secret string) (string, error) {
 	encKey, err := h.DB.GetSystemSetting(ctx, "encryption_key")
-	if err != nil || encKey == "" {
-		return secret, nil
+	if err != nil {
+		return "", fmt.Errorf("retrieving encryption key: %w", err)
+	}
+	if encKey == "" {
+		return "", fmt.Errorf("encryption key not configured")
 	}
 	decrypted, err := crypto.Decrypt(secret, encKey)
 	if err != nil {
-		return secret, nil
+		return "", fmt.Errorf("decrypting TOTP secret: %w", err)
 	}
 	return decrypted, nil
 }
@@ -48,7 +51,6 @@ func (h *AuthHandler) TOTPGenerate(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusUnauthorized, models.ErrorResponse{Error: "authentication required"})
 		return
 	}
-
 	if user.TOTPEnabled {
 		writeJSON(w, http.StatusConflict, models.ErrorResponse{Error: "TOTP is already enabled"})
 		return
@@ -63,42 +65,51 @@ func (h *AuthHandler) TOTPGenerate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Encrypt and store the secret (not yet enabled)
-	encKey, err := h.DB.GetSystemSetting(r.Context(), "encryption_key")
-	if err != nil || encKey == "" {
-		writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "encryption key not configured"})
+	if err := h.encryptAndStoreTOTPSecret(r.Context(), user.ID, key.Secret()); err != nil {
+		writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: err.Error()})
 		return
 	}
-	encryptedSecret, err := crypto.Encrypt(key.Secret(), encKey)
+
+	qr, err := generateQRBase64(key)
 	if err != nil {
-		writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "failed to encrypt TOTP secret"})
+		writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: err.Error()})
 		return
 	}
-	if err := h.DB.SetUserTOTPSecret(r.Context(), user.ID, encryptedSecret); err != nil {
-		writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "failed to store TOTP secret"})
-		return
-	}
-
-	// Generate QR code as base64 PNG
-	img, err := key.Image(200, 200)
-	if err != nil {
-		writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "failed to generate QR code"})
-		return
-	}
-
-	var buf bytes.Buffer
-	if err := png.Encode(&buf, img); err != nil {
-		writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "failed to encode QR code"})
-		return
-	}
-
-	qrBase64 := base64.StdEncoding.EncodeToString(buf.Bytes())
 
 	writeJSON(w, http.StatusOK, models.TOTPGenerateResponse{
 		Secret: key.Secret(),
 		URL:    key.URL(),
-		QR:     "data:image/png;base64," + qrBase64,
+		QR:     qr,
 	})
+}
+
+// encryptAndStoreTOTPSecret encrypts the TOTP secret and saves it for the user.
+func (h *AuthHandler) encryptAndStoreTOTPSecret(ctx context.Context, userID int64, secret string) error {
+	encKey, err := h.DB.GetSystemSetting(ctx, "encryption_key")
+	if err != nil || encKey == "" {
+		return fmt.Errorf("encryption key not configured")
+	}
+	encrypted, err := crypto.Encrypt(secret, encKey)
+	if err != nil {
+		return fmt.Errorf("encrypting TOTP secret: %w", err)
+	}
+	if err := h.DB.SetUserTOTPSecret(ctx, userID, encrypted); err != nil {
+		return fmt.Errorf("storing TOTP secret: %w", err)
+	}
+	return nil
+}
+
+// generateQRBase64 renders the TOTP key as a base64-encoded PNG data URI.
+func generateQRBase64(key *otp.Key) (string, error) {
+	img, err := key.Image(200, 200)
+	if err != nil {
+		return "", fmt.Errorf("generating QR code: %w", err)
+	}
+	var buf bytes.Buffer
+	if err := png.Encode(&buf, img); err != nil {
+		return "", fmt.Errorf("encoding QR code: %w", err)
+	}
+	return "data:image/png;base64," + base64.StdEncoding.EncodeToString(buf.Bytes()), nil
 }
 
 // TOTPEnable godoc
@@ -121,12 +132,10 @@ func (h *AuthHandler) TOTPEnable(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusUnauthorized, models.ErrorResponse{Error: "authentication required"})
 		return
 	}
-
 	if user.TOTPEnabled {
 		writeJSON(w, http.StatusConflict, models.ErrorResponse{Error: "TOTP is already enabled"})
 		return
 	}
-
 	if user.TOTPSecret == nil {
 		writeJSON(w, http.StatusBadRequest, models.ErrorResponse{Error: "TOTP secret not generated, call generate first"})
 		return
@@ -137,31 +146,17 @@ func (h *AuthHandler) TOTPEnable(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusBadRequest, models.ErrorResponse{Error: "invalid request body"})
 		return
 	}
-
 	if req.Code == "" {
 		writeJSON(w, http.StatusBadRequest, models.ErrorResponse{Error: "code is required"})
 		return
 	}
 
-	// Decrypt and validate the code against the stored secret
-	decryptedSecret, err := h.decryptTOTPSecret(r.Context(), *user.TOTPSecret)
-	if err != nil {
-		writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "failed to decrypt TOTP secret"})
-		return
-	}
-	valid, err := totp.ValidateCustom(req.Code, decryptedSecret, time.Now(), totp.ValidateOpts{
-		Period:    30,
-		Skew:     1,
-		Digits:   otp.DigitsSix,
-		Algorithm: otp.AlgorithmSHA1,
-	})
-	if err != nil || !valid {
+	if err := h.validateTOTPCode(r.Context(), *user.TOTPSecret, req.Code); err != nil {
 		slog.Warn("totp-enable: invalid verification code", "user_id", user.ID)
 		writeJSON(w, http.StatusUnauthorized, models.ErrorResponse{Error: "invalid TOTP code"})
 		return
 	}
 
-	// Enable TOTP
 	if err := h.DB.EnableUserTOTP(r.Context(), user.ID); err != nil {
 		slog.Error("totp-enable: failed to enable TOTP", "user_id", user.ID, "error", err)
 		writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "failed to enable TOTP"})
@@ -170,6 +165,24 @@ func (h *AuthHandler) TOTPEnable(w http.ResponseWriter, r *http.Request) {
 
 	slog.Info("totp: enabled", "user_id", user.ID)
 	writeJSON(w, http.StatusOK, map[string]string{"message": "TOTP enabled"})
+}
+
+// validateTOTPCode decrypts the stored secret and validates the code against it.
+func (h *AuthHandler) validateTOTPCode(ctx context.Context, encryptedSecret, code string) error {
+	decrypted, err := h.decryptTOTPSecret(ctx, encryptedSecret)
+	if err != nil {
+		return fmt.Errorf("failed to decrypt TOTP secret: %w", err)
+	}
+	valid, err := totp.ValidateCustom(code, decrypted, time.Now(), totp.ValidateOpts{
+		Period:    30,
+		Skew:     1,
+		Digits:   otp.DigitsSix,
+		Algorithm: otp.AlgorithmSHA1,
+	})
+	if err != nil || !valid {
+		return fmt.Errorf("invalid TOTP code")
+	}
+	return nil
 }
 
 // TOTPDisable godoc

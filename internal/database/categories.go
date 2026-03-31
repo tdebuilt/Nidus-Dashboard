@@ -11,7 +11,9 @@ import (
 // CreateCategory inserts a new category. Sort order is set to max+1.
 func (db *DB) CreateCategory(ctx context.Context, name, icon string) (*models.Category, error) {
 	var maxOrder int
-	db.QueryRowContext(ctx, "SELECT COALESCE(MAX(sort_order), -1) FROM categories").Scan(&maxOrder)
+	if err := db.QueryRowContext(ctx, "SELECT COALESCE(MAX(sort_order), -1) FROM categories").Scan(&maxOrder); err != nil {
+		return nil, fmt.Errorf("getting max sort order: %w", err)
+	}
 
 	slug, err := db.generateUniqueSlug(ctx, GenerateSlug(name))
 	if err != nil {

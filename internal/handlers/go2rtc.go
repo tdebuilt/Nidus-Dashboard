@@ -12,7 +12,14 @@ import (
 )
 
 var wsUpgrader = websocket.Upgrader{
-	CheckOrigin: func(r *http.Request) bool { return true },
+	CheckOrigin: func(r *http.Request) bool {
+		origin := r.Header.Get("Origin")
+		if origin == "" {
+			return true // no Origin header = same-origin request
+		}
+		host := r.Host
+		return origin == "https://"+host || origin == "http://"+host
+	},
 }
 
 // Go2RTCHandler handles go2rtc management HTTP requests.
@@ -77,11 +84,9 @@ func (h *Go2RTCHandler) ProxyWS(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Build target URL: ws://localhost:1984/api/ws?src=...
 	target, _ := url.Parse(strings.Replace(h.Manager.URL(), "http", "ws", 1) + "/api/ws")
 	target.RawQuery = r.URL.RawQuery
 
-	// Connect to go2rtc
 	backendConn, _, err := websocket.DefaultDialer.Dial(target.String(), nil)
 	if err != nil {
 		slog.Error("go2rtc-proxy backend dial failed", "error", err)
@@ -90,7 +95,6 @@ func (h *Go2RTCHandler) ProxyWS(w http.ResponseWriter, r *http.Request) {
 	}
 	defer backendConn.Close()
 
-	// Upgrade client connection
 	clientConn, err := wsUpgrader.Upgrade(w, r, nil)
 	if err != nil {
 		slog.Error("go2rtc-proxy client upgrade failed", "error", err)
@@ -98,9 +102,12 @@ func (h *Go2RTCHandler) ProxyWS(w http.ResponseWriter, r *http.Request) {
 	}
 	defer clientConn.Close()
 
-	// Bidirectional copy
-	done := make(chan struct{})
+	relayWebSocket(clientConn, backendConn)
+}
 
+// relayWebSocket copies messages bidirectionally between two WebSocket connections.
+func relayWebSocket(clientConn, backendConn *websocket.Conn) {
+	done := make(chan struct{})
 	go func() {
 		defer close(done)
 		for {
@@ -113,7 +120,6 @@ func (h *Go2RTCHandler) ProxyWS(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 	}()
-
 	for {
 		msgType, msg, err := clientConn.ReadMessage()
 		if err != nil {

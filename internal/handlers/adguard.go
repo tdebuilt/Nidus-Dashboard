@@ -98,21 +98,25 @@ func (h *AdGuardHandler) GetStats(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	result := buildAdGuardStats(stats, filtering)
+	h.Cache.Set("adguard:stats", result)
+	writeJSON(w, http.StatusOK, result)
+}
+
+// buildAdGuardStats combines raw stats and filtering data into the API response.
+func buildAdGuardStats(stats *adguard.Stats, filtering *adguard.FilteringStatus) adguard.StatsInfo {
 	blockedPercent := float64(0)
 	if stats.NumDNSQueries > 0 {
 		blockedPercent = float64(stats.NumBlockedFiltering) / float64(stats.NumDNSQueries) * 100
 	}
-
-	activeFilters := 0
-	totalRules := 0
+	activeFilters, totalRules := 0, 0
 	for _, f := range filtering.Filters {
 		if f.Enabled {
 			activeFilters++
 			totalRules += f.RulesCount
 		}
 	}
-
-	result := adguard.StatsInfo{
+	return adguard.StatsInfo{
 		TotalQueries:     stats.NumDNSQueries,
 		BlockedQueries:   stats.NumBlockedFiltering,
 		BlockedPercent:   blockedPercent,
@@ -121,9 +125,6 @@ func (h *AdGuardHandler) GetStats(w http.ResponseWriter, r *http.Request) {
 		ActiveFilters:    activeFilters,
 		TotalRules:       totalRules,
 	}
-
-	h.Cache.Set("adguard:stats", result)
-	writeJSON(w, http.StatusOK, result)
 }
 
 // ToggleFiltering godoc

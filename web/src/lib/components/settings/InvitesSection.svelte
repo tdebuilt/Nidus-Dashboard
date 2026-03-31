@@ -62,6 +62,7 @@
     <div class="flex items-center gap-2">
       <select
         bind:value={inviteRole}
+        aria-label="Invite role"
         class="rounded border border-[var(--color-border)] bg-[var(--color-bg)] px-2 py-1.5 text-sm text-[var(--color-text)]"
       >
         <option value="viewer">{$t('users.roleViewer')}</option>

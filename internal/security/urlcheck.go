@@ -2,7 +2,6 @@ package security
 
 import (
 	"fmt"
-	"log"
 	"net"
 	"net/url"
 	"strings"
@@ -22,7 +21,7 @@ func init() {
 	for _, cidr := range blockedCIDRs {
 		_, ipNet, err := net.ParseCIDR(cidr)
 		if err != nil {
-			log.Fatalf("security: invalid blocked CIDR %q: %v", cidr, err)
+			panic(fmt.Sprintf("security: invalid blocked CIDR %q: %v", cidr, err))
 		}
 		parsedBlockedNets = append(parsedBlockedNets, ipNet)
 	}

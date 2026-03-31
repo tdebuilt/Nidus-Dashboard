@@ -38,7 +38,7 @@ func (h *AppLinkHandler) HealthCheck(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := security.ValidateExternalURL(url); err != nil {
-		writeJSON(w, http.StatusBadRequest, models.ErrorResponse{Error: err.Error()})
+		writeJSON(w, http.StatusBadRequest, models.ErrorResponse{Error: sanitizeError(err)})
 		return
 	}
 
@@ -65,7 +65,7 @@ func (h *AppLinkHandler) checkHealth(url string) map[string]any {
 	if err != nil {
 		return map[string]any{
 			"status": "down",
-			"error":  err.Error(),
+			"error":  sanitizeError(err),
 		}
 	}
 	defer resp.Body.Close()
@@ -104,17 +104,18 @@ func (h *AppLinkHandler) Favicon(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := security.ValidateExternalURL(rawURL); err != nil {
-		writeJSON(w, http.StatusBadRequest, models.ErrorResponse{Error: err.Error()})
+		writeJSON(w, http.StatusBadRequest, models.ErrorResponse{Error: sanitizeError(err)})
 		return
 	}
 
 	cacheKey := fmt.Sprintf("applink:favicon:%s", rawURL)
 	if val, ok := h.Cache.Get(cacheKey); ok {
-		cached := val.(cachedFavicon)
-		w.Header().Set("Content-Type", cached.contentType)
-		w.Header().Set("Cache-Control", "public, max-age=86400")
-		w.Write(cached.data)
-		return
+		if cached, ok := val.(cachedFavicon); ok {
+			w.Header().Set("Content-Type", cached.contentType)
+			w.Header().Set("Cache-Control", "public, max-age=86400")
+			_, _ = w.Write(cached.data)
+			return
+		}
 	}
 
 	faviconURL, data, contentType := h.fetchFavicon(rawURL)
@@ -128,7 +129,7 @@ func (h *AppLinkHandler) Favicon(w http.ResponseWriter, r *http.Request) {
 	h.Cache.Set(cacheKey, cachedFavicon{data: data, contentType: contentType})
 	w.Header().Set("Content-Type", contentType)
 	w.Header().Set("Cache-Control", "public, max-age=86400")
-	w.Write(data)
+	_, _ = w.Write(data)
 }
 
 type cachedFavicon struct {
@@ -148,26 +149,53 @@ func (h *AppLinkHandler) fetchFavicon(rawURL string) (string, []byte, string) {
 	origin := fmt.Sprintf("%s://%s", parsed.Scheme, parsed.Host)
 
 	// Try parsing HTML for <link rel="icon"> first
-	resp, err := client.Get(rawURL)
-	if err == nil {
-		defer resp.Body.Close()
-		body, err := io.ReadAll(io.LimitReader(resp.Body, 512*1024))
-		if err == nil {
-			if faviconURL := extractFaviconURL(string(body), origin); faviconURL != "" {
-				if data, ct := downloadURL(client, faviconURL); data != nil {
-					return faviconURL, data, ct
-				}
-			}
-		}
+	if faviconURL, data, ct := h.fetchFaviconFromHTML(client, rawURL, origin); data != nil {
+		return faviconURL, data, ct
 	}
 
 	// Fallback: try /favicon.ico
-	fallback := origin + "/favicon.ico"
-	if data, ct := downloadURL(client, fallback); data != nil {
-		return fallback, data, ct
+	return downloadFaviconFallback(client, origin)
+}
+
+func (h *AppLinkHandler) fetchFaviconFromHTML(client *http.Client, rawURL, origin string) (string, []byte, string) {
+	resp, err := client.Get(rawURL)
+	if err != nil {
+		return "", nil, ""
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(io.LimitReader(resp.Body, 512*1024))
+	if err != nil {
+		return "", nil, ""
 	}
 
-	return "", nil, ""
+	faviconURL := extractFaviconURL(string(body), origin)
+	if faviconURL == "" {
+		return "", nil, ""
+	}
+
+	if err := security.ValidateExternalURL(faviconURL); err != nil {
+		return "", nil, ""
+	}
+
+	data, ct := downloadURL(client, faviconURL)
+	if data == nil {
+		return "", nil, ""
+	}
+	return faviconURL, data, ct
+}
+
+func downloadFaviconFallback(client *http.Client, origin string) (string, []byte, string) {
+	fallback := origin + "/favicon.ico"
+	if err := security.ValidateExternalURL(fallback); err != nil {
+		return "", nil, ""
+	}
+
+	data, ct := downloadURL(client, fallback)
+	if data == nil {
+		return "", nil, ""
+	}
+	return fallback, data, ct
 }
 
 func extractFaviconURL(html, origin string) string {

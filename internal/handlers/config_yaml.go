@@ -161,6 +161,12 @@ func validateYAMLWidget(catName string, idx int, w models.YAMLWidget) error {
 	if w.Height < 0 || w.Height > MaxWidgetHeight {
 		return fmt.Errorf("category '%s', widget at index %d: height must be between 0 and %d", catName, idx, MaxWidgetHeight)
 	}
+	if w.PosX < 0 || w.PosX >= 24 {
+		return fmt.Errorf("category '%s', widget at index %d: pos_x must be between 0 and 23", catName, idx)
+	}
+	if w.PosY < 0 {
+		return fmt.Errorf("category '%s', widget at index %d: pos_y must be >= 0", catName, idx)
+	}
 	return nil
 }
 

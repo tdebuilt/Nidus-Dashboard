@@ -54,6 +54,7 @@
           <select
             value={user.role}
             onchange={(e) => onUpdateRole(user.id, (e.target as HTMLSelectElement).value)}
+            aria-label="Role: {user.username}"
             class="rounded border border-[var(--color-border)] bg-[var(--color-bg)] px-2 py-1 text-sm text-[var(--color-text)]"
           >
             <option value="admin">{$t('users.roleAdmin')}</option>

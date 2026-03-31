@@ -5,12 +5,12 @@ import (
 	"encoding/json"
 	"log/slog"
 	"net/http"
-	"strconv"
 	"time"
 
 	"github.com/go-chi/chi/v5"
 
 	"github.com/tdebuilt/nidus/internal/models"
+	"github.com/tdebuilt/nidus/internal/services/portainer"
 )
 
 const (
@@ -31,9 +31,8 @@ const (
 // @Router /docker/environments/{envId}/containers/{containerId}/{action} [post]
 // @Security BearerAuth
 func (h *DockerHandler) ContainerAction(w http.ResponseWriter, r *http.Request) {
-	envID, err := strconv.Atoi(chi.URLParam(r, "envId"))
-	if err != nil {
-		writeJSON(w, http.StatusBadRequest, models.ErrorResponse{Error: "invalid environment ID"})
+	envID, ok := parseIntIDParam(w, r, "envId")
+	if !ok {
 		return
 	}
 
@@ -88,9 +87,8 @@ func (h *DockerHandler) ContainerAction(w http.ResponseWriter, r *http.Request) 
 // @Router /docker/environments/{envId}/containers/{containerId}/recreate [post]
 // @Security BearerAuth
 func (h *DockerHandler) RecreateContainer(w http.ResponseWriter, r *http.Request) {
-	envID, err := strconv.Atoi(chi.URLParam(r, "envId"))
-	if err != nil {
-		writeJSON(w, http.StatusBadRequest, models.ErrorResponse{Error: "invalid environment ID"})
+	envID, ok := parseIntIDParam(w, r, "envId")
+	if !ok {
 		return
 	}
 
@@ -100,7 +98,8 @@ func (h *DockerHandler) RecreateContainer(w http.ResponseWriter, r *http.Request
 		PullImage bool `json:"pull_image"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-		slog.Warn("failed to decode recreate body", "error", err)
+		writeJSON(w, http.StatusBadRequest, models.ErrorResponse{Error: "invalid request body"})
+		return
 	}
 
 	client, err := h.getPortainerClient(r.Context())
@@ -113,7 +112,9 @@ func (h *DockerHandler) RecreateContainer(w http.ResponseWriter, r *http.Request
 	slog.Info("docker recreate container", "container", containerID[:12], "env_id", envID, "pull", body.PullImage)
 
 	// Recreate in background — pull+restart can take minutes
+	h.BgOps.Add(1)
 	go func() {
+		defer h.BgOps.Done()
 		ctx, cancel := context.WithTimeout(context.Background(), dockerOperationTimeout)
 		defer cancel()
 		timer := time.AfterFunc(dockerOperationWarnAfter, func() {
@@ -148,7 +149,7 @@ func (h *DockerHandler) RecreateContainer(w http.ResponseWriter, r *http.Request
 // Instead of using Portainer's stack start/stop (which does compose down/up),
 // we start/stop all containers in the stack individually to preserve them.
 func (h *DockerHandler) StackAction(w http.ResponseWriter, r *http.Request) {
-	_ = chi.URLParam(r, "stackId") // not used directly anymore
+	_ = chi.URLParam(r, "stackId")
 
 	action := chi.URLParam(r, "action")
 	if action != "start" && action != "stop" {
@@ -162,7 +163,8 @@ func (h *DockerHandler) StackAction(w http.ResponseWriter, r *http.Request) {
 		ContainerIDs []string `json:"container_ids"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-		slog.Warn("failed to decode stack action body", "error", err)
+		writeJSON(w, http.StatusBadRequest, models.ErrorResponse{Error: "invalid request body"})
+		return
 	}
 
 	client, err := h.getPortainerClient(r.Context())
@@ -172,56 +174,63 @@ func (h *DockerHandler) StackAction(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	containerIDs := body.ContainerIDs
-
-	// If no container IDs provided, fetch them by listing and filtering by stack name
-	if len(containerIDs) == 0 && body.StackName != "" {
-		containers, err := client.ListContainers(r.Context(), body.EnvID)
-		if err != nil {
-			slog.Error("docker_actions: failed to list containers for stack", "stack", body.StackName, "error", err)
-			writeJSON(w, http.StatusBadGateway, models.ErrorResponse{Error: "failed to list containers"})
-			return
-		}
-		for _, c := range containers {
-			if c.Labels["com.docker.compose.project"] == body.StackName {
-				containerIDs = append(containerIDs, c.ID)
-			}
-		}
+	containerIDs, err := h.resolveStackContainers(r, client, body.ContainerIDs, body.EnvID, body.StackName)
+	if err != nil {
+		writeJSON(w, http.StatusBadGateway, models.ErrorResponse{Error: "failed to list containers"})
+		return
 	}
-
 	if len(containerIDs) == 0 {
 		writeJSON(w, http.StatusBadRequest, models.ErrorResponse{Error: "no containers found for stack"})
 		return
 	}
 
 	slog.Info("docker stack action", "stack", body.StackName, "action", action, "containers", len(containerIDs), "env_id", body.EnvID)
+	errCount := h.execContainerActions(r, client, body.EnvID, containerIDs, action)
+	h.Cache.InvalidatePrefix("docker:")
 
-	// Same workaround as ContainerAction: Portainer's Docker proxy sends a
-	// request body on POST /start, which Docker API v1.24+ rejects.
+	if errCount > 0 {
+		writeJSON(w, http.StatusOK, map[string]any{"status": "partial", "errors_count": errCount})
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
+}
+
+// resolveStackContainers returns container IDs for a stack, fetching them from Portainer if not provided.
+func (h *DockerHandler) resolveStackContainers(r *http.Request, client *portainer.Client, ids []string, envID int, stackName string) ([]string, error) {
+	if len(ids) > 0 {
+		return ids, nil
+	}
+	if stackName == "" {
+		return nil, nil
+	}
+	containers, err := client.ListContainers(r.Context(), envID)
+	if err != nil {
+		slog.Error("docker_actions: failed to list containers for stack", "stack", stackName, "error", err)
+		return nil, err
+	}
+	var result []string
+	for _, c := range containers {
+		if c.Labels["com.docker.compose.project"] == stackName {
+			result = append(result, c.ID)
+		}
+	}
+	return result, nil
+}
+
+// execContainerActions runs a start/stop action on each container and returns the error count.
+func (h *DockerHandler) execContainerActions(r *http.Request, client *portainer.Client, envID int, containerIDs []string, action string) int {
 	effectiveAction := action
 	if action == "start" {
 		effectiveAction = "restart"
 	}
-
-	var errors []string
+	errCount := 0
 	for _, cid := range containerIDs {
-		if err := client.ContainerAction(r.Context(), body.EnvID, cid, effectiveAction); err != nil {
+		if err := client.ContainerAction(r.Context(), envID, cid, effectiveAction); err != nil {
 			slog.Error("docker container action failed", "container", cid[:12], "action", action, "error", err)
-			errors = append(errors, err.Error())
+			errCount++
 		}
 	}
-
-	h.Cache.InvalidatePrefix("docker:")
-
-	if len(errors) > 0 {
-		writeJSON(w, http.StatusOK, map[string]any{
-			"status":       "partial",
-			"errors_count": len(errors),
-		})
-		return
-	}
-
-	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
+	return errCount
 }
 
 // UpdateStack godoc
@@ -239,9 +248,8 @@ func (h *DockerHandler) StackAction(w http.ResponseWriter, r *http.Request) {
 //
 // Redeploys the stack via Portainer (pull images + compose up).
 func (h *DockerHandler) UpdateStack(w http.ResponseWriter, r *http.Request) {
-	stackID, err := strconv.Atoi(chi.URLParam(r, "stackId"))
-	if err != nil {
-		writeJSON(w, http.StatusBadRequest, models.ErrorResponse{Error: "invalid stack ID"})
+	stackID, ok := parseIntIDParam(w, r, "stackId")
+	if !ok {
 		return
 	}
 
@@ -250,7 +258,8 @@ func (h *DockerHandler) UpdateStack(w http.ResponseWriter, r *http.Request) {
 		PullImage bool `json:"pull_image"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-		slog.Warn("failed to decode update stack body", "error", err)
+		writeJSON(w, http.StatusBadRequest, models.ErrorResponse{Error: "invalid request body"})
+		return
 	}
 
 	client, err := h.getPortainerClient(r.Context())
@@ -263,7 +272,9 @@ func (h *DockerHandler) UpdateStack(w http.ResponseWriter, r *http.Request) {
 	slog.Info("docker update stack", "stack_id", stackID, "env_id", body.EnvID, "pull", body.PullImage)
 
 	// Run in background — pull + redeploy can take minutes
+	h.BgOps.Add(1)
 	go func() {
+		defer h.BgOps.Done()
 		ctx, cancel := context.WithTimeout(context.Background(), dockerOperationTimeout)
 		defer cancel()
 		timer := time.AfterFunc(dockerOperationWarnAfter, func() {

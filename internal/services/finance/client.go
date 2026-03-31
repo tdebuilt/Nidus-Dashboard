@@ -80,12 +80,16 @@ func (c *Client) fetchChart(ctx context.Context, symbol string) (Quote, error) {
 	if err := c.doRequest(ctx, apiURL, &resp); err != nil {
 		return Quote{}, fmt.Errorf("fetching chart for %s: %w", symbol, err)
 	}
-
 	if len(resp.Chart.Result) == 0 {
 		return Quote{}, fmt.Errorf("no chart data for %s", symbol)
 	}
 
-	meta := resp.Chart.Result[0].Meta
+	return buildQuoteFromChart(resp.Chart.Result[0]), nil
+}
+
+// buildQuoteFromChart converts a Yahoo chart result into a Quote.
+func buildQuoteFromChart(result yahooChartResult) Quote {
+	meta := result.Meta
 	price := meta.RegularMarketPrice
 	prevClose := meta.ChartPreviousClose
 	change := price - prevClose
@@ -94,17 +98,9 @@ func (c *Client) fetchChart(ctx context.Context, symbol string) (Quote, error) {
 		changePct = (change / prevClose) * 100
 	}
 
-	// Get open price from indicators if available
 	openPrice := 0.0
-	indicators := resp.Chart.Result[0].Indicators
-	if len(indicators.Quote) > 0 && len(indicators.Quote[0].Open) > 0 {
-		openPrice = indicators.Quote[0].Open[0]
-	}
-
-	// Determine market state from instrument type
-	marketState := "REGULAR"
-	if meta.InstrumentType == "CRYPTOCURRENCY" {
-		marketState = "REGULAR" // crypto is always open
+	if len(result.Indicators.Quote) > 0 && len(result.Indicators.Quote[0].Open) > 0 {
+		openPrice = result.Indicators.Quote[0].Open[0]
 	}
 
 	name := meta.ShortName
@@ -124,9 +120,9 @@ func (c *Client) fetchChart(ctx context.Context, symbol string) (Quote, error) {
 		Open:          openPrice,
 		DayHigh:       meta.RegularMarketDayHigh,
 		DayLow:        meta.RegularMarketDayLow,
-		MarketCap:     0, // v8 chart API doesn't return market cap
-		MarketState:   marketState,
-	}, nil
+		MarketCap:     0,
+		MarketState:   "REGULAR",
+	}
 }
 
 // Search finds symbols matching the query (for autocomplete).

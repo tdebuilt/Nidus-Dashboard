@@ -34,33 +34,35 @@ type SearchResult struct {
 // yahooChartResponse maps the Yahoo Finance v8 chart API response.
 type yahooChartResponse struct {
 	Chart struct {
-		Result []struct {
-			Meta struct {
-				Currency            string  `json:"currency"`
-				Symbol              string  `json:"symbol"`
-				ShortName           string  `json:"shortName"`
-				LongName            string  `json:"longName"`
-				InstrumentType      string  `json:"instrumentType"`
-				RegularMarketPrice  float64 `json:"regularMarketPrice"`
-				RegularMarketDayHigh float64 `json:"regularMarketDayHigh"`
-				RegularMarketDayLow  float64 `json:"regularMarketDayLow"`
-				RegularMarketVolume int64   `json:"regularMarketVolume"`
-				ChartPreviousClose  float64 `json:"chartPreviousClose"`
-				FiftyTwoWeekHigh    float64 `json:"fiftyTwoWeekHigh"`
-				FiftyTwoWeekLow     float64 `json:"fiftyTwoWeekLow"`
-			} `json:"meta"`
-			Indicators struct {
-				Quote []struct {
-					Open   []float64 `json:"open"`
-					High   []float64 `json:"high"`
-					Low    []float64 `json:"low"`
-					Close  []float64 `json:"close"`
-					Volume []int64   `json:"volume"`
-				} `json:"quote"`
-			} `json:"indicators"`
-		} `json:"result"`
-		Error interface{} `json:"error"`
+		Result []yahooChartResult `json:"result"`
+		Error  interface{}        `json:"error"`
 	} `json:"chart"`
+}
+
+type yahooChartResult struct {
+	Meta struct {
+		Currency             string  `json:"currency"`
+		Symbol               string  `json:"symbol"`
+		ShortName            string  `json:"shortName"`
+		LongName             string  `json:"longName"`
+		InstrumentType       string  `json:"instrumentType"`
+		RegularMarketPrice   float64 `json:"regularMarketPrice"`
+		RegularMarketDayHigh float64 `json:"regularMarketDayHigh"`
+		RegularMarketDayLow  float64 `json:"regularMarketDayLow"`
+		RegularMarketVolume  int64   `json:"regularMarketVolume"`
+		ChartPreviousClose   float64 `json:"chartPreviousClose"`
+		FiftyTwoWeekHigh     float64 `json:"fiftyTwoWeekHigh"`
+		FiftyTwoWeekLow      float64 `json:"fiftyTwoWeekLow"`
+	} `json:"meta"`
+	Indicators struct {
+		Quote []struct {
+			Open   []float64 `json:"open"`
+			High   []float64 `json:"high"`
+			Low    []float64 `json:"low"`
+			Close  []float64 `json:"close"`
+			Volume []int64   `json:"volume"`
+		} `json:"quote"`
+	} `json:"indicators"`
 }
 
 // yahooSearchResponse maps the Yahoo Finance v1 search API response.

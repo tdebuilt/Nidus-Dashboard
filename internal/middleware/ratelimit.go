@@ -1,6 +1,8 @@
 package middleware
 
 import (
+	"encoding/json"
+	"log/slog"
 	"net"
 	"net/http"
 	"sync"
@@ -97,7 +99,11 @@ func (rl *RateLimiter) Limit(next http.Handler) http.Handler {
 		}
 
 		if !rl.Allow(ip) {
-			http.Error(w, `{"error":"too many requests"}`, http.StatusTooManyRequests)
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusTooManyRequests)
+			if err := json.NewEncoder(w).Encode(map[string]string{"error": "too many requests"}); err != nil {
+				slog.Warn("failed to encode rate limit response", "error", err)
+			}
 			return
 		}
 

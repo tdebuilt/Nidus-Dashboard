@@ -93,19 +93,24 @@
   {:else}
     <div class="mt-3 rounded-lg border border-[var(--color-border)] p-3 space-y-2">
       <select bind:value={newProviderType}
+        aria-label={translate('notifications.addProvider')}
         class="w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-2 text-sm text-[var(--color-text)]">
         <option value="gotify">Gotify</option>
         <option value="ntfy">Ntfy</option>
         <option value="apprise">Apprise</option>
       </select>
       <input type="text" bind:value={newProviderName} placeholder={translate('notifications.providerName')}
+        aria-label={translate('notifications.providerName')}
         class="w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-2 text-sm text-[var(--color-text)]" />
       <input type="text" bind:value={newProviderUrl} placeholder={translate('notifications.providerUrl')}
+        aria-label={translate('notifications.providerUrl')}
         class="w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-2 text-sm text-[var(--color-text)]" />
       <input type="text" bind:value={newProviderToken} placeholder={translate('notifications.providerToken')}
+        aria-label={translate('notifications.providerToken')}
         class="w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-2 text-sm text-[var(--color-text)]" />
       {#if newProviderType === 'ntfy'}
         <input type="text" bind:value={newProviderConfig} placeholder={translate('notifications.ntfyTopic')}
+          aria-label={translate('notifications.ntfyTopic')}
           class="w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-2 text-sm text-[var(--color-text)]" />
       {/if}
       <div class="flex justify-end gap-2">

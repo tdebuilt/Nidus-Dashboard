@@ -33,4 +33,6 @@ COPY docker-entrypoint.sh .
 RUN mkdir -p /data && chown -R nidus:nidus /app /data && chmod 700 /data
 EXPOSE 3777 1984
 ENV NIDUS_DB_PATH=/data/nidus.db
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+  CMD wget -qO- http://localhost:3777/api/auth/status || exit 1
 ENTRYPOINT ["./docker-entrypoint.sh"]

@@ -85,11 +85,13 @@
   {#if showAddRule}
     <div class="mt-3 rounded-lg border border-[var(--color-border)] p-3 space-y-2">
       <select bind:value={newRuleEventType}
+        aria-label={$t('notifications.addRule') + ' — event'}
         class="w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-2 text-sm text-[var(--color-text)]">
         <option value="container_down">{$t('notifications.eventContainerDown')}</option>
         <option value="service_unreachable">{$t('notifications.eventServiceUnreachable')}</option>
       </select>
       <select bind:value={newRuleProviderId}
+        aria-label={$t('notifications.addRule') + ' — provider'}
         class="w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-2 text-sm text-[var(--color-text)]">
         {#each providers as p (p.id)}
           <option value={p.id}>{p.name} ({p.type})</option>

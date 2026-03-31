@@ -38,52 +38,47 @@ func (c *JellyfinClient) GetSessions(ctx context.Context) ([]Session, error) {
 
 	sessions := make([]Session, 0)
 	for _, js := range jSessions {
-		// Only include sessions that are actively playing something
 		if js.NowPlayingItem == nil {
 			continue
 		}
-
-		np := js.NowPlayingItem
-		s := Session{
-			ID:        js.ID,
-			UserName:  js.UserName,
-			Title:     np.Name,
-			MediaType: strings.ToLower(np.Type),
-			Year:      np.ProductionYear,
-			Player:    js.Client,
-			Platform:  js.DeviceName,
-			Duration:  ticksToSeconds(np.RunTimeTicks),
-		}
-
-		if js.PlayState != nil {
-			s.Position = ticksToSeconds(js.PlayState.PositionTicks)
-			if js.PlayState.IsPaused {
-				s.State = "paused"
-			} else {
-				s.State = "playing"
-			}
-		}
-
-		if np.RunTimeTicks > 0 && js.PlayState != nil {
-			s.Progress = float64(js.PlayState.PositionTicks) / float64(np.RunTimeTicks)
-		}
-
-		// Build subtitle for TV episodes
-		if np.Type == "Episode" && np.SeriesName != "" {
-			s.Subtitle = fmt.Sprintf("%s — S%02dE%02d", np.SeriesName, np.ParentIndexNumber, np.IndexNumber)
-		}
-
-		// Build thumb path
-		if np.ImageTags != nil {
-			if _, ok := np.ImageTags["Primary"]; ok {
-				s.ThumbPath = fmt.Sprintf("/Items/%s/Images/Primary", np.ID)
-			}
-		}
-
-		sessions = append(sessions, s)
+		sessions = append(sessions, transformJellyfinSession(js))
 	}
-
 	return sessions, nil
+}
+
+// transformJellyfinSession converts a raw Jellyfin session to the normalized format.
+func transformJellyfinSession(js jellyfinSession) Session {
+	np := js.NowPlayingItem
+	s := Session{
+		ID:        js.ID,
+		UserName:  js.UserName,
+		Title:     np.Name,
+		MediaType: strings.ToLower(np.Type),
+		Year:      np.ProductionYear,
+		Player:    js.Client,
+		Platform:  js.DeviceName,
+		Duration:  ticksToSeconds(np.RunTimeTicks),
+	}
+	if js.PlayState != nil {
+		s.Position = ticksToSeconds(js.PlayState.PositionTicks)
+		if js.PlayState.IsPaused {
+			s.State = "paused"
+		} else {
+			s.State = "playing"
+		}
+	}
+	if np.RunTimeTicks > 0 && js.PlayState != nil {
+		s.Progress = float64(js.PlayState.PositionTicks) / float64(np.RunTimeTicks)
+	}
+	if np.Type == "Episode" && np.SeriesName != "" {
+		s.Subtitle = fmt.Sprintf("%s — S%02dE%02d", np.SeriesName, np.ParentIndexNumber, np.IndexNumber)
+	}
+	if np.ImageTags != nil {
+		if _, ok := np.ImageTags["Primary"]; ok {
+			s.ThumbPath = fmt.Sprintf("/Items/%s/Images/Primary", np.ID)
+		}
+	}
+	return s
 }
 
 // GetLibraries returns the list of media libraries.

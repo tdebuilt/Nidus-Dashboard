@@ -7,16 +7,38 @@ linters:
     - staticcheck
     - unused
     - gocritic
-  disable:
     - errcheck
+    - goconst
   settings:
     gocritic:
       enabled-tags:
         - diagnostic
+    goconst:
+      min-len: 5
+      min-occurrences: 4
   exclusions:
     presets:
       - std-error-handling
       - common-false-positives
+    rules:
+      - linters: [errcheck]
+        path: _test\.go
+      - linters: [goconst]
+        path: _test\.go
+      - linters: [errcheck]
+        text: "Error return value of `w.Write` is not checked"
+      - linters: [errcheck]
+        text: "Error return value of `\\(\\*net/http\\.ResponseWriter\\)"
+      - linters: [errcheck]
+        text: "Error return value of `tx.Rollback` is not checked"
+      - linters: [errcheck]
+        text: "Error return value of `.*SetWriteDeadline` is not checked"
+      - linters: [errcheck]
+        text: "Error return value of `.*SetReadDeadline` is not checked"
+      - linters: [errcheck]
+        text: "Error return value of `.*WriteMessage` is not checked"
+      - linters: [errcheck]
+        text: "Error return value of `.*cmd\\.Wait` is not checked"
 
 issues:
   max-issues-per-linter: 20

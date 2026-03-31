@@ -3,11 +3,10 @@ package handlers
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"log/slog"
 	"net/http"
-	"strconv"
 
-	"github.com/go-chi/chi/v5"
 	"github.com/tdebuilt/nidus/internal/database"
 	"github.com/tdebuilt/nidus/internal/models"
 )
@@ -16,6 +15,11 @@ import (
 type ThemesHandler struct {
 	DB *database.DB
 }
+
+const (
+	themeModeDark  = "dark"
+	themeModeLight = "light"
+)
 
 var themeColorKeys = []string{
 	"color-bg", "color-bg-primary", "color-bg-secondary", "color-bg-tertiary",
@@ -45,7 +49,7 @@ func validateThemeJSON(raw string) error {
 	}
 
 	mode, ok := obj["mode"].(string)
-	if !ok || (mode != "dark" && mode != "light") {
+	if !ok || (mode != themeModeDark && mode != themeModeLight) {
 		return &validationError{field: "mode", message: "must be \"dark\" or \"light\""}
 	}
 
@@ -97,7 +101,7 @@ func (h *ThemesHandler) Create(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := validateThemeJSON(req.ThemeJSON); err != nil {
-		writeJSON(w, http.StatusBadRequest, models.ErrorResponse{Error: "invalid theme JSON: " + err.Error()})
+		writeJSON(w, http.StatusBadRequest, models.ErrorResponse{Error: "invalid theme JSON: " + sanitizeError(err)})
 		return
 	}
 
@@ -131,9 +135,8 @@ func (h *ThemesHandler) Create(w http.ResponseWriter, r *http.Request) {
 
 // Update updates a custom theme (admin only).
 func (h *ThemesHandler) Update(w http.ResponseWriter, r *http.Request) {
-	id, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
-	if err != nil {
-		writeJSON(w, http.StatusBadRequest, models.ErrorResponse{Error: "invalid theme ID"})
+	id, ok := parseIDParam(w, r, "id")
+	if !ok {
 		return
 	}
 
@@ -155,23 +158,10 @@ func (h *ThemesHandler) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	name := existing.Name
-	themeJSON := existing.ThemeJSON
-
-	if req.Name != nil {
-		if *req.Name == "" || len(*req.Name) > 50 {
-			writeJSON(w, http.StatusBadRequest, models.ErrorResponse{Error: "name is required (max 50 chars)"})
-			return
-		}
-		name = *req.Name
-	}
-
-	if req.ThemeJSON != nil {
-		if err := validateThemeJSON(*req.ThemeJSON); err != nil {
-			writeJSON(w, http.StatusBadRequest, models.ErrorResponse{Error: "invalid theme JSON: " + err.Error()})
-			return
-		}
-		themeJSON = *req.ThemeJSON
+	name, themeJSON, err := resolveThemeUpdates(existing, req)
+	if err != nil {
+		writeJSON(w, http.StatusBadRequest, models.ErrorResponse{Error: err.Error()})
+		return
 	}
 
 	if err := h.DB.UpdateCustomTheme(r.Context(), id, name, themeJSON); err != nil {
@@ -190,11 +180,29 @@ func (h *ThemesHandler) Update(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, theme)
 }
 
+// resolveThemeUpdates merges the request into the existing theme, validating changed fields.
+func resolveThemeUpdates(existing *models.CustomTheme, req models.UpdateCustomThemeRequest) (string, string, error) {
+	name := existing.Name
+	themeJSON := existing.ThemeJSON
+	if req.Name != nil {
+		if *req.Name == "" || len(*req.Name) > 50 {
+			return "", "", fmt.Errorf("name is required (max 50 chars)")
+		}
+		name = *req.Name
+	}
+	if req.ThemeJSON != nil {
+		if err := validateThemeJSON(*req.ThemeJSON); err != nil {
+			return "", "", fmt.Errorf("invalid theme JSON: %s", sanitizeError(err))
+		}
+		themeJSON = *req.ThemeJSON
+	}
+	return name, themeJSON, nil
+}
+
 // Delete deletes a custom theme (admin only).
 func (h *ThemesHandler) Delete(w http.ResponseWriter, r *http.Request) {
-	id, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
-	if err != nil {
-		writeJSON(w, http.StatusBadRequest, models.ErrorResponse{Error: "invalid theme ID"})
+	id, ok := parseIDParam(w, r, "id")
+	if !ok {
 		return
 	}
 
