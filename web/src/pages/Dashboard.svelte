@@ -20,7 +20,7 @@
     collapsed: boolean
   }
 
-  let widgets = $state.raw<Record<number, Widget[]>>({})
+  let widgets = $state<Record<number, Widget[]>>({})
   let selectedCategoryId = $state<number | null>(null)
   let loading = $state(true)
 
