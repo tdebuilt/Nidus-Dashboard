@@ -17,6 +17,7 @@
     seasonCount: number
     monitored: boolean
     status: string
+    seasons?: { seasonNumber: number; monitored: boolean }[]
     statistics: SonarrStatistics
   }
 
@@ -68,10 +69,18 @@
 </script>
 
 <div class="space-y-2">
-  <!-- Stats -->
-  <div class="flex gap-3 text-xs text-[var(--color-text-muted)]">
-    <span class="text-[var(--color-success)]">{completeCount} {$t('arr.filterComplete')}</span>
-    <span>{incompleteCount} {$t('arr.filterIncomplete')}</span>
+  <!-- Stats + Legend -->
+  <div class="flex items-center justify-between text-xs text-[var(--color-text-muted)]">
+    <div class="flex gap-3">
+      <span class="text-[var(--color-success)]">{completeCount} {$t('arr.filterComplete')}</span>
+      <span>{incompleteCount} {$t('arr.filterIncomplete')}</span>
+    </div>
+    <div class="flex flex-wrap items-center gap-x-2 gap-y-0.5">
+      <span class="flex items-center gap-1"><span class="inline-block h-2 w-2 rounded-full" style="background: var(--color-primary)"></span> {$t('arr.legendContinuing')}</span>
+      <span class="flex items-center gap-1"><span class="inline-block h-2 w-2 rounded-full" style="background: var(--color-success)"></span> {$t('arr.legendEnded')}</span>
+      <span class="flex items-center gap-1"><span class="inline-block h-2 w-2 rounded-full" style="background: var(--color-warning)"></span> {$t('arr.legendMissing')}</span>
+      <span class="flex items-center gap-1"><span class="inline-block h-2 w-2 rounded-full" style="background: var(--color-danger)"></span> {$t('arr.legendUnmonitored')}</span>
+    </div>
   </div>
 
   <!-- Search + Filter + Sort -->

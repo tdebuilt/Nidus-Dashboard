@@ -1,12 +1,15 @@
 <script lang="ts">
-  import { Loader2, AlertCircle, Settings, Database, Calendar, Download, ChevronDown, ChevronRight } from 'lucide-svelte'
+  import { Loader2, AlertCircle, Settings, Database, Calendar, Download, ChevronDown, ChevronRight, Plus } from 'lucide-svelte'
   import { api } from '../../api/client'
   import { pollingInterval } from '../../stores/polling'
   import { usePolling } from '../../utils/usePolling'
   import { t } from '../../i18n'
+  import { isViewer } from '../../stores/auth'
   import QueueCard from './QueueCard.svelte'
   import CalendarCard from './CalendarCard.svelte'
   import LibrarySection from './LibrarySection.svelte'
+  import AddMediaDialog from './AddMediaDialog.svelte'
+  import IndexerList from './IndexerList.svelte'
 
   interface SystemStatus {
     version: string
@@ -59,6 +62,8 @@
   let services = $state.raw<ArrOverview[]>([])
   let activeTab = $state(0)
   let showLibrary = $state<Record<string, boolean>>({})
+  let showAddDialog = $state(false)
+  let addDialogType = $state<'radarr' | 'sonarr'>('radarr')
 
   async function fetchData() {
     if (services.length === 0) loading = true
@@ -168,9 +173,21 @@
                 <span>{svc.library_count} {$t('arr.' + (svc.type === 'lidarr' ? 'artists' : 'indexers'))}</span>
               </div>
             {/if}
-            {#if svc.status?.version}
-              <span class="rounded bg-[var(--color-bg-tertiary)] px-1.5 py-0.5 text-[10px]">v{svc.status.version}</span>
-            {/if}
+            <div class="flex items-center gap-1.5">
+              {#if (svc.type === 'radarr' || svc.type === 'sonarr') && !$isViewer}
+                <button
+                  class="rounded p-0.5 text-[var(--color-text-muted)] hover:text-[var(--color-primary)]"
+                  onclick={() => { addDialogType = svc.type as 'radarr' | 'sonarr'; showAddDialog = true }}
+                  title={svc.type === 'radarr' ? $t('arr.addMovie') : $t('arr.addSeries')}
+                  aria-label={svc.type === 'radarr' ? $t('arr.addMovie') : $t('arr.addSeries')}
+                >
+                  <Plus size={14} />
+                </button>
+              {/if}
+              {#if svc.status?.version}
+                <span class="rounded bg-[var(--color-bg-tertiary)] px-1.5 py-0.5 text-[10px]">v{svc.status.version}</span>
+              {/if}
+            </div>
           </div>
 
           <!-- Library browser -->
@@ -178,39 +195,45 @@
             <LibrarySection serviceType={svc.type} />
           {/if}
 
-          <!-- Queue -->
-          {#if svc.queue_items && svc.queue_items.length > 0}
-            <div>
-              <div class="mb-1.5 flex items-center gap-1.5 text-xs font-medium text-[var(--color-text-secondary)]">
-                <Download size={12} />
-                {$t('arr.queue')} ({svc.queue_count})
-              </div>
-              <div class="space-y-1.5">
-                {#each svc.queue_items.slice(0, 5) as item (item.id)}
-                  <QueueCard {item} />
-                {/each}
-              </div>
-            </div>
+          {#if svc.type === 'prowlarr'}
+            <!-- Prowlarr: indexer list -->
+            <IndexerList />
           {:else}
-            <div class="text-center text-xs text-[var(--color-text-muted)]">{$t('arr.noQueue')}</div>
-          {/if}
+            <!-- Queue -->
+            {#if svc.queue_items && svc.queue_items.length > 0}
+              <div>
+                <div class="mb-1.5 flex items-center gap-1.5 text-xs font-medium text-[var(--color-text-secondary)]">
+                  <Download size={12} />
+                  {$t('arr.queue')} ({svc.queue_count})
+                </div>
+                <div class="space-y-1.5">
+                  {#each svc.queue_items.slice(0, 5) as item (item.id)}
+                    <QueueCard {item} />
+                  {/each}
+                </div>
+              </div>
+            {:else}
+              <div class="text-center text-xs text-[var(--color-text-muted)]">{$t('arr.noQueue')}</div>
+            {/if}
 
-          <!-- Calendar -->
-          {#if svc.calendar_items && svc.calendar_items.length > 0}
-            <div>
-              <div class="mb-1.5 flex items-center gap-1.5 text-xs font-medium text-[var(--color-text-secondary)]">
-                <Calendar size={12} />
-                {$t('arr.upcoming')} ({svc.calendar_items.length})
+            <!-- Calendar -->
+            {#if svc.calendar_items && svc.calendar_items.length > 0}
+              <div>
+                <div class="mb-1.5 flex items-center gap-1.5 text-xs font-medium text-[var(--color-text-secondary)]">
+                  <Calendar size={12} />
+                  {$t('arr.upcoming')} ({svc.calendar_items.length})
+                </div>
+                <div class="space-y-1.5">
+                  {#each svc.calendar_items.slice(0, 5) as item (item.id)}
+                    <CalendarCard {item} />
+                  {/each}
+                </div>
               </div>
-              <div class="space-y-1.5">
-                {#each svc.calendar_items.slice(0, 5) as item (item.id)}
-                  <CalendarCard {item} />
-                {/each}
-              </div>
-            </div>
+            {/if}
           {/if}
         </div>
       {/if}
     {/if}
   {/if}
+  <AddMediaDialog open={showAddDialog} serviceType={addDialogType} onClose={() => showAddDialog = false} onAdded={fetchDataWrapped} />
 </div>

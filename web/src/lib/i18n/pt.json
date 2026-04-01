@@ -616,7 +616,10 @@
     "sortNameAsc": "Nome A→Z",
     "sortNameDesc": "Nome Z→A",
     "sortStatusUp": "Online primeiro",
-    "sortStatusDown": "Offline primeiro"
+    "sortStatusDown": "Offline primeiro",
+    "fillMode": "Direção de preenchimento",
+    "fillByRow": "Por linhas",
+    "fillByColumn": "Por colunas"
   },
   "search": {
     "placeholder": "Buscar...",
@@ -1158,7 +1161,30 @@
     "refreshLibrary": "Refresh",
     "downloaded": "Downloaded",
     "missing": "Missing",
-    "perPage": "per page"
+    "perPage": "per page",
+    "addMovie": "Add a movie",
+    "addSeries": "Add a series",
+    "searchMoviePlaceholder": "Search movies on TMDb...",
+    "searchSeriesPlaceholder": "Search series on TVDB...",
+    "noSearchResults": "No results found",
+    "alreadyInLibrary": "Already in library",
+    "qualityProfile": "Quality profile",
+    "rootFolder": "Root folder",
+    "searchOnAdd": "Search on add",
+    "freeSpace": "free",
+    "movieAdded": "Movie added successfully",
+    "seriesAdded": "Series added successfully",
+    "addError": "Failed to add",
+    "duplicateError": "This item is already in your library",
+    "loadingProfiles": "Loading options...",
+    "loadingIndexers": "Carregando indexadores...",
+    "indexerError": "Erro ao carregar indexadores",
+    "noIndexers": "Nenhum indexador configurado",
+    "testIndexer": "Testar indexador",
+    "legendContinuing": "Continuing",
+    "legendEnded": "Ended",
+    "legendMissing": "Missing (monitored)",
+    "legendUnmonitored": "Missing (unmonitored)"
   },
   "webhooks": {
     "title": "",

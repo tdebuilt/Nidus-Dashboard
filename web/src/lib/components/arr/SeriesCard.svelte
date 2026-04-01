@@ -11,6 +11,11 @@
     sizeOnDisk: number
   }
 
+  interface SonarrSeason {
+    seasonNumber: number
+    monitored: boolean
+  }
+
   interface SonarrSeries {
     id: number
     title: string
@@ -18,6 +23,7 @@
     seasonCount: number
     monitored: boolean
     status: string
+    seasons?: SonarrSeason[]
     statistics: SonarrStatistics
   }
 
@@ -29,6 +35,7 @@
     hasFile: boolean
     monitored: boolean
     airDateUtc: string
+    episodeFile?: { quality: { quality: { name: string } }; mediaInfo?: { audioCodec: string; videoCodec: string } }
   }
 
   interface Props {
@@ -45,13 +52,20 @@
 
   const pct = $derived(Math.round(series.statistics.percentOfEpisodes))
   const progressColor = $derived(
-    pct >= 100 ? 'var(--color-success)' : pct >= 50 ? 'var(--color-warning)' : 'var(--color-danger)'
+    pct >= 100
+      ? (series.status === 'ended' ? 'var(--color-success)' : 'var(--color-primary)')
+      : (series.monitored ? 'var(--color-warning)' : 'var(--color-danger)')
+  )
+
+  const monitoredSeasons = $derived(
+    new Set((series.seasons ?? []).filter(s => s.monitored).map(s => s.seasonNumber))
   )
 
   const seasonGroups = $derived(() => {
     const grouped: Record<number, SonarrEpisode[]> = {}
     for (const ep of episodes) {
-      (grouped[ep.seasonNumber] ??= []).push(ep)
+      if (monitoredSeasons.size > 0 && !monitoredSeasons.has(ep.seasonNumber)) continue
+      ;(grouped[ep.seasonNumber] ??= []).push(ep)
     }
     return Object.entries(grouped)
       .map(([num, eps]) => [Number(num), eps] as [number, SonarrEpisode[]])

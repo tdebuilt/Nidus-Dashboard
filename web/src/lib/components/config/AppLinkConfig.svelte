@@ -21,6 +21,7 @@
   let columnsTablet = $state(0)
   let columnsMobile = $state(0)
   let sortBy = $state('manual')
+  let fillMode = $state<'row' | 'column'>('row')
   let dragIndex = $state<number | null>(null)
   let dragOverIndex = $state<number | null>(null)
 
@@ -34,6 +35,7 @@
       if (typeof parsed.columnsTablet === 'number') columnsTablet = parsed.columnsTablet
       if (typeof parsed.columnsMobile === 'number') columnsMobile = parsed.columnsMobile
       if (parsed.sortBy) sortBy = parsed.sortBy
+      if (parsed.fillMode) fillMode = parsed.fillMode
       if (parsed.links && Array.isArray(parsed.links)) {
         links = parsed.links.map((l: Record<string, string>) => ({
           name: l.name ?? '',
@@ -54,7 +56,7 @@
         if (l.group.trim()) entry.group = l.group.trim()
         return entry
       })
-    const config: Record<string, unknown> = { links: validLinks, columns, sortBy }
+    const config: Record<string, unknown> = { links: validLinks, columns, sortBy, fillMode }
     if (columnsTablet > 0) config.columnsTablet = columnsTablet
     if (columnsMobile > 0) config.columnsMobile = columnsMobile
     onchange?.(JSON.stringify(config))
@@ -129,6 +131,18 @@
         <option value="name-desc">{$t('applink.sortNameDesc')}</option>
         <option value="status-up">{$t('applink.sortStatusUp')}</option>
         <option value="status-down">{$t('applink.sortStatusDown')}</option>
+      </select>
+    </div>
+    <div class="flex items-center gap-2">
+      <label for="applink-fill-select" class="shrink-0 text-sm text-[var(--color-text-secondary)]">{$t('applink.fillMode')}</label>
+      <select
+        id="applink-fill-select"
+        value={fillMode}
+        onchange={(e) => { fillMode = (e.target as HTMLSelectElement).value as 'row' | 'column'; emitChange() }}
+        class="rounded-lg border border-[var(--color-border)] bg-[var(--color-bg)] px-2 py-1 text-sm text-[var(--color-text)]"
+      >
+        <option value="row">{$t('applink.fillByRow')}</option>
+        <option value="column">{$t('applink.fillByColumn')}</option>
       </select>
     </div>
   </div>

@@ -15,7 +15,7 @@ const libraryCacheTTL = 5 * time.Minute
 // GetLibrary returns the full library for a radarr or sonarr service.
 func (h *ArrHandler) GetLibrary(w http.ResponseWriter, r *http.Request) {
 	serviceType := chi.URLParam(r, "type")
-	if serviceType != "radarr" && serviceType != "sonarr" {
+	if serviceType != serviceRadarr && serviceType != serviceSonarr {
 		writeJSON(w, http.StatusBadRequest, models.ErrorResponse{Error: "invalid service type"})
 		return
 	}
@@ -37,9 +37,9 @@ func (h *ArrHandler) GetLibrary(w http.ResponseWriter, r *http.Request) {
 	}
 
 	switch serviceType {
-	case "radarr":
+	case serviceRadarr:
 		h.serveRadarrLibrary(w, r, client, cacheKey)
-	case "sonarr":
+	case serviceSonarr:
 		h.serveSonarrLibrary(w, r, client, cacheKey)
 	}
 }
@@ -79,7 +79,7 @@ func (h *ArrHandler) GetEpisodes(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	client, err := h.getArrClient(r.Context(), "sonarr")
+	client, err := h.getArrClient(r.Context(), serviceSonarr)
 	if err != nil {
 		writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "connection error"})
 		return

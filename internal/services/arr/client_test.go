@@ -3,6 +3,7 @@ package arr
 import (
 	"context"
 	"encoding/json"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -125,6 +126,46 @@ func mockArrServer(t *testing.T) *httptest.Server {
 			{ID: 3, Title: "...And the Bag's in the River", EpisodeNumber: 3, SeasonNumber: 1, HasFile: false, Monitored: true, AirDateUtc: "2008-02-10T02:00:00Z"},
 		}
 		json.NewEncoder(w).Encode(episodes)
+	})
+
+	mux.HandleFunc("/api/v3/qualityprofile", func(w http.ResponseWriter, r *http.Request) {
+		if !checkAPIKey(w, r) {
+			return
+		}
+		json.NewEncoder(w).Encode([]QualityProfile{
+			{ID: 1, Name: "HD-1080p"},
+			{ID: 2, Name: "Ultra-HD"},
+		})
+	})
+
+	mux.HandleFunc("/api/v3/rootfolder", func(w http.ResponseWriter, r *http.Request) {
+		if !checkAPIKey(w, r) {
+			return
+		}
+		json.NewEncoder(w).Encode([]RootFolder{
+			{ID: 1, Path: "/movies", FreeSpace: 500000000000},
+			{ID: 2, Path: "/tv", FreeSpace: 300000000000},
+		})
+	})
+
+	mux.HandleFunc("/api/v3/movie/lookup", func(w http.ResponseWriter, r *http.Request) {
+		if !checkAPIKey(w, r) {
+			return
+		}
+		json.NewEncoder(w).Encode([]LookupResult{
+			{Title: "The Dark Knight", Year: 2008, TmdbID: 155, Overview: "Batman raises the stakes.", Runtime: 152, ID: 1},
+			{Title: "The Dark Knight Rises", Year: 2012, TmdbID: 49026, Overview: "Eight years after.", Runtime: 165},
+		})
+	})
+
+	mux.HandleFunc("/api/v3/series/lookup", func(w http.ResponseWriter, r *http.Request) {
+		if !checkAPIKey(w, r) {
+			return
+		}
+		json.NewEncoder(w).Encode([]LookupResult{
+			{Title: "Breaking Bad", Year: 2008, TvdbID: 81189, Overview: "A chemistry teacher.", SeasonCount: 5, ID: 1},
+			{Title: "Breaking Bread", Year: 2020, TvdbID: 99999, Overview: "A cooking show.", SeasonCount: 1},
+		})
 	})
 
 	return httptest.NewServer(mux)
@@ -358,5 +399,135 @@ func TestGetSonarrEpisodes(t *testing.T) {
 	}
 	if len(empty) != 0 {
 		t.Fatalf("expected 0 episodes for unknown series, got %d", len(empty))
+	}
+}
+
+func TestGetQualityProfiles(t *testing.T) {
+	t.Parallel()
+	srv := mockArrServer(t)
+	defer srv.Close()
+
+	client := NewClient(srv.URL, "test-api-key-123", "v3", srv.Client())
+
+	profiles, err := client.GetQualityProfiles(context.Background())
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(profiles) != 2 {
+		t.Fatalf("expected 2 profiles, got %d", len(profiles))
+	}
+	if profiles[0].Name != "HD-1080p" {
+		t.Fatalf("expected 'HD-1080p', got '%s'", profiles[0].Name)
+	}
+}
+
+func TestGetRootFolders(t *testing.T) {
+	t.Parallel()
+	srv := mockArrServer(t)
+	defer srv.Close()
+
+	client := NewClient(srv.URL, "test-api-key-123", "v3", srv.Client())
+
+	folders, err := client.GetRootFolders(context.Background())
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(folders) != 2 {
+		t.Fatalf("expected 2 folders, got %d", len(folders))
+	}
+	if folders[0].Path != "/movies" {
+		t.Fatalf("expected '/movies', got '%s'", folders[0].Path)
+	}
+	if folders[0].FreeSpace != 500000000000 {
+		t.Fatalf("expected 500000000000 free space, got %d", folders[0].FreeSpace)
+	}
+}
+
+func TestLookupMedia(t *testing.T) {
+	t.Parallel()
+	srv := mockArrServer(t)
+	defer srv.Close()
+
+	client := NewClient(srv.URL, "test-api-key-123", "v3", srv.Client())
+
+	// Radarr lookup
+	movies, err := client.LookupMedia(context.Background(), "/movie", "dark knight")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(movies) != 2 {
+		t.Fatalf("expected 2 results, got %d", len(movies))
+	}
+	if movies[0].TmdbID != 155 {
+		t.Fatalf("expected tmdbId 155, got %d", movies[0].TmdbID)
+	}
+	if movies[0].ID != 1 {
+		t.Fatal("expected first result to be in library (ID=1)")
+	}
+	if movies[1].ID != 0 {
+		t.Fatal("expected second result to not be in library (ID=0)")
+	}
+
+	// Sonarr lookup
+	series, err := client.LookupMedia(context.Background(), "/series", "breaking")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(series) != 2 {
+		t.Fatalf("expected 2 results, got %d", len(series))
+	}
+	if series[0].TvdbID != 81189 {
+		t.Fatalf("expected tvdbId 81189, got %d", series[0].TvdbID)
+	}
+}
+
+func TestAddMedia(t *testing.T) {
+	t.Parallel()
+
+	var receivedBody []byte
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Header.Get("X-Api-Key") != "test-api-key-123" {
+			http.Error(w, "unauthorized", http.StatusUnauthorized)
+			return
+		}
+		if r.Method != http.MethodPost {
+			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+		if r.Header.Get("Content-Type") != "application/json" {
+			http.Error(w, "wrong content type", http.StatusBadRequest)
+			return
+		}
+		receivedBody, _ = io.ReadAll(r.Body)
+		w.WriteHeader(http.StatusCreated)
+		w.Write([]byte(`{"id": 42}`))
+	}))
+	defer srv.Close()
+
+	client := NewClient(srv.URL, "test-api-key-123", "v3", srv.Client())
+
+	body := AddMovieRequest{
+		Title:            "Inception",
+		TmdbID:           27205,
+		Year:             2010,
+		QualityProfileID: 1,
+		RootFolderPath:   "/movies",
+		Monitored:        true,
+		AddOptions:       MovieAddOpts{SearchForMovie: true},
+	}
+	err := client.AddMedia(context.Background(), "/movie", body)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(receivedBody) == 0 {
+		t.Fatal("expected request body to be sent")
+	}
+
+	var decoded AddMovieRequest
+	if err := json.Unmarshal(receivedBody, &decoded); err != nil {
+		t.Fatalf("failed to decode request body: %v", err)
+	}
+	if decoded.TmdbID != 27205 {
+		t.Fatalf("expected tmdbId 27205, got %d", decoded.TmdbID)
 	}
 }

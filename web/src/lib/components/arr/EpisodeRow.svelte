@@ -9,6 +9,7 @@
     hasFile: boolean
     monitored: boolean
     airDateUtc: string
+    episodeFile?: { quality: { quality: { name: string } }; mediaInfo?: { audioCodec: string; videoCodec: string } }
   }
 
   interface Props {
@@ -36,6 +37,12 @@
   {/if}
   <span class="shrink-0 font-mono text-[var(--color-text-muted)]">{code}</span>
   <span class="min-w-0 flex-1 truncate text-[var(--color-text)]">{episode.title}</span>
+  {#if episode.hasFile && episode.episodeFile}
+    <span class="shrink-0 rounded bg-[var(--color-bg-tertiary)] px-1 py-0.5 text-[10px] text-[var(--color-text-muted)]">{episode.episodeFile.quality.quality.name}</span>
+    {#if episode.episodeFile.mediaInfo?.audioCodec}
+      <span class="shrink-0 rounded bg-[var(--color-bg-tertiary)] px-1 py-0.5 text-[10px] text-[var(--color-text-muted)]">{episode.episodeFile.mediaInfo.audioCodec}</span>
+    {/if}
+  {/if}
   {#if dateStr()}
     <span class="shrink-0 text-[var(--color-text-muted)]">{dateStr()}</span>
   {/if}

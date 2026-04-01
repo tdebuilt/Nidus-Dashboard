@@ -616,7 +616,10 @@
     "sortNameAsc": "Naam A→Z",
     "sortNameDesc": "Naam Z→A",
     "sortStatusUp": "Online eerst",
-    "sortStatusDown": "Offline eerst"
+    "sortStatusDown": "Offline eerst",
+    "fillMode": "Vulrichting",
+    "fillByRow": "Per rij",
+    "fillByColumn": "Per kolom"
   },
   "search": {
     "placeholder": "Zoeken...",
@@ -1158,7 +1161,30 @@
     "refreshLibrary": "Refresh",
     "downloaded": "Downloaded",
     "missing": "Missing",
-    "perPage": "per page"
+    "perPage": "per page",
+    "addMovie": "Add a movie",
+    "addSeries": "Add a series",
+    "searchMoviePlaceholder": "Search movies on TMDb...",
+    "searchSeriesPlaceholder": "Search series on TVDB...",
+    "noSearchResults": "No results found",
+    "alreadyInLibrary": "Already in library",
+    "qualityProfile": "Quality profile",
+    "rootFolder": "Root folder",
+    "searchOnAdd": "Search on add",
+    "freeSpace": "free",
+    "movieAdded": "Movie added successfully",
+    "seriesAdded": "Series added successfully",
+    "addError": "Failed to add",
+    "duplicateError": "This item is already in your library",
+    "loadingProfiles": "Loading options...",
+    "loadingIndexers": "Indexers laden...",
+    "indexerError": "Fout bij laden van indexers",
+    "noIndexers": "Geen indexers geconfigureerd",
+    "testIndexer": "Indexer testen",
+    "legendContinuing": "Continuing",
+    "legendEnded": "Ended",
+    "legendMissing": "Missing (monitored)",
+    "legendUnmonitored": "Missing (unmonitored)"
   },
   "webhooks": {
     "title": "",

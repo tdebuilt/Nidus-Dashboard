@@ -617,7 +617,10 @@
     "sortNameAsc": "Nom A→Z",
     "sortNameDesc": "Nom Z→A",
     "sortStatusUp": "En ligne d'abord",
-    "sortStatusDown": "Hors ligne d'abord"
+    "sortStatusDown": "Hors ligne d'abord",
+    "fillMode": "Sens de remplissage",
+    "fillByRow": "Par lignes",
+    "fillByColumn": "Par colonnes"
   },
   "search": {
     "placeholder": "Rechercher...",
@@ -1159,7 +1162,30 @@
     "refreshLibrary": "Actualiser",
     "downloaded": "Téléchargé",
     "missing": "Manquant",
-    "perPage": "par page"
+    "perPage": "par page",
+    "addMovie": "Ajouter un film",
+    "addSeries": "Ajouter une série",
+    "searchMoviePlaceholder": "Rechercher un film sur TMDb...",
+    "searchSeriesPlaceholder": "Rechercher une série sur TVDB...",
+    "noSearchResults": "Aucun résultat trouvé",
+    "alreadyInLibrary": "Déjà dans la bibliothèque",
+    "qualityProfile": "Profil de qualité",
+    "rootFolder": "Dossier racine",
+    "searchOnAdd": "Rechercher à l'ajout",
+    "freeSpace": "disponible",
+    "movieAdded": "Film ajouté avec succès",
+    "seriesAdded": "Série ajoutée avec succès",
+    "addError": "Échec de l'ajout",
+    "duplicateError": "Cet élément est déjà dans votre bibliothèque",
+    "loadingProfiles": "Chargement des options...",
+    "loadingIndexers": "Chargement des indexeurs...",
+    "indexerError": "Erreur de chargement des indexeurs",
+    "noIndexers": "Aucun indexeur configuré",
+    "testIndexer": "Tester l'indexeur",
+    "legendContinuing": "Suite",
+    "legendEnded": "Terminé",
+    "legendMissing": "Manquants (surveillée)",
+    "legendUnmonitored": "Manquants (non surveillée)"
   },
   "webhooks": {
     "title": "Webhooks",

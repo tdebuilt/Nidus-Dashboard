@@ -32,6 +32,7 @@
   const links = $derived<LinkConfig[]>(parsedConfig.links ?? [])
   const columns = $derived(getResponsiveColumns(parsedConfig, $breakpoint, 1))
   const sortBy = $derived<string>(parsedConfig.sortBy ?? 'manual')
+  const fillMode = $derived<'row' | 'column'>(parsedConfig.fillMode ?? 'row')
 
   function sortLinks(items: LinkConfig[]): LinkConfig[] {
     if (sortBy === 'manual') return items
@@ -150,7 +151,11 @@
             {group.name}
           </div>
         {/if}
-        <div class="grid gap-1.5" style="grid-template-columns: repeat({columns}, 1fr);">
+        {@const rows = Math.ceil(group.links.length / columns)}
+        <div
+          class="grid gap-1.5"
+          style="grid-template-columns: repeat({columns}, 1fr);{fillMode === 'column' ? ` grid-template-rows: repeat(${rows}, auto); grid-auto-flow: column;` : ''}"
+        >
           {#each group.links as link (link.url)}
             <LinkCard
               name={link.name}

@@ -13,6 +13,7 @@
   interface SonarrSeries {
     id: number; title: string; year: number; seasonCount: number
     monitored: boolean; status: string
+    seasons?: { seasonNumber: number; monitored: boolean }[]
     statistics: { episodeFileCount: number; episodeCount: number; percentOfEpisodes: number; sizeOnDisk: number }
   }
 

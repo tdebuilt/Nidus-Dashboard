@@ -10,6 +10,7 @@
     sizeOnDisk: number
     runtime: number
     status: string
+    movieFile?: { quality: { quality: { name: string } }; mediaInfo?: { audioCodec: string; videoCodec: string } }
   }
 
   interface Props {
@@ -37,6 +38,12 @@
     <span class="ml-1 text-xs text-[var(--color-text-muted)]">({movie.year})</span>
   </div>
   <div class="flex shrink-0 items-center gap-2 text-xs text-[var(--color-text-muted)]">
+    {#if movie.hasFile && movie.movieFile}
+      <span class="rounded bg-[var(--color-bg-tertiary)] px-1 py-0.5 text-[10px]">{movie.movieFile.quality.quality.name}</span>
+      {#if movie.movieFile.mediaInfo?.audioCodec}
+        <span class="rounded bg-[var(--color-bg-tertiary)] px-1 py-0.5 text-[10px]">{movie.movieFile.mediaInfo.audioCodec}</span>
+      {/if}
+    {/if}
     <span>{formatSize(movie.sizeOnDisk)}</span>
     {#if movie.monitored}
       <Eye size={12} class="text-[var(--color-primary)]" />

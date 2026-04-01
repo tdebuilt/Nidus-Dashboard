@@ -616,7 +616,10 @@
     "sortNameAsc": "名称 A→Z",
     "sortNameDesc": "名称 Z→A",
     "sortStatusUp": "在线优先",
-    "sortStatusDown": "离线优先"
+    "sortStatusDown": "离线优先",
+    "fillMode": "填充方向",
+    "fillByRow": "按行",
+    "fillByColumn": "按列"
   },
   "search": {
     "placeholder": "搜索...",
@@ -1158,7 +1161,30 @@
     "refreshLibrary": "Refresh",
     "downloaded": "Downloaded",
     "missing": "Missing",
-    "perPage": "per page"
+    "perPage": "per page",
+    "addMovie": "Add a movie",
+    "addSeries": "Add a series",
+    "searchMoviePlaceholder": "Search movies on TMDb...",
+    "searchSeriesPlaceholder": "Search series on TVDB...",
+    "noSearchResults": "No results found",
+    "alreadyInLibrary": "Already in library",
+    "qualityProfile": "Quality profile",
+    "rootFolder": "Root folder",
+    "searchOnAdd": "Search on add",
+    "freeSpace": "free",
+    "movieAdded": "Movie added successfully",
+    "seriesAdded": "Series added successfully",
+    "addError": "Failed to add",
+    "duplicateError": "This item is already in your library",
+    "loadingProfiles": "Loading options...",
+    "loadingIndexers": "正在加载索引器...",
+    "indexerError": "加载索引器时出错",
+    "noIndexers": "未配置索引器",
+    "testIndexer": "测试索引器",
+    "legendContinuing": "Continuing",
+    "legendEnded": "Ended",
+    "legendMissing": "Missing (monitored)",
+    "legendUnmonitored": "Missing (unmonitored)"
   },
   "webhooks": {
     "title": "",

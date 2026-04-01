@@ -616,7 +616,10 @@
     "sortNameAsc": "名前 A→Z",
     "sortNameDesc": "名前 Z→A",
     "sortStatusUp": "オンライン優先",
-    "sortStatusDown": "オフライン優先"
+    "sortStatusDown": "オフライン優先",
+    "fillMode": "配置方向",
+    "fillByRow": "行順",
+    "fillByColumn": "列順"
   },
   "search": {
     "placeholder": "検索...",
@@ -1158,7 +1161,30 @@
     "refreshLibrary": "Refresh",
     "downloaded": "Downloaded",
     "missing": "Missing",
-    "perPage": "per page"
+    "perPage": "per page",
+    "addMovie": "Add a movie",
+    "addSeries": "Add a series",
+    "searchMoviePlaceholder": "Search movies on TMDb...",
+    "searchSeriesPlaceholder": "Search series on TVDB...",
+    "noSearchResults": "No results found",
+    "alreadyInLibrary": "Already in library",
+    "qualityProfile": "Quality profile",
+    "rootFolder": "Root folder",
+    "searchOnAdd": "Search on add",
+    "freeSpace": "free",
+    "movieAdded": "Movie added successfully",
+    "seriesAdded": "Series added successfully",
+    "addError": "Failed to add",
+    "duplicateError": "This item is already in your library",
+    "loadingProfiles": "Loading options...",
+    "loadingIndexers": "インデクサーを読み込み中...",
+    "indexerError": "インデクサーの読み込みエラー",
+    "noIndexers": "インデクサーが設定されていません",
+    "testIndexer": "インデクサーをテスト",
+    "legendContinuing": "Continuing",
+    "legendEnded": "Ended",
+    "legendMissing": "Missing (monitored)",
+    "legendUnmonitored": "Missing (unmonitored)"
   },
   "webhooks": {
     "title": "",

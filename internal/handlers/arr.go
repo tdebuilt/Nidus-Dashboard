@@ -20,7 +20,12 @@ type ArrHandler struct {
 	Cache *cache.Cache
 }
 
-var arrServiceTypes = []string{"sonarr", "radarr", "lidarr", "prowlarr"}
+const (
+	serviceRadarr = "radarr"
+	serviceSonarr = "sonarr"
+)
+
+var arrServiceTypes = []string{"sonarr", serviceRadarr, "lidarr", "prowlarr"}
 
 func (h *ArrHandler) getArrClient(ctx context.Context, serviceType string) (*arr.Client, error) {
 	svc, err := h.DB.GetServiceByType(ctx, serviceType)
