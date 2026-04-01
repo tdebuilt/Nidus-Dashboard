@@ -1,4 +1,4 @@
-const CACHE_NAME = 'nidus-v3'
+const CACHE_NAME = 'nidus-v4'
 const STATIC_ASSETS = [
   '/',
   '/manifest.json',
@@ -57,7 +57,21 @@ self.addEventListener('fetch', (event) => {
     return
   }
 
-  // Static assets (JS/CSS/images): stale-while-revalidate
+  // Hashed assets (/assets/*): network-first (hash changes on each build)
+  if (request.url.includes('/assets/')) {
+    event.respondWith(
+      fetch(request)
+        .then((response) => {
+          const clone = response.clone()
+          caches.open(CACHE_NAME).then((cache) => cache.put(request, clone))
+          return response
+        })
+        .catch(() => caches.match(request))
+    )
+    return
+  }
+
+  // Other static assets (icons, manifest): stale-while-revalidate
   event.respondWith(
     caches.match(request).then((cached) => {
       const fetchPromise = fetch(request).then((response) => {

@@ -73,6 +73,34 @@ func (c *Client) GetLibraryCount(ctx context.Context, libraryPath string) (int, 
 	return len(items), nil
 }
 
+// GetRadarrLibrary returns all movies from Radarr.
+func (c *Client) GetRadarrLibrary(ctx context.Context) ([]RadarrMovie, error) {
+	var movies []RadarrMovie
+	if err := c.get(ctx, "/movie", &movies); err != nil {
+		return nil, fmt.Errorf("getting radarr library: %w", err)
+	}
+	return movies, nil
+}
+
+// GetSonarrLibrary returns all series from Sonarr.
+func (c *Client) GetSonarrLibrary(ctx context.Context) ([]SonarrSeries, error) {
+	var series []SonarrSeries
+	if err := c.get(ctx, "/series", &series); err != nil {
+		return nil, fmt.Errorf("getting sonarr library: %w", err)
+	}
+	return series, nil
+}
+
+// GetSonarrEpisodes returns episodes for a given series ID.
+func (c *Client) GetSonarrEpisodes(ctx context.Context, seriesID int) ([]SonarrEpisode, error) {
+	path := fmt.Sprintf("/episode?seriesId=%d", seriesID)
+	var episodes []SonarrEpisode
+	if err := c.get(ctx, path, &episodes); err != nil {
+		return nil, fmt.Errorf("getting sonarr episodes: %w", err)
+	}
+	return episodes, nil
+}
+
 func (c *Client) get(ctx context.Context, path string, result any) error {
 	url := fmt.Sprintf("%s/api/%s%s", c.baseURL, c.apiVersion, path)
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)

@@ -26,7 +26,8 @@
     "tablet": "タブレット",
     "mobile": "モバイル",
     "moreActions": "その他のアクション",
-    "copy": "コピー"
+    "copy": "コピー",
+    "perPage": "件/ページ"
   },
   "theme": {
     "switchToLight": "ライトモードに切り替え",
@@ -392,7 +393,20 @@
     "statusUnknown": "不明",
     "urlTab": "URL / マグネット",
     "fileTab": ".torrent ファイル",
-    "fileDropHint": "クリックして .torrent ファイルを選択"
+    "fileDropHint": "クリックして .torrent ファイルを選択",
+    "searchPlaceholder": "トレントを検索...",
+    "sortName": "名前",
+    "sortProgress": "%",
+    "sortSize": "サイズ",
+    "sortSpeedDown": "DL",
+    "sortSpeedUp": "UL",
+    "sortRatio": "比率",
+    "filterAll": "すべて",
+    "filterDownloading": "ダウンロード中",
+    "filterSeeding": "シード中",
+    "filterStopped": "停止",
+    "filterChecking": "チェック中",
+    "filterCompleted": "完了"
   },
   "qbittorrent": {
     "loading": "トレント読み込み中...",
@@ -437,8 +451,7 @@
     "filterSeeding": "シード中",
     "filterCompleted": "完了",
     "filterPaused": "一時停止",
-    "filterErrored": "エラー",
-    "perPage": "件/ページ"
+    "filterErrored": "エラー"
   },
   "jdownloader": {
     "loading": "ダウンロードを読み込み中...",
@@ -464,7 +477,17 @@
     "eta": "残り時間",
     "cleanup": "完了したダウンロードを削除",
     "cleanupSuccess": "{count} 件のダウンロードを削除しました",
-    "cleanupNone": "削除する完了済みダウンロードがありません"
+    "cleanupNone": "削除する完了済みダウンロードがありません",
+    "searchPlaceholder": "パッケージを検索...",
+    "sortName": "名前",
+    "sortProgress": "%",
+    "sortSize": "サイズ",
+    "sortSpeed": "速度",
+    "sortETA": "ETA",
+    "filterAll": "すべて",
+    "filterDownloading": "ダウンロード中",
+    "filterFinished": "完了",
+    "filterQueued": "キュー待ち"
   },
   "uptimekuma": {
     "loading": "モニター読み込み中...",
@@ -1109,7 +1132,33 @@
     "timeLeft": "",
     "progress": "",
     "downloading": "",
-    "version": ""
+    "version": "",
+    "browseLibrary": "Browse library",
+    "hideLibrary": "Hide library",
+    "searchPlaceholder": "Search...",
+    "filterAll": "All",
+    "filterDownloaded": "Downloaded",
+    "filterMissing": "Missing",
+    "filterMonitored": "Monitored",
+    "filterUnmonitored": "Unmonitored",
+    "filterComplete": "Complete",
+    "filterIncomplete": "Incomplete",
+    "sortTitle": "Title",
+    "sortYear": "Year",
+    "sortSize": "Size",
+    "sortStatus": "Status",
+    "sortCompletion": "Completion",
+    "noMovies": "No movies in library",
+    "noSeries": "No series in library",
+    "noEpisodes": "No episodes",
+    "season": "Season",
+    "loadingLibrary": "Loading library...",
+    "loadingEpisodes": "Loading episodes...",
+    "libraryError": "Error loading library",
+    "refreshLibrary": "Refresh",
+    "downloaded": "Downloaded",
+    "missing": "Missing",
+    "perPage": "per page"
   },
   "webhooks": {
     "title": "",

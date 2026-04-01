@@ -1,11 +1,12 @@
 <script lang="ts">
-  import { Loader2, AlertCircle, Settings, Database, Calendar, Download } from 'lucide-svelte'
+  import { Loader2, AlertCircle, Settings, Database, Calendar, Download, ChevronDown, ChevronRight } from 'lucide-svelte'
   import { api } from '../../api/client'
   import { pollingInterval } from '../../stores/polling'
   import { usePolling } from '../../utils/usePolling'
   import { t } from '../../i18n'
   import QueueCard from './QueueCard.svelte'
   import CalendarCard from './CalendarCard.svelte'
+  import LibrarySection from './LibrarySection.svelte'
 
   interface SystemStatus {
     version: string
@@ -57,6 +58,7 @@
   let error = $state<string | null>(null)
   let services = $state.raw<ArrOverview[]>([])
   let activeTab = $state(0)
+  let showLibrary = $state<Record<string, boolean>>({})
 
   async function fetchData() {
     if (services.length === 0) loading = true
@@ -144,16 +146,37 @@
         </div>
       {:else}
         <div class="space-y-3">
-          <!-- Header: version + library count -->
+          <!-- Header: version + library count (clickable for radarr/sonarr) -->
           <div class="flex items-center justify-between text-xs text-[var(--color-text-muted)]">
-            <div class="flex items-center gap-1.5">
-              <Database size={12} />
-              <span>{svc.library_count} {$t('arr.' + (svc.type === 'sonarr' ? 'series' : svc.type === 'radarr' ? 'movies' : svc.type === 'lidarr' ? 'artists' : 'indexers'))}</span>
-            </div>
+            {#if svc.type === 'radarr' || svc.type === 'sonarr'}
+              <button
+                class="flex items-center gap-1.5 rounded px-1 py-0.5 hover:bg-[var(--color-bg-tertiary)]"
+                onclick={() => showLibrary[svc.type] = !showLibrary[svc.type]}
+                title={showLibrary[svc.type] ? $t('arr.hideLibrary') : $t('arr.browseLibrary')}
+              >
+                <Database size={12} />
+                <span>{svc.library_count} {$t('arr.' + (svc.type === 'sonarr' ? 'series' : 'movies'))}</span>
+                {#if showLibrary[svc.type]}
+                  <ChevronDown size={10} />
+                {:else}
+                  <ChevronRight size={10} />
+                {/if}
+              </button>
+            {:else}
+              <div class="flex items-center gap-1.5">
+                <Database size={12} />
+                <span>{svc.library_count} {$t('arr.' + (svc.type === 'lidarr' ? 'artists' : 'indexers'))}</span>
+              </div>
+            {/if}
             {#if svc.status?.version}
               <span class="rounded bg-[var(--color-bg-tertiary)] px-1.5 py-0.5 text-[10px]">v{svc.status.version}</span>
             {/if}
           </div>
+
+          <!-- Library browser -->
+          {#if (svc.type === 'radarr' || svc.type === 'sonarr') && showLibrary[svc.type]}
+            <LibrarySection serviceType={svc.type} />
+          {/if}
 
           <!-- Queue -->
           {#if svc.queue_items && svc.queue_items.length > 0}

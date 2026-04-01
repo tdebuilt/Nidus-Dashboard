@@ -26,7 +26,8 @@
     "tablet": "Tablet",
     "mobile": "Mobile",
     "moreActions": "More actions",
-    "copy": "Copy"
+    "copy": "Copy",
+    "perPage": "per page"
   },
   "theme": {
     "switchToLight": "Switch to light mode",
@@ -392,7 +393,20 @@
     "statusUnknown": "Unknown",
     "urlTab": "URL / Magnet",
     "fileTab": ".torrent File",
-    "fileDropHint": "Click to select a .torrent file"
+    "fileDropHint": "Click to select a .torrent file",
+    "searchPlaceholder": "Search torrents...",
+    "sortName": "Name",
+    "sortProgress": "%",
+    "sortSize": "Size",
+    "sortSpeedDown": "DL",
+    "sortSpeedUp": "UL",
+    "sortRatio": "Ratio",
+    "filterAll": "All",
+    "filterDownloading": "Downloading",
+    "filterSeeding": "Seeding",
+    "filterStopped": "Stopped",
+    "filterChecking": "Checking",
+    "filterCompleted": "Completed"
   },
   "qbittorrent": {
     "loading": "Loading torrents...",
@@ -437,8 +451,7 @@
     "filterSeeding": "Seeding",
     "filterCompleted": "Completed",
     "filterPaused": "Paused",
-    "filterErrored": "Errors",
-    "perPage": "per page"
+    "filterErrored": "Errors"
   },
   "jdownloader": {
     "loading": "Loading downloads...",
@@ -464,7 +477,17 @@
     "eta": "ETA",
     "cleanup": "Remove finished downloads",
     "cleanupSuccess": "{count} download(s) removed",
-    "cleanupNone": "No finished downloads to remove"
+    "cleanupNone": "No finished downloads to remove",
+    "searchPlaceholder": "Search packages...",
+    "sortName": "Name",
+    "sortProgress": "%",
+    "sortSize": "Size",
+    "sortSpeed": "Speed",
+    "sortETA": "ETA",
+    "filterAll": "All",
+    "filterDownloading": "Downloading",
+    "filterFinished": "Finished",
+    "filterQueued": "Queued"
   },
   "uptimekuma": {
     "loading": "Loading monitors...",
@@ -1110,7 +1133,33 @@
     "timeLeft": "Time left",
     "progress": "Progress",
     "downloading": "Downloading",
-    "version": "Version"
+    "version": "Version",
+    "browseLibrary": "Browse library",
+    "hideLibrary": "Hide library",
+    "searchPlaceholder": "Search...",
+    "filterAll": "All",
+    "filterDownloaded": "Downloaded",
+    "filterMissing": "Missing",
+    "filterMonitored": "Monitored",
+    "filterUnmonitored": "Unmonitored",
+    "filterComplete": "Complete",
+    "filterIncomplete": "Incomplete",
+    "sortTitle": "Title",
+    "sortYear": "Year",
+    "sortSize": "Size",
+    "sortStatus": "Status",
+    "sortCompletion": "Completion",
+    "noMovies": "No movies in library",
+    "noSeries": "No series in library",
+    "noEpisodes": "No episodes",
+    "season": "Season",
+    "loadingLibrary": "Loading library...",
+    "loadingEpisodes": "Loading episodes...",
+    "libraryError": "Error loading library",
+    "refreshLibrary": "Refresh",
+    "downloaded": "Downloaded",
+    "missing": "Missing",
+    "perPage": "per page"
   },
   "webhooks": {
     "title": "Webhooks",

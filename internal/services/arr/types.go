@@ -54,6 +54,48 @@ type CalendarItem struct {
 	SeriesTitle     string `json:"seriesTitle"`
 }
 
+// RadarrMovie represents a movie from the Radarr library.
+type RadarrMovie struct {
+	ID         int    `json:"id"`
+	Title      string `json:"title"`
+	Year       int    `json:"year"`
+	HasFile    bool   `json:"hasFile"`
+	Monitored  bool   `json:"monitored"`
+	SizeOnDisk int64  `json:"sizeOnDisk"`
+	Runtime    int    `json:"runtime"`
+	Status     string `json:"status"`
+}
+
+// SonarrSeries represents a series from the Sonarr library.
+type SonarrSeries struct {
+	ID          int              `json:"id"`
+	Title       string           `json:"title"`
+	Year        int              `json:"year"`
+	SeasonCount int              `json:"seasonCount"`
+	Monitored   bool             `json:"monitored"`
+	Status      string           `json:"status"`
+	Statistics  SonarrStatistics `json:"statistics"`
+}
+
+// SonarrStatistics holds episode/file stats for a series.
+type SonarrStatistics struct {
+	EpisodeFileCount  int     `json:"episodeFileCount"`
+	EpisodeCount      int     `json:"episodeCount"`
+	PercentOfEpisodes float64 `json:"percentOfEpisodes"`
+	SizeOnDisk        int64   `json:"sizeOnDisk"`
+}
+
+// SonarrEpisode represents a single episode from Sonarr.
+type SonarrEpisode struct {
+	ID            int    `json:"id"`
+	Title         string `json:"title"`
+	EpisodeNumber int    `json:"episodeNumber"`
+	SeasonNumber  int    `json:"seasonNumber"`
+	HasFile       bool   `json:"hasFile"`
+	Monitored     bool   `json:"monitored"`
+	AirDateUtc    string `json:"airDateUtc"`
+}
+
 // ArrOverview is the per-service frontend response.
 type ArrOverview struct {
 	Type          string         `json:"type"`

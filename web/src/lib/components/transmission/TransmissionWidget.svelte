@@ -1,13 +1,18 @@
 <script lang="ts">
-  import { Loader2, AlertCircle, Settings, Play, Square, Plus, ArrowDown, ArrowUp, Trash2 } from 'lucide-svelte'
+  import { Loader2, AlertCircle, Settings, Play, Square, Plus, ArrowDown, ArrowUp, Trash2, Search } from 'lucide-svelte'
   import { api } from '../../api/client'
   import { toasts } from '../../stores/toast'
   import { pollingInterval } from '../../stores/polling'
   import { usePolling } from '../../utils/usePolling'
   import { t, translate } from '../../i18n'
   import { isViewer } from '../../stores/auth'
+  import { loadPref, savePref } from '../../utils/widgetPrefs'
   import TorrentCard from './TorrentCard.svelte'
+  import SortHeader from '../shared/SortHeader.svelte'
+  import Pagination from '../shared/Pagination.svelte'
   import AddTorrentDialog from './AddTorrentDialog.svelte'
+
+  type SortField = 'name' | 'progress' | 'size' | 'speed_down' | 'speed_up' | 'eta' | 'ratio' | 'status'
 
   interface TorrentInfo {
     id: number
@@ -39,11 +44,23 @@
 
   const { config: _config = '{}', active = true }: Props = $props()
 
+  const PREFIX = 'nidus-tx-'
+  const SORT_FIELDS: SortField[] = ['name', 'progress', 'size', 'speed_down', 'speed_up', 'eta', 'ratio', 'status']
+  const FILTERS = ['all', 'downloading', 'seeding', 'stopped', 'checking', 'completed']
+  const PAGE_SIZES = [10, 20, 50, 100]
+
   let loading = $state(true)
   let refreshing = $state(false)
   let error = $state<string | null>(null)
   let data = $state<TorrentsInfo | null>(null)
   let showAddDialog = $state(false)
+
+  let search = $state('')
+  let filter = $state(loadPref(PREFIX, 'filter', 'all', FILTERS))
+  let sortField = $state<SortField>(loadPref<SortField>(PREFIX, 'sortField', 'name', SORT_FIELDS))
+  let sortDirection = $state<'asc' | 'desc'>(loadPref<'asc' | 'desc'>(PREFIX, 'sortDir', 'asc', ['asc', 'desc']))
+  let page = $state(1)
+  let pageSize = $state(Number(loadPref(PREFIX, 'pageSize', '20', PAGE_SIZES.map(String))) || 20)
 
   function formatSpeed(bps: number): string {
     if (bps >= 1048576) return (bps / 1048576).toFixed(1) + ' MB/s'
@@ -51,6 +68,45 @@
     if (bps > 0) return bps + ' B/s'
     return '0'
   }
+
+  const searchedTorrents = $derived(
+    data?.torrents.filter((t) => {
+      if (!search) return true
+      return t.name.toLowerCase().includes(search.toLowerCase())
+    }) ?? []
+  )
+
+  const filteredTorrents = $derived(
+    searchedTorrents.filter((t) => {
+      if (filter === 'all') return true
+      if (filter === 'completed') return t.progress >= 100
+      return t.status === filter
+    })
+  )
+
+  const sortedTorrents = $derived(
+    [...filteredTorrents].sort((a, b) => {
+      const va = a[sortField as keyof TorrentInfo]
+      const vb = b[sortField as keyof TorrentInfo]
+      const cmp = typeof va === 'string' && typeof vb === 'string'
+        ? va.localeCompare(vb)
+        : (va as number) - (vb as number)
+      return sortDirection === 'asc' ? cmp : -cmp
+    })
+  )
+
+  const totalPages = $derived(Math.max(1, Math.ceil(sortedTorrents.length / pageSize)))
+  const safePage = $derived(Math.min(page, totalPages))
+  const paginatedTorrents = $derived(
+    sortedTorrents.slice((safePage - 1) * pageSize, safePage * pageSize)
+  )
+
+  $effect(() => {
+    void search
+    void filter
+    void sortField
+    page = 1
+  })
 
   async function fetchData() {
     if (data === null) loading = true
@@ -109,6 +165,18 @@
     } catch {
       toasts.error(translate('transmission.actionError'))
     }
+  }
+
+  function toggleSort(field: string) {
+    const f = field as SortField
+    if (sortField === f) {
+      sortDirection = sortDirection === 'asc' ? 'desc' : 'asc'
+    } else {
+      sortField = f
+      sortDirection = 'asc'
+    }
+    savePref(PREFIX, 'sortField', sortField)
+    savePref(PREFIX, 'sortDir', sortDirection)
   }
 
   const polling = usePolling({
@@ -183,18 +251,68 @@
         {/if}
       </div>
 
+      <!-- Search + filter -->
+      <div class="flex gap-2">
+        <div class="relative flex-1">
+          <Search size={12} class="absolute left-2 top-1/2 -translate-y-1/2 text-[var(--color-text-muted)]" />
+          <input
+            type="text"
+            bind:value={search}
+            placeholder={$t('transmission.searchPlaceholder')}
+            aria-label={$t('transmission.searchPlaceholder')}
+            class="w-full rounded border border-[var(--color-border)] bg-[var(--color-bg)] py-1 pl-6 pr-2 text-xs text-[var(--color-text)] placeholder:text-[var(--color-text-muted)] focus:border-[var(--color-primary)] focus:outline-none"
+          />
+        </div>
+        <select
+          value={filter}
+          onchange={(e) => { filter = (e.target as HTMLSelectElement).value; savePref(PREFIX, 'filter', filter) }}
+          class="rounded border border-[var(--color-border)] bg-[var(--color-bg)] px-1.5 py-1 text-xs text-[var(--color-text)]"
+          aria-label="Filter"
+        >
+          <option value="all">{$t('transmission.filterAll')}</option>
+          <option value="downloading">{$t('transmission.filterDownloading')}</option>
+          <option value="seeding">{$t('transmission.filterSeeding')}</option>
+          <option value="stopped">{$t('transmission.filterStopped')}</option>
+          <option value="checking">{$t('transmission.filterChecking')}</option>
+          <option value="completed">{$t('transmission.filterCompleted')}</option>
+        </select>
+      </div>
+
+      <!-- Sort header -->
+      <SortHeader
+        columns={[
+          { field: 'name', labelKey: 'transmission.sortName', class: 'flex-1 text-left' },
+          { field: 'progress', labelKey: 'transmission.sortProgress' },
+          { field: 'size', labelKey: 'transmission.sortSize' },
+          { field: 'speed_down', labelKey: 'transmission.sortSpeedDown' },
+          { field: 'speed_up', labelKey: 'transmission.sortSpeedUp' },
+          { field: 'ratio', labelKey: 'transmission.sortRatio' },
+        ]}
+        {sortField} {sortDirection} onToggleSort={toggleSort}
+      />
+
       <!-- Torrents -->
-      {#if data.torrents.length === 0}
+      {#if sortedTorrents.length === 0}
         <div class="flex items-center justify-center py-4 text-sm text-[var(--color-text-muted)]">
           {$t('transmission.noTorrents')}
         </div>
       {:else}
         <div class="space-y-1 overflow-y-auto">
-          {#each data.torrents as torrent (torrent.id)}
+          {#each paginatedTorrents as torrent (torrent.id)}
             <TorrentCard {torrent} onAction={fetchData} />
           {/each}
         </div>
       {/if}
+
+      <!-- Pagination -->
+      <Pagination
+        page={safePage}
+        {totalPages}
+        totalItems={sortedTorrents.length}
+        {pageSize}
+        onPageChange={(p) => page = p}
+        onPageSizeChange={(s) => { pageSize = s; page = 1; savePref(PREFIX, 'pageSize', String(s)) }}
+      />
     </div>
   {/if}
 </div>

@@ -237,6 +237,8 @@ func registerViewerServiceRoutes(r chi.Router, srv *Server, db *database.DB) {
 
 	arrHandler := &handlers.ArrHandler{DB: db, Cache: srv.ServiceCache}
 	r.Get("/arr/overview", arrHandler.GetOverview)
+	r.Get("/arr/{type}/library", arrHandler.GetLibrary)
+	r.Get("/arr/sonarr/episodes/{seriesId}", arrHandler.GetEpisodes)
 
 	reolinkHandler := &handlers.ReolinkHandler{DB: db, Cache: srv.ServiceCache, Go2RTC: srv.Go2RTCManager}
 	r.Get("/reolink/cameras", reolinkHandler.ListCameras)

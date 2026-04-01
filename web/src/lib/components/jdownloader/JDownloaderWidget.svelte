@@ -1,13 +1,18 @@
 <script lang="ts">
-  import { Loader2, AlertCircle, Settings, Play, Pause, Plus, Trash2 } from 'lucide-svelte'
+  import { Loader2, AlertCircle, Settings, Play, Pause, Plus, Trash2, Search } from 'lucide-svelte'
   import { api } from '../../api/client'
   import { toasts } from '../../stores/toast'
   import { pollingInterval } from '../../stores/polling'
   import { usePolling } from '../../utils/usePolling'
   import { t, translate } from '../../i18n'
   import { isViewer } from '../../stores/auth'
+  import { loadPref, savePref } from '../../utils/widgetPrefs'
   import PackageCard from './PackageCard.svelte'
+  import SortHeader from '../shared/SortHeader.svelte'
+  import Pagination from '../shared/Pagination.svelte'
   import AddLinksDialog from './AddLinksDialog.svelte'
+
+  type SortField = 'name' | 'progress' | 'size' | 'speed' | 'eta' | 'status'
 
   interface PackageInfo {
     uuid: number
@@ -35,17 +40,68 @@
 
   const { config: _config = '{}', active = true }: Props = $props()
 
+  const PREFIX = 'nidus-jd-'
+  const SORT_FIELDS: SortField[] = ['name', 'progress', 'size', 'speed', 'eta', 'status']
+  const FILTERS = ['all', 'downloading', 'finished', 'queued']
+  const PAGE_SIZES = [10, 20, 50, 100]
+
   let loading = $state(true)
   let refreshing = $state(false)
   let error = $state<string | null>(null)
   let queue = $state<QueueInfo | null>(null)
   let showAddDialog = $state(false)
 
+  let search = $state('')
+  let filter = $state(loadPref(PREFIX, 'filter', 'all', FILTERS))
+  let sortField = $state<SortField>(loadPref<SortField>(PREFIX, 'sortField', 'name', SORT_FIELDS))
+  let sortDirection = $state<'asc' | 'desc'>(loadPref<'asc' | 'desc'>(PREFIX, 'sortDir', 'asc', ['asc', 'desc']))
+  let page = $state(1)
+  let pageSize = $state(Number(loadPref(PREFIX, 'pageSize', '20', PAGE_SIZES.map(String))) || 20)
+
   function formatSpeed(bps: number): string {
     if (bps >= 1048576) return (bps / 1048576).toFixed(1) + ' MB/s'
     if (bps >= 1024) return (bps / 1024).toFixed(0) + ' KB/s'
     return bps + ' B/s'
   }
+
+  const searchedPackages = $derived(
+    queue?.packages.filter((p) => {
+      if (!search) return true
+      return p.name.toLowerCase().includes(search.toLowerCase())
+    }) ?? []
+  )
+
+  const filteredPackages = $derived(
+    searchedPackages.filter((p) => {
+      if (filter === 'all') return true
+      if (filter === 'finished') return p.finished
+      return p.status === filter
+    })
+  )
+
+  const sortedPackages = $derived(
+    [...filteredPackages].sort((a, b) => {
+      const va = a[sortField as keyof PackageInfo]
+      const vb = b[sortField as keyof PackageInfo]
+      const cmp = typeof va === 'string' && typeof vb === 'string'
+        ? va.localeCompare(vb)
+        : Number(va) - Number(vb)
+      return sortDirection === 'asc' ? cmp : -cmp
+    })
+  )
+
+  const totalPages = $derived(Math.max(1, Math.ceil(sortedPackages.length / pageSize)))
+  const safePage = $derived(Math.min(page, totalPages))
+  const paginatedPackages = $derived(
+    sortedPackages.slice((safePage - 1) * pageSize, safePage * pageSize)
+  )
+
+  $effect(() => {
+    void search
+    void filter
+    void sortField
+    page = 1
+  })
 
   async function fetchData() {
     if (queue === null) loading = true
@@ -111,6 +167,18 @@
   }
 
   const hasFinished = $derived(queue?.packages.some(p => p.finished) ?? false)
+
+  function toggleSort(field: string) {
+    const f = field as SortField
+    if (sortField === f) {
+      sortDirection = sortDirection === 'asc' ? 'desc' : 'asc'
+    } else {
+      sortField = f
+      sortDirection = 'asc'
+    }
+    savePref(PREFIX, 'sortField', sortField)
+    savePref(PREFIX, 'sortDir', sortDirection)
+  }
 
   const polling = usePolling({
     fetchFn: fetchDataWrapped,
@@ -185,18 +253,65 @@
         {/if}
       </div>
 
+      <!-- Search + filter -->
+      <div class="flex gap-2">
+        <div class="relative flex-1">
+          <Search size={12} class="absolute left-2 top-1/2 -translate-y-1/2 text-[var(--color-text-muted)]" />
+          <input
+            type="text"
+            bind:value={search}
+            placeholder={$t('jdownloader.searchPlaceholder')}
+            aria-label={$t('jdownloader.searchPlaceholder')}
+            class="w-full rounded border border-[var(--color-border)] bg-[var(--color-bg)] py-1 pl-6 pr-2 text-xs text-[var(--color-text)] placeholder:text-[var(--color-text-muted)] focus:border-[var(--color-primary)] focus:outline-none"
+          />
+        </div>
+        <select
+          value={filter}
+          onchange={(e) => { filter = (e.target as HTMLSelectElement).value; savePref(PREFIX, 'filter', filter) }}
+          class="rounded border border-[var(--color-border)] bg-[var(--color-bg)] px-1.5 py-1 text-xs text-[var(--color-text)]"
+          aria-label="Filter"
+        >
+          <option value="all">{$t('jdownloader.filterAll')}</option>
+          <option value="downloading">{$t('jdownloader.filterDownloading')}</option>
+          <option value="finished">{$t('jdownloader.filterFinished')}</option>
+          <option value="queued">{$t('jdownloader.filterQueued')}</option>
+        </select>
+      </div>
+
+      <!-- Sort header -->
+      <SortHeader
+        columns={[
+          { field: 'name', labelKey: 'jdownloader.sortName', class: 'flex-1 text-left' },
+          { field: 'progress', labelKey: 'jdownloader.sortProgress' },
+          { field: 'size', labelKey: 'jdownloader.sortSize' },
+          { field: 'speed', labelKey: 'jdownloader.sortSpeed' },
+          { field: 'eta', labelKey: 'jdownloader.sortETA' },
+        ]}
+        {sortField} {sortDirection} onToggleSort={toggleSort}
+      />
+
       <!-- Packages -->
-      {#if queue.packages.length === 0}
+      {#if sortedPackages.length === 0}
         <div class="flex items-center justify-center py-4 text-sm text-[var(--color-text-muted)]">
           {$t('jdownloader.emptyQueue')}
         </div>
       {:else}
         <div class="space-y-1 overflow-y-auto">
-          {#each queue.packages as pkg (pkg.uuid)}
+          {#each paginatedPackages as pkg (pkg.uuid)}
             <PackageCard {pkg} />
           {/each}
         </div>
       {/if}
+
+      <!-- Pagination -->
+      <Pagination
+        page={safePage}
+        {totalPages}
+        totalItems={sortedPackages.length}
+        {pageSize}
+        onPageChange={(p) => page = p}
+        onPageSizeChange={(s) => { pageSize = s; page = 1; savePref(PREFIX, 'pageSize', String(s)) }}
+      />
     </div>
   {/if}
 </div>

@@ -26,7 +26,8 @@
     "tablet": "平板",
     "mobile": "手机",
     "moreActions": "更多操作",
-    "copy": "复制"
+    "copy": "复制",
+    "perPage": "每页"
   },
   "theme": {
     "switchToLight": "切换到浅色模式",
@@ -392,7 +393,20 @@
     "statusUnknown": "未知",
     "urlTab": "URL / 磁力链接",
     "fileTab": ".torrent 文件",
-    "fileDropHint": "点击选择 .torrent 文件"
+    "fileDropHint": "点击选择 .torrent 文件",
+    "searchPlaceholder": "搜索种子...",
+    "sortName": "名称",
+    "sortProgress": "%",
+    "sortSize": "大小",
+    "sortSpeedDown": "下载",
+    "sortSpeedUp": "上传",
+    "sortRatio": "比率",
+    "filterAll": "全部",
+    "filterDownloading": "下载中",
+    "filterSeeding": "做种中",
+    "filterStopped": "已停止",
+    "filterChecking": "校验中",
+    "filterCompleted": "已完成"
   },
   "qbittorrent": {
     "loading": "加载种子中...",
@@ -437,8 +451,7 @@
     "filterSeeding": "做种中",
     "filterCompleted": "已完成",
     "filterPaused": "已暂停",
-    "filterErrored": "错误",
-    "perPage": "每页"
+    "filterErrored": "错误"
   },
   "jdownloader": {
     "loading": "正在加载下载...",
@@ -464,7 +477,17 @@
     "eta": "预计剩余时间",
     "cleanup": "移除已完成的下载",
     "cleanupSuccess": "已移除 {count} 个下载",
-    "cleanupNone": "没有已完成的下载可移除"
+    "cleanupNone": "没有已完成的下载可移除",
+    "searchPlaceholder": "搜索包...",
+    "sortName": "名称",
+    "sortProgress": "%",
+    "sortSize": "大小",
+    "sortSpeed": "速度",
+    "sortETA": "ETA",
+    "filterAll": "全部",
+    "filterDownloading": "下载中",
+    "filterFinished": "已完成",
+    "filterQueued": "排队中"
   },
   "uptimekuma": {
     "loading": "加载监控...",
@@ -1109,7 +1132,33 @@
     "timeLeft": "",
     "progress": "",
     "downloading": "",
-    "version": ""
+    "version": "",
+    "browseLibrary": "Browse library",
+    "hideLibrary": "Hide library",
+    "searchPlaceholder": "Search...",
+    "filterAll": "All",
+    "filterDownloaded": "Downloaded",
+    "filterMissing": "Missing",
+    "filterMonitored": "Monitored",
+    "filterUnmonitored": "Unmonitored",
+    "filterComplete": "Complete",
+    "filterIncomplete": "Incomplete",
+    "sortTitle": "Title",
+    "sortYear": "Year",
+    "sortSize": "Size",
+    "sortStatus": "Status",
+    "sortCompletion": "Completion",
+    "noMovies": "No movies in library",
+    "noSeries": "No series in library",
+    "noEpisodes": "No episodes",
+    "season": "Season",
+    "loadingLibrary": "Loading library...",
+    "loadingEpisodes": "Loading episodes...",
+    "libraryError": "Error loading library",
+    "refreshLibrary": "Refresh",
+    "downloaded": "Downloaded",
+    "missing": "Missing",
+    "perPage": "per page"
   },
   "webhooks": {
     "title": "",

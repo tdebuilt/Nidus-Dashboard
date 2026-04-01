@@ -6,9 +6,10 @@
   import { usePolling } from '../../utils/usePolling'
   import { t, translate } from '../../i18n'
   import { isViewer } from '../../stores/auth'
+  import { loadPref, savePref } from '../../utils/widgetPrefs'
   import QBTorrentCard from './QBTorrentCard.svelte'
-  import SortHeader from './SortHeader.svelte'
-  import Pagination from './Pagination.svelte'
+  import SortHeader from '../shared/SortHeader.svelte'
+  import Pagination from '../shared/Pagination.svelte'
   import AddTorrentDialog from './AddTorrentDialog.svelte'
 
   type SortField = 'name' | 'progress' | 'size' | 'speed_down' | 'speed_up' | 'eta' | 'ratio' | 'added_on' | 'status'
@@ -47,23 +48,10 @@
 
   const { config: _config = '{}', active = true }: Props = $props()
 
+  const PREFIX = 'nidus-qbt-'
   const SORT_FIELDS: SortField[] = ['name', 'progress', 'size', 'speed_down', 'speed_up', 'eta', 'ratio', 'added_on', 'status']
   const FILTERS = ['all', 'downloading', 'seeding', 'completed', 'paused', 'error']
   const PAGE_SIZES = [10, 20, 50, 100]
-
-  function loadPref<T>(key: string, fallback: T, valid?: T[]): T {
-    if (typeof localStorage === 'undefined') return fallback
-    const v = localStorage.getItem('nidus-qbt-' + key)
-    if (v === null) return fallback
-    if (valid && !valid.includes(v as T)) return fallback
-    return v as T
-  }
-
-  function savePref(key: string, value: string) {
-    if (typeof localStorage !== 'undefined') {
-      localStorage.setItem('nidus-qbt-' + key, value)
-    }
-  }
 
   let loading = $state(true)
   let refreshing = $state(false)
@@ -72,11 +60,11 @@
   let showAddDialog = $state(false)
 
   let search = $state('')
-  let filter = $state(loadPref('filter', 'all', FILTERS))
-  let sortField = $state<SortField>(loadPref<SortField>('sortField', 'added_on', SORT_FIELDS))
-  let sortDirection = $state<'asc' | 'desc'>(loadPref<'asc' | 'desc'>('sortDir', 'desc', ['asc', 'desc']))
+  let filter = $state(loadPref(PREFIX, 'filter', 'all', FILTERS))
+  let sortField = $state<SortField>(loadPref<SortField>(PREFIX, 'sortField', 'added_on', SORT_FIELDS))
+  let sortDirection = $state<'asc' | 'desc'>(loadPref<'asc' | 'desc'>(PREFIX, 'sortDir', 'desc', ['asc', 'desc']))
   let page = $state(1)
-  let pageSize = $state(Number(loadPref('pageSize', '20', PAGE_SIZES.map(String))) || 20)
+  let pageSize = $state(Number(loadPref(PREFIX, 'pageSize', '20', PAGE_SIZES.map(String))) || 20)
 
   function formatSpeed(bps: number): string {
     if (bps >= 1048576) return (bps / 1048576).toFixed(1) + ' MB/s'
@@ -188,8 +176,8 @@
       sortField = field
       sortDirection = 'asc'
     }
-    savePref('sortField', sortField)
-    savePref('sortDir', sortDirection)
+    savePref(PREFIX, 'sortField', sortField)
+    savePref(PREFIX, 'sortDir', sortDirection)
   }
 
   const polling = usePolling({
@@ -278,7 +266,7 @@
         </div>
         <select
           value={filter}
-          onchange={(e) => { filter = (e.target as HTMLSelectElement).value; savePref('filter', filter) }}
+          onchange={(e) => { filter = (e.target as HTMLSelectElement).value; savePref(PREFIX, 'filter', filter) }}
           class="rounded border border-[var(--color-border)] bg-[var(--color-bg)] px-1.5 py-1 text-xs text-[var(--color-text)]"
           aria-label="Filter"
         >
@@ -292,7 +280,18 @@
       </div>
 
       <!-- Sort header -->
-      <SortHeader {sortField} {sortDirection} onToggleSort={toggleSort} />
+      <SortHeader
+        columns={[
+          { field: 'name', labelKey: 'qbittorrent.sortName', class: 'flex-1 text-left' },
+          { field: 'progress', labelKey: 'qbittorrent.sortProgress' },
+          { field: 'size', labelKey: 'qbittorrent.sortSize' },
+          { field: 'speed_down', labelKey: 'qbittorrent.sortSpeedDown' },
+          { field: 'speed_up', labelKey: 'qbittorrent.sortSpeedUp' },
+          { field: 'ratio', labelKey: 'qbittorrent.sortRatio' },
+          { field: 'added_on', labelKey: 'qbittorrent.sortAdded' },
+        ]}
+        {sortField} {sortDirection} onToggleSort={toggleSort}
+      />
 
       <!-- Torrent list -->
       {#if sortedTorrents.length === 0}
@@ -314,7 +313,7 @@
         totalItems={sortedTorrents.length}
         {pageSize}
         onPageChange={(p) => page = p}
-        onPageSizeChange={(s) => { pageSize = s; page = 1; savePref('pageSize', String(s)) }}
+        onPageSizeChange={(s) => { pageSize = s; page = 1; savePref(PREFIX, 'pageSize', String(s)) }}
       />
     </div>
   {/if}
