@@ -31,6 +31,11 @@ func serveStaticFiles(r *chi.Mux, srv *Server) {
 			serveIndexWithNonce(w, r, srv)
 			return
 		}
+
+		// Immutable cache for hashed assets (Vite build output)
+		if strings.HasPrefix(path, "/assets/") {
+			w.Header().Set("Cache-Control", "public, max-age=31536000, immutable")
+		}
 		fileServer.ServeHTTP(w, r)
 	})
 }
@@ -56,5 +61,6 @@ func serveIndexWithNonce(w http.ResponseWriter, r *http.Request, srv *Server) {
 	}
 
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	w.Header().Set("Cache-Control", "no-cache")
 	w.Write([]byte(html))
 }

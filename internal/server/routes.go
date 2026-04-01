@@ -244,6 +244,9 @@ func registerViewerServiceRoutes(r chi.Router, srv *Server, db *database.DB) {
 	r.Get("/reolink/cameras/{id}/stream", reolinkHandler.GetStreamURL)
 	r.Get("/reolink/discover", reolinkHandler.Discover)
 
+	qbtHandler := &handlers.QBittorrentHandler{DB: db, Cache: srv.ServiceCache}
+	r.Get("/qbittorrent/torrents", qbtHandler.ListTorrents)
+
 	go2rtcHandler := &handlers.Go2RTCHandler{Manager: srv.Go2RTCManager}
 	r.Get("/go2rtc/status", go2rtcHandler.Status)
 	r.Get("/go2rtc/ws", go2rtcHandler.ProxyWS)
@@ -297,6 +300,15 @@ func registerEditorRoutes(r chi.Router, srv *Server, db *database.DB) {
 	r.Post("/transmission/torrents/start-all", txHandler.StartAllTorrents)
 	r.Post("/transmission/torrents/stop-all", txHandler.StopAllTorrents)
 	r.Post("/transmission/torrents/cleanup", txHandler.CleanupCompleted)
+
+	qbtHandler := &handlers.QBittorrentHandler{DB: db, Cache: srv.ServiceCache}
+	r.Post("/qbittorrent/torrents", qbtHandler.AddTorrent)
+	r.Post("/qbittorrent/torrents/{hash}/resume", qbtHandler.ResumeTorrent)
+	r.Post("/qbittorrent/torrents/{hash}/pause", qbtHandler.PauseTorrent)
+	r.Post("/qbittorrent/torrents/{hash}/delete", qbtHandler.DeleteTorrent)
+	r.Post("/qbittorrent/torrents/resume-all", qbtHandler.ResumeAllTorrents)
+	r.Post("/qbittorrent/torrents/pause-all", qbtHandler.PauseAllTorrents)
+	r.Post("/qbittorrent/torrents/cleanup", qbtHandler.CleanupCompleted)
 }
 
 func registerAdminRoutes(r chi.Router, srv *Server, db *database.DB) {
