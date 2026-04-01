@@ -61,12 +61,39 @@ describe('UptimeKumaWidget', () => {
     })
   })
 
+  it('shows timeout error when API returns 504', async () => {
+    vi.mocked(api.get).mockRejectedValue({ status: 504 })
+    render(UptimeKumaWidget, { props: { config: '{}', active: true } })
+    await waitFor(() => {
+      expect(screen.getByText('Request timed out')).toBeTruthy()
+      expect(screen.getByText('Check that the status page slug is correct.')).toBeTruthy()
+    })
+  })
+
+  it('shows fetch error when API returns 502', async () => {
+    vi.mocked(api.get).mockRejectedValue({ status: 502 })
+    render(UptimeKumaWidget, { props: { config: '{}', active: true } })
+    await waitFor(() => {
+      expect(screen.getByText('Error loading Uptime Kuma data')).toBeTruthy()
+    })
+  })
+
+  it('uses slug from config', async () => {
+    vi.mocked(api.get).mockResolvedValue({
+      monitors: [], total_up: 0, total_down: 0, total_count: 0, status_page: 'humacom',
+    })
+    render(UptimeKumaWidget, { props: { config: '{"slug":"humacom"}', active: true } })
+    await waitFor(() => {
+      expect(vi.mocked(api.get)).toHaveBeenCalledWith('/api/uptimekuma/monitors/humacom')
+    })
+  })
+
   it('displays monitor summary counts', async () => {
     vi.mocked(api.get).mockResolvedValue({
       monitors: [
-        { id: 1, name: 'Web Server', type: 'http', status: 1, uptime_24h: 99.9, latency: 45, message: '' },
-        { id: 2, name: 'Database', type: 'tcp', status: 1, uptime_24h: 100, latency: 12, message: '' },
-        { id: 3, name: 'Mail Server', type: 'smtp', status: 0, uptime_24h: 85.2, latency: 0, message: 'Connection refused' },
+        { id: 1, name: 'Web Server', type: 'http', status: 1, uptime_24h: 99.9, latency: 45, message: '', heartbeats: [1, 1, 1, 0, 1] },
+        { id: 2, name: 'Database', type: 'tcp', status: 1, uptime_24h: 100, latency: 12, message: '', heartbeats: [1, 1, 1, 1] },
+        { id: 3, name: 'Mail Server', type: 'smtp', status: 0, uptime_24h: 85.2, latency: 0, message: 'Connection refused', heartbeats: [1, 0, 0] },
       ],
       total_up: 2,
       total_down: 1,
@@ -78,6 +105,9 @@ describe('UptimeKumaWidget', () => {
       expect(screen.getByText('2')).toBeTruthy()
       expect(screen.getByText('1')).toBeTruthy()
       expect(screen.getByText('3 monitors')).toBeTruthy()
+      expect(screen.getByTestId('heartbeat-bars-1')).toBeTruthy()
+      expect(screen.getByTestId('heartbeat-bars-2')).toBeTruthy()
+      expect(screen.getByTestId('heartbeat-bars-3')).toBeTruthy()
     })
   })
 })

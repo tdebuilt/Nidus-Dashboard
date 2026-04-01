@@ -77,10 +77,19 @@ register({
 })
 
 register({
+  type: 'qbittorrent',
+  label: 'qBittorrent',
+  icon: Download,
+  component: () => import('./components/qbittorrent/QBittorrentWidget.svelte'),
+  serviceType: 'qbittorrent',
+})
+
+register({
   type: 'uptimekuma',
   label: 'Uptime Kuma',
   icon: HeartPulse,
   component: () => import('./components/uptimekuma/UptimeKumaWidget.svelte'),
+  configComponent: () => import('./components/config/UptimeKumaConfig.svelte'),
   serviceType: 'uptimekuma',
 })
 

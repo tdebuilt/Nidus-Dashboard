@@ -1,10 +1,9 @@
 <script lang="ts">
   import { Loader2, AlertCircle, Settings, ArrowUp, ArrowDown } from 'lucide-svelte'
   import { api } from '../../api/client'
-  import { toasts } from '../../stores/toast'
   import { pollingInterval } from '../../stores/polling'
   import { usePolling } from '../../utils/usePolling'
-  import { t, translate } from '../../i18n'
+  import { t } from '../../i18n'
   import MonitorCard from './MonitorCard.svelte'
 
   interface MonitorInfo {
@@ -53,11 +52,12 @@
       const status = (err as { status?: number })?.status
       if (status === 404) {
         error = 'not_configured'
-      } else if (status === 502) {
-        error = 'fetch_error'
+      } else if (status === 504) {
+        error = 'timeout'
+        polling.stop()
       } else {
         error = 'fetch_error'
-        toasts.error(translate('uptimekuma.fetchError'))
+        polling.stop()
       }
     } finally {
       loading = false
@@ -80,6 +80,11 @@
     pollingStore: pollingInterval,
   })
 
+  function retry() {
+    error = null
+    polling.start()
+  }
+
   $effect(() => {
     if (active) polling.start(); else polling.stop()
     return () => polling.stop()
@@ -99,11 +104,20 @@
       <p>{$t('uptimekuma.notConfigured')}</p>
       <p class="text-xs">{$t('uptimekuma.configureHint')}</p>
     </div>
+  {:else if error === 'timeout' && !data}
+    <div class="flex h-full flex-col items-center justify-center gap-2 text-center text-sm text-[var(--color-text-muted)]">
+      <AlertCircle size={24} class="text-[var(--color-warning)]" />
+      <p>{$t('uptimekuma.timeoutError')}</p>
+      <p class="text-xs">{$t('uptimekuma.timeoutHint')}</p>
+      <button onclick={retry} class="text-xs text-[var(--color-primary)] hover:underline">
+        {$t('common.retry')}
+      </button>
+    </div>
   {:else if error === 'fetch_error' && !data}
     <div class="flex h-full flex-col items-center justify-center gap-2 text-center text-sm text-[var(--color-text-muted)]">
       <AlertCircle size={24} class="text-[var(--color-danger)]" />
       <p>{$t('uptimekuma.fetchError')}</p>
-      <button onclick={fetchData} class="text-xs text-[var(--color-primary)] hover:underline">
+      <button onclick={retry} class="text-xs text-[var(--color-primary)] hover:underline">
         {$t('common.retry')}
       </button>
     </div>

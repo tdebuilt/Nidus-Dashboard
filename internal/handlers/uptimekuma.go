@@ -70,6 +70,11 @@ func (h *UptimeKumaHandler) GetMonitors(w http.ResponseWriter, r *http.Request) 
 
 	overview, err := client.GetMonitors(r.Context(), slug)
 	if err != nil {
+		if errors.Is(err, uptimekuma.ErrTimeout) {
+			slog.Warn("uptimekuma: request timed out", "slug", slug, "error", err)
+			writeJSON(w, http.StatusGatewayTimeout, models.ErrorResponse{Error: "upstream timeout — check that the status page slug exists"})
+			return
+		}
 		slog.Error("uptimekuma: failed to fetch monitors", "slug", slug, "error", err)
 		writeJSON(w, http.StatusBadGateway, models.ErrorResponse{Error: "failed to fetch monitors"})
 		return

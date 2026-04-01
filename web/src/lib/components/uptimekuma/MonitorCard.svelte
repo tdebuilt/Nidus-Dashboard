@@ -10,6 +10,7 @@
     uptime_24h: number
     latency: number
     message: string
+    heartbeats?: number[]
   }
 
   interface Props {
@@ -31,47 +32,69 @@
     monitor.status === 3 ? $t('uptimekuma.statusMaintenance') :
     $t('uptimekuma.statusPending')
   )
+
+  function heartbeatColor(status: number): string {
+    if (status === 1) return 'var(--color-success)'
+    if (status === 0) return 'var(--color-danger)'
+    if (status === 3) return 'var(--color-warning)'
+    return 'var(--color-text-muted)'
+  }
 </script>
 
 <div
-  class="flex items-center gap-3 rounded-lg border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-2"
+  class="space-y-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-2"
   data-testid="monitor-card-{monitor.id}"
 >
-  <!-- Status dot -->
-  <div
-    class="h-2.5 w-2.5 flex-shrink-0 rounded-full"
-    style="background-color: {statusColor}"
-    title={statusLabel}
-  ></div>
+  <!-- Info row -->
+  <div class="flex items-center gap-3">
+    <!-- Status dot -->
+    <div
+      class="h-2.5 w-2.5 flex-shrink-0 rounded-full"
+      style="background-color: {statusColor}"
+      title={statusLabel}
+    ></div>
 
-  <!-- Name -->
-  <div class="min-w-0 flex-1">
-    <div class="truncate text-sm font-medium text-[var(--color-text)]">{monitor.name}</div>
-  </div>
-
-  <!-- Latency -->
-  {#if monitor.latency > 0}
-    <div class="flex items-center gap-1 text-xs text-[var(--color-text-muted)]" title={$t('uptimekuma.latency')}>
-      <Clock size={12} />
-      <span>{monitor.latency.toFixed(0)}ms</span>
+    <!-- Name -->
+    <div class="min-w-0 flex-1">
+      <div class="truncate text-sm font-medium text-[var(--color-text)]">{monitor.name}</div>
     </div>
-  {/if}
 
-  <!-- Uptime -->
-  <div
-    class="text-xs font-semibold"
-    style="color: {monitor.uptime_24h >= 0.99 ? 'var(--color-success)' : monitor.uptime_24h >= 0.95 ? 'var(--color-warning)' : 'var(--color-danger)'}"
-    title={$t('uptimekuma.uptime24h')}
-  >
-    {(monitor.uptime_24h * 100).toFixed(1)}%
+    <!-- Latency -->
+    {#if monitor.latency > 0}
+      <div class="flex items-center gap-1 text-xs text-[var(--color-text-muted)]" title={$t('uptimekuma.latency')}>
+        <Clock size={12} />
+        <span>{monitor.latency.toFixed(0)}ms</span>
+      </div>
+    {/if}
+
+    <!-- Uptime -->
+    <div
+      class="text-xs font-semibold"
+      style="color: {monitor.uptime_24h >= 0.99 ? 'var(--color-success)' : monitor.uptime_24h >= 0.95 ? 'var(--color-warning)' : 'var(--color-danger)'}"
+      title={$t('uptimekuma.uptime24h')}
+    >
+      {(monitor.uptime_24h * 100).toFixed(1)}%
+    </div>
+
+    <!-- Status icon -->
+    {#if monitor.status === 1}
+      <ArrowUp size={14} style="color: var(--color-success)" />
+    {:else if monitor.status === 0}
+      <ArrowDown size={14} style="color: var(--color-danger)" />
+    {:else}
+      <Minus size={14} style="color: var(--color-text-muted)" />
+    {/if}
   </div>
 
-  <!-- Status icon -->
-  {#if monitor.status === 1}
-    <ArrowUp size={14} style="color: var(--color-success)" />
-  {:else if monitor.status === 0}
-    <ArrowDown size={14} style="color: var(--color-danger)" />
-  {:else}
-    <Minus size={14} style="color: var(--color-text-muted)" />
+  <!-- Heartbeat bars -->
+  {#if monitor.heartbeats && monitor.heartbeats.length > 0}
+    <div class="flex gap-[1px] overflow-hidden rounded" data-testid="heartbeat-bars-{monitor.id}">
+      {#each monitor.heartbeats as status, i (i)}
+        <div
+          class="h-3 flex-1"
+          style="background-color: {heartbeatColor(status)}"
+        ></div>
+      {/each}
+    </div>
   {/if}
 </div>

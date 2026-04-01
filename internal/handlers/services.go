@@ -36,7 +36,7 @@ var ServiceRegistry = map[string]ServiceDefinition{
 	"pihole":        {CachePrefix: "pihole:", TestPath: "/api/auth", DisplayName: "Pi-hole", AuthType: "password", NeedsURL: true},
 	"jdownloader":   {CachePrefix: "jd:", TestPath: "", DisplayName: "JDownloader", AuthType: "jdownloader", NeedsURL: false},
 	"transmission":  {CachePrefix: "tx:", TestPath: "/transmission/rpc", DisplayName: "Transmission", AuthType: "userpass", NeedsURL: true},
-	"uptimekuma":    {CachePrefix: "kuma:", TestPath: "/api/status-page/heartbeat/default", DisplayName: "Uptime Kuma", AuthType: "none", NeedsURL: true},
+	"uptimekuma":    {CachePrefix: "kuma:", TestPath: "/api/entry-page", DisplayName: "Uptime Kuma", AuthType: "none", NeedsURL: true},
 	"plex":          {CachePrefix: "plex:", TestPath: "/identity", DisplayName: "Plex", AuthType: "token", NeedsURL: true},
 	"jellyfin":      {CachePrefix: "jellyfin:", TestPath: "/System/Info/Public", DisplayName: "Jellyfin", AuthType: "token", NeedsURL: true},
 	"sonarr":        {CachePrefix: "arr:", TestPath: "/api/v3/system/status", DisplayName: "Sonarr", AuthType: "apikey", NeedsURL: true},
@@ -45,6 +45,7 @@ var ServiceRegistry = map[string]ServiceDefinition{
 	"prowlarr":      {CachePrefix: "arr:", TestPath: "/api/v1/system/status", DisplayName: "Prowlarr", AuthType: "apikey", NeedsURL: true},
 	"grafana":       {CachePrefix: "grafana:", TestPath: "/api/health", DisplayName: "Grafana", AuthType: "token", NeedsURL: true},
 	"reolink":       {CachePrefix: "reolink:", TestPath: "", DisplayName: "Reolink Cameras", AuthType: "none", NeedsURL: false},
+	"qbittorrent":   {CachePrefix: "qbt:", TestPath: "/api/v2/app/version", DisplayName: "qBittorrent", AuthType: "userpass", NeedsURL: true},
 }
 
 // ServiceTypeInfo is the API response for a service type definition.

@@ -43,13 +43,14 @@ type Heartbeat struct {
 
 // MonitorInfo is the combined monitor data for the frontend.
 type MonitorInfo struct {
-	ID        int     `json:"id"`
-	Name      string  `json:"name"`
-	Type      string  `json:"type"`
-	Status    int     `json:"status"`    // latest heartbeat status
-	Uptime24h float64 `json:"uptime_24h"` // 0.0 - 1.0
-	Latency   float64 `json:"latency"`   // latest ping in ms
-	Message   string  `json:"message"`   // latest heartbeat message
+	ID         int     `json:"id"`
+	Name       string  `json:"name"`
+	Type       string  `json:"type"`
+	Status     int     `json:"status"`      // latest heartbeat status
+	Uptime24h  float64 `json:"uptime_24h"`  // 0.0 - 1.0
+	Latency    float64 `json:"latency"`     // latest ping in ms
+	Message    string  `json:"message"`     // latest heartbeat message
+	Heartbeats []int   `json:"heartbeats"`  // recent status history (oldest → newest)
 }
 
 // MonitorsOverview is the aggregated data returned to the frontend.

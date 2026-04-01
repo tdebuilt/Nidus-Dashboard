@@ -3,13 +3,18 @@ package uptimekuma
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"strconv"
 	"strings"
 	"time"
 )
+
+// ErrTimeout indicates the upstream request timed out.
+var ErrTimeout = errors.New("request timed out")
 
 // Client communicates with the Uptime Kuma API.
 type Client struct {
@@ -107,6 +112,12 @@ func buildMonitorInfo(m MonitorSummary, heartbeats *HeartbeatResponse) MonitorIn
 		info.Status = latest.Status
 		info.Latency = latest.Ping
 		info.Message = latest.Msg
+
+		statuses := make([]int, len(beats))
+		for i, b := range beats {
+			statuses[i] = b.Status
+		}
+		info.Heartbeats = statuses
 	}
 
 	uptimeKey := fmt.Sprintf("%d_24", m.ID)
@@ -125,9 +136,20 @@ func (c *Client) get(ctx context.Context, path string, result any) error {
 	return c.doRequest(req, result)
 }
 
+func isTimeout(err error) bool {
+	if errors.Is(err, context.DeadlineExceeded) {
+		return true
+	}
+	var netErr net.Error
+	return errors.As(err, &netErr) && netErr.Timeout()
+}
+
 func (c *Client) doRequest(req *http.Request, result any) error {
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
+		if isTimeout(err) {
+			return fmt.Errorf("%w: %w", ErrTimeout, err)
+		}
 		return fmt.Errorf("executing request: %w", err)
 	}
 	defer resp.Body.Close()
