@@ -32,7 +32,7 @@
 - [x] Pre-commit hooks (golangci-lint + eslint)
 
 ### Features
-- [x] 18 widget types (Docker, Proxmox, Home Assistant, Uptime Kuma, Plex/Jellyfin, *arr stack, Pi-hole, Weather, Calendar, RSS, System, Bookmarks, Reolink, Finance, AdGuard, JDownloader, Transmission, Grafana)
+- [x] 19 widget types (Docker, Proxmox, Home Assistant, Uptime Kuma, Plex/Jellyfin, *arr stack, Pi-hole, Weather, Calendar, RSS, System, Bookmarks, Reolink, Finance, AdGuard, JDownloader, Transmission, qBittorrent, Grafana)
 - [x] Multi-user with roles (admin, editor, viewer)
 - [x] 4 built-in themes with accent color picker and custom CSS
 - [x] 11 languages with RTL support

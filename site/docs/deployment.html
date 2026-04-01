@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Deployment — Nidus Docs</title>
+  <meta name="description" content="Deploy Nidus via Docker, standalone binary, or desktop app. Includes CI/CD and build from source instructions.">
+  <link rel="icon" type="image/png" href="../img/favicon.png">
+  <link rel="stylesheet" href="../docs.css">
+</head>
+<body>
+
+<aside id="docs-sidebar" class="docs-sidebar"></aside>
+<div class="docs-overlay" onclick="document.getElementById('docs-sidebar').classList.remove('open')"></div>
+
+<main class="docs-main">
+  <div class="docs-mobile-header">
+    <button onclick="document.getElementById('docs-sidebar').classList.add('open')" aria-label="Open menu">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12h18M3 6h18M3 18h18"/></svg>
+    </button>
+    <span>Deployment</span>
+  </div>
+
+  <div class="docs-content">
+    <h1>Deployment Guide</h1>
+    <p class="subtitle">Nidus can be deployed in three ways: Docker (recommended), standalone binary, or desktop application.</p>
+
+    <!-- Docker -->
+    <h2 id="docker">Docker (Server)</h2>
+    <p>The recommended way to run Nidus on a server.</p>
+    <pre><code><span class="cmd">docker compose</span> up -d</code></pre>
+    <p>The default <code>docker-compose.yml</code> exposes port 3777 and persists data in <code>./data/</code>.</p>
+
+    <h3 id="docker-config">Configuration</h3>
+    <p>Environment variables:</p>
+    <table>
+      <thead><tr><th>Variable</th><th>Default</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td><code>NIDUS_PORT</code></td><td><code>3777</code></td><td>Server port</td></tr>
+        <tr><td><code>NIDUS_DB_PATH</code></td><td><code>/data/nidus.db</code></td><td>Database file path</td></tr>
+        <tr><td><code>NIDUS_BASE_URL</code></td><td><code>http://localhost:3777</code></td><td>Public URL</td></tr>
+      </tbody>
+    </table>
+
+    <p>You can also mount a <code>config.yaml</code> file:</p>
+    <pre><code><span class="key">server</span>:
+  <span class="key">port</span>: <span class="string">3777</span>
+  <span class="key">base_url</span>: <span class="string">https://nidus.example.com</span>
+<span class="key">database</span>:
+  <span class="key">path</span>: <span class="string">/data/nidus.db</span></code></pre>
+
+    <h3 id="ghcr">Using the GitHub Container Registry image</h3>
+    <pre><code><span class="cmd">docker pull</span> ghcr.io/tdebuilt/nidus-dashboard:latest
+<span class="cmd">docker run</span> -d -p 3777:3777 -v ./data:/data ghcr.io/tdebuilt/nidus-dashboard:latest</code></pre>
+
+    <!-- Standalone -->
+    <h2 id="binary">Standalone Binary</h2>
+    <p>Download the binary for your platform from <a href="https://github.com/tdebuilt/Nidus-Dashboard/releases" target="_blank" rel="noopener">GitHub Releases</a>.</p>
+    <table>
+      <thead><tr><th>Platform</th><th>Binary</th></tr></thead>
+      <tbody>
+        <tr><td>Linux x86_64</td><td><code>nidus-x86_64-unknown-linux-gnu</code></td></tr>
+        <tr><td>macOS Intel</td><td><code>nidus-x86_64-apple-darwin</code></td></tr>
+        <tr><td>macOS Apple Silicon</td><td><code>nidus-aarch64-apple-darwin</code></td></tr>
+        <tr><td>Windows x64</td><td><code>nidus-x86_64-pc-windows-msvc.exe</code></td></tr>
+      </tbody>
+    </table>
+    <pre><code><span class="cmd">chmod</span> +x nidus-x86_64-unknown-linux-gnu
+<span class="cmd">./nidus-x86_64-unknown-linux-gnu</span></code></pre>
+    <p>The server starts on <code>http://localhost:3777</code>. Data is stored in <code>./data/nidus.db</code> by default.</p>
+
+    <!-- Desktop -->
+    <h2 id="desktop">Desktop Application (Tauri)</h2>
+    <p>Download the installer for your platform from <a href="https://github.com/tdebuilt/Nidus-Dashboard/releases" target="_blank" rel="noopener">GitHub Releases</a>.</p>
+    <table>
+      <thead><tr><th>Platform</th><th>Format</th></tr></thead>
+      <tbody>
+        <tr><td>Linux</td><td><code>.deb</code>, <code>.AppImage</code></td></tr>
+        <tr><td>macOS</td><td><code>.dmg</code></td></tr>
+        <tr><td>Windows</td><td><code>.msi</code>, <code>.exe</code></td></tr>
+      </tbody>
+    </table>
+
+    <h3 id="how-it-works">How it works</h3>
+    <p>The desktop app bundles the Nidus server and runs it locally. The app:</p>
+    <ul>
+      <li>Starts the server on <code>127.0.0.1</code> (localhost only, not network-accessible)</li>
+      <li>Automatically finds a free port if 3777 is in use</li>
+      <li>Stores data in your user config directory:
+        <ul>
+          <li>Linux: <code>~/.config/nidus/</code></li>
+          <li>macOS: <code>~/Library/Application Support/nidus/</code></li>
+          <li>Windows: <code>%APPDATA%\nidus\</code></li>
+        </ul>
+      </li>
+    </ul>
+
+    <h3 id="desktop-vs-server">Desktop vs Server</h3>
+    <table>
+      <thead><tr><th>Feature</th><th>Desktop</th><th>Server</th></tr></thead>
+      <tbody>
+        <tr><td>Network access</td><td>Localhost only</td><td>Configurable</td></tr>
+        <tr><td>Data location</td><td>User config dir</td><td><code>./data/</code> or Docker volume</td></tr>
+        <tr><td>Port</td><td>Auto-detected</td><td>Configurable</td></tr>
+        <tr><td>Local tools (DDEV, etc.)</td><td>Available</td><td>Not available</td></tr>
+      </tbody>
+    </table>
+
+    <h3 id="platform-notes">Platform-specific notes</h3>
+    <p><strong>macOS</strong>: If Gatekeeper blocks the app, run:</p>
+    <pre><code><span class="cmd">xattr</span> -d com.apple.quarantine /Applications/Nidus.app</code></pre>
+
+    <p><strong>Windows</strong>: If SmartScreen shows a warning, click "More info" then "Run anyway". This happens because the binary is not code-signed.</p>
+
+    <!-- CI/CD -->
+    <h2 id="cicd">CI/CD</h2>
+    <p>Releases are fully automated via GitHub Actions.</p>
+
+    <h3 id="release-workflow">Automatic release workflow</h3>
+    <ol>
+      <li>Tag a commit: <code>git tag v1.0.0 &amp;&amp; git push --tags</code></li>
+      <li>GitHub Actions automatically:
+        <ul>
+          <li>Builds Go binaries for all 4 platforms</li>
+          <li>Builds Tauri desktop installers for Linux, macOS, Windows</li>
+          <li>Builds and pushes the Docker image to <code>ghcr.io</code></li>
+          <li>Creates a GitHub Release with all artifacts attached</li>
+        </ul>
+      </li>
+    </ol>
+
+    <h3 id="test-workflow">Test workflow</h3>
+    <p>Every push to any branch and every pull request triggers:</p>
+    <ul>
+      <li>Go tests (<code>go vet</code> + <code>go test ./...</code>)</li>
+      <li>Frontend tests (Vitest)</li>
+      <li>Full build check (frontend + backend)</li>
+    </ul>
+
+    <!-- Build from source -->
+    <h2 id="source">Building from Source</h2>
+
+    <h3 id="prerequisites">Prerequisites</h3>
+    <ul>
+      <li>Go 1.24+</li>
+      <li>Node.js 20+</li>
+      <li>Rust (for desktop builds only)</li>
+    </ul>
+
+    <h3 id="server-build">Server build</h3>
+    <pre><code><span class="cmd">make build</span>          <span class="comment"># Build production binary</span>
+<span class="cmd">make dev</span>            <span class="comment"># Development mode (Go + Svelte HMR)</span>
+<span class="cmd">make docker</span>         <span class="comment"># Build and run via Docker</span></code></pre>
+
+    <h3 id="desktop-build">Desktop build</h3>
+    <pre><code><span class="cmd">make desktop-dev</span>    <span class="comment"># Development mode with Tauri</span>
+<span class="cmd">make desktop-build</span>  <span class="comment"># Production Tauri build</span></code></pre>
+  </div>
+</main>
+
+<script src="../docs-nav.js"></script>
+</body>
+</html>

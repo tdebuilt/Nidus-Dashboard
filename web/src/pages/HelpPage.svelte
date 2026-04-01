@@ -62,6 +62,11 @@
       featureKeys: ['torrents', 'speed', 'control', 'cleanup']
     },
     {
+      key: 'qbittorrent',
+      icon: Download,
+      featureKeys: ['torrents', 'speed', 'control', 'search', 'cleanup']
+    },
+    {
       key: 'mediaserver',
       icon: MonitorPlay,
       setupStepKeys: ['plex1', 'plex2', 'plex3', 'jellyfin1', 'jellyfin2'],

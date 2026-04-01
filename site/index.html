@@ -1,0 +1,665 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Nidus — Lightweight Self-Hosted Dashboard</title>
+  <meta name="description" content="A fast, lightweight self-hosted dashboard to monitor and manage your containers, VMs, and services. 30-70 MB RAM. Go + Svelte + SQLite.">
+  <meta property="og:title" content="Nidus — Lightweight Self-Hosted Dashboard">
+  <meta property="og:description" content="Monitor and manage your containers, VMs, and services from a single interface. Runs on 30-70 MB RAM.">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://tdebuilt.github.io/Nidus-Dashboard/">
+  <meta property="og:image" content="https://tdebuilt.github.io/Nidus-Dashboard/img/og-image.png">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="icon" type="image/png" href="img/favicon.png">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<!-- ── Nav ── -->
+<nav class="nav">
+  <div class="nav-inner">
+    <a href="#" class="nav-brand">
+      <img src="img/logo.png" alt="Nidus" width="32" height="32">
+      Nidus
+    </a>
+    <button class="nav-toggle" aria-label="Toggle menu" onclick="document.querySelector('.nav-links').classList.toggle('open')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12h18M3 6h18M3 18h18"/></svg>
+    </button>
+    <ul class="nav-links">
+      <li><a href="#features">Features</a></li>
+      <li><a href="#screenshots">Screenshots</a></li>
+      <li><a href="#tech">Tech Stack</a></li>
+      <li><a href="#installation">Installation</a></li>
+      <li><a href="#compare">Compare</a></li>
+      <li><a href="docs/">Docs</a></li>
+      <li>
+        <a href="https://github.com/tdebuilt/Nidus-Dashboard" class="nav-github" target="_blank" rel="noopener">
+          <svg viewBox="0 0 16 16"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+          GitHub
+        </a>
+      </li>
+    </ul>
+  </div>
+</nav>
+
+<!-- ── Hero ── -->
+<section class="hero">
+  <a href="https://github.com/tdebuilt/Nidus-Dashboard/releases/latest" target="_blank" rel="noopener" class="hero-badge" id="version-badge">Loading...</a>
+  <h1>Your infrastructure.<br><span class="gradient">One dashboard.</span></h1>
+  <p class="hero-subtitle">
+    A lightweight, self-hosted dashboard to monitor and manage your containers, VMs, and services.
+    Runs on <strong>30-70 MB RAM</strong> — no agent, no external database, just a single binary.
+  </p>
+  <div class="hero-cta">
+    <a href="#installation" class="btn btn-primary">Get Started</a>
+    <a href="https://github.com/tdebuilt/Nidus-Dashboard" class="btn btn-secondary" target="_blank" rel="noopener">
+      <svg width="18" height="18" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+      View on GitHub
+    </a>
+  </div>
+  <div class="hero-demo">
+    <img src="img/demo.gif"
+         alt="Nidus Dashboard demo"
+         onerror="this.style.display='none'; this.parentElement.classList.add('screenshot-item','placeholder-fallback'); var s=document.createElement('span'); s.className='screenshot-label'; s.textContent='Demo — coming soon'; s.style.display='block'; this.parentElement.appendChild(s);">
+  </div>
+  <div class="hero-tech">
+    <span class="tech-badge">Go 1.24+</span>
+    <span class="tech-badge">Svelte 5</span>
+    <span class="tech-badge">SQLite</span>
+    <span class="tech-badge">Docker</span>
+    <span class="tech-badge">MIT License</span>
+  </div>
+</section>
+
+<!-- ── Key numbers ── -->
+<section class="stats">
+  <div class="stats-inner">
+    <div class="stat-item fade-in">
+      <span class="stat-value">19+</span>
+      <span class="stat-label">Widget types</span>
+    </div>
+    <div class="stat-item fade-in">
+      <span class="stat-value">11</span>
+      <span class="stat-label">Languages</span>
+    </div>
+    <div class="stat-item fade-in">
+      <span class="stat-value">30-70</span>
+      <span class="stat-label">MB RAM</span>
+    </div>
+    <div class="stat-item fade-in">
+      <span class="stat-value">1</span>
+      <span class="stat-label">Container</span>
+    </div>
+  </div>
+</section>
+
+<!-- ── Features ── -->
+<section id="features" class="section">
+  <div class="section-header fade-in">
+    <h2>Everything you need in one place</h2>
+    <p>Manage your entire homelab infrastructure without switching between a dozen tabs.</p>
+  </div>
+  <div class="features-grid">
+
+    <div class="feature-card fade-in">
+      <div class="feature-icon">&#x1F433;</div>
+      <h3>Docker via Portainer</h3>
+      <p>Start, stop, restart, and update containers. View CPU &amp; RAM stats per container. Supports both CE and EE.</p>
+    </div>
+
+    <div class="feature-card fade-in">
+      <div class="feature-icon">&#x1F5A5;</div>
+      <h3>Proxmox VMs &amp; LXCs</h3>
+      <p>Monitor status and metrics. Start and stop virtual machines and containers directly from the dashboard.</p>
+    </div>
+
+    <div class="feature-card fade-in">
+      <div class="feature-icon">&#x1F3E0;</div>
+      <h3>Home Assistant</h3>
+      <p>Any entity as a widget with real-time updates and actions via WebSocket. Toggle lights, run scripts, and more.</p>
+    </div>
+
+    <div class="feature-card fade-in">
+      <div class="feature-icon">&#x1F6E1;</div>
+      <h3>AdGuard &amp; Pi-hole</h3>
+      <p>View DNS query stats, blocked queries, and toggle filtering on or off — all from a single widget.</p>
+    </div>
+
+    <div class="feature-card fade-in">
+      <div class="feature-icon">&#x1F4FA;</div>
+      <h3>Plex &amp; Jellyfin</h3>
+      <p>Active sessions, now playing, and progress tracking for your media servers.</p>
+    </div>
+
+    <div class="feature-card fade-in">
+      <div class="feature-icon">&#x1F4E5;</div>
+      <h3>Sonarr, Radarr &amp; more</h3>
+      <p>Calendar view, download queue, and status for Sonarr, Radarr, Lidarr, and Prowlarr.</p>
+    </div>
+
+    <div class="feature-card fade-in">
+      <div class="feature-icon">&#x2B07;</div>
+      <h3>Downloads</h3>
+      <p>Transmission, qBittorrent, and JDownloader — add, pause, resume, search and sort your downloads.</p>
+    </div>
+
+    <div class="feature-card fade-in">
+      <div class="feature-icon">&#x1F4F7;</div>
+      <h3>Camera Streaming</h3>
+      <p>Reolink cameras with embedded go2rtc. Live RTSP to WebRTC streaming, no extra service needed.</p>
+    </div>
+
+    <div class="feature-card fade-in">
+      <div class="feature-icon">&#x1F4CA;</div>
+      <h3>Grafana Panels</h3>
+      <p>Embed any Grafana panel with a dashboard and panel picker. Seamless integration.</p>
+    </div>
+
+    <div class="feature-card fade-in">
+      <div class="feature-icon">&#x2714;</div>
+      <h3>Uptime Kuma</h3>
+      <p>Monitor status, uptime percentage, and latency for all your services at a glance.</p>
+    </div>
+
+    <div class="feature-card fade-in">
+      <div class="feature-icon">&#x1F324;</div>
+      <h3>Weather &amp; More</h3>
+      <p>Weather forecasts, calendar events, RSS feeds, system stats, and stock tickers — all as widgets.</p>
+    </div>
+
+    <div class="feature-card fade-in">
+      <div class="feature-icon">&#x1F3A8;</div>
+      <h3>Themes &amp; Customization</h3>
+      <p>4 built-in themes, custom CSS editor, accent color picker. Kiosk mode, keyboard shortcuts, and PWA support.</p>
+    </div>
+
+    <div class="feature-card fade-in">
+      <div class="feature-icon">&#x1F310;</div>
+      <h3>11 Languages</h3>
+      <p>English, French, Spanish, German, Portuguese, Italian, Dutch, Russian, Chinese, Japanese, and Arabic with RTL.</p>
+    </div>
+
+    <div class="feature-card fade-in">
+      <div class="feature-icon">&#x1F512;</div>
+      <h3>Multi-user &amp; 2FA</h3>
+      <p>Admin, editor, and viewer roles with invitation system. Optional TOTP two-factor authentication.</p>
+    </div>
+
+    <div class="feature-card fade-in">
+      <div class="feature-icon">&#x1F514;</div>
+      <h3>Notifications &amp; Webhooks</h3>
+      <p>Push alerts via Gotify, ntfy, or Apprise. Incoming webhooks with HMAC validation.</p>
+    </div>
+
+  </div>
+</section>
+
+<!-- ── Screenshots ── -->
+<section id="screenshots" class="section">
+  <div class="section-header fade-in">
+    <h2>See it in action</h2>
+    <p>A clean, responsive interface that adapts to any screen size.</p>
+  </div>
+  <div class="screenshots-grid">
+
+    <div class="screenshot-item fade-in">
+      <img src="img/screenshot-download.png"
+           alt="Downloads view"
+           loading="lazy"
+           onerror="this.style.display='none'; this.parentElement.classList.add('placeholder-fallback'); this.nextElementSibling.style.display='block';">
+      <span class="screenshot-label">Downloads — coming soon</span>
+      <div class="screenshot-caption">Transmission, qBittorrent, and JDownloader downloads</div>
+    </div>
+
+    <div class="screenshot-item fade-in">
+      <img src="img/screenshot-infrastructure.png"
+           alt="Infrastructure management"
+           loading="lazy"
+           onerror="this.style.display='none'; this.parentElement.classList.add('placeholder-fallback'); this.nextElementSibling.style.display='block';">
+      <span class="screenshot-label">Infrastructure — coming soon</span>
+      <div class="screenshot-caption">Docker containers and Proxmox VMs at a glance</div>
+    </div>
+
+    <div class="screenshot-item fade-in">
+      <img src="img/screenshot-edit-mode.png"
+           alt="Edit mode"
+           loading="lazy"
+           onerror="this.style.display='none'; this.parentElement.classList.add('placeholder-fallback'); this.nextElementSibling.style.display='block';">
+      <span class="screenshot-label">Edit mode — coming soon</span>
+      <div class="screenshot-caption">Drag-and-drop widget positioning with resize handles</div>
+    </div>
+
+    <div class="screenshot-item fade-in">
+      <img src="img/screenshot-settings.png"
+           alt="Settings"
+           loading="lazy"
+           onerror="this.style.display='none'; this.parentElement.classList.add('placeholder-fallback'); this.nextElementSibling.style.display='block';">
+      <span class="screenshot-label">Settings — coming soon</span>
+      <div class="screenshot-caption">Service configuration, themes, and user management</div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ── Tech stack ── -->
+<section id="tech" class="section">
+  <div class="section-header fade-in">
+    <h2>Built for performance</h2>
+    <p>A lean stack with no bloat — every byte of RAM is accounted for.</p>
+  </div>
+  <div class="tech-grid">
+
+    <table class="tech-table fade-in">
+      <thead>
+        <tr><th>Component</th><th>Technology</th><th>RAM</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Backend</td><td>Go (Chi router)</td><td>~20-30 MB</td></tr>
+        <tr><td>Frontend</td><td>Svelte 5 (static, embedded)</td><td>0 MB server-side</td></tr>
+        <tr><td>Streaming</td><td>go2rtc (embedded)</td><td>~30-40 MB</td></tr>
+        <tr><td>Database</td><td>SQLite (WAL mode)</td><td>Included</td></tr>
+        <tr><td>Desktop</td><td>Tauri</td><td>Native</td></tr>
+      </tbody>
+    </table>
+
+    <div class="tech-arch fade-in">
+      <h3>Architecture</h3>
+      <pre><code>┌──────────────────────────────────────────────┐
+│              Nidus Container                 │
+│  Go backend + Svelte frontend + SQLite       │
+│  + embedded go2rtc                           │
+└──────────────────┬───────────────────────────┘
+                   │
+    ┌──────────┬───┼───────┬──────────┐
+    │          │   │       │          │
+ Portainer  Proxmox  Services   Reolink
+  API        API   (HA, AdGuard, cameras
+ (CE/EE)            Pi-hole,   → go2rtc
+                    *arr, etc.)  (WebRTC)</code></pre>
+      <div class="tech-highlight">
+        <span>&#x2714;</span> No agent required — connects to existing APIs only
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ── Installation ── -->
+<section id="installation" class="section">
+  <div class="section-header fade-in">
+    <h2>Up and running in seconds</h2>
+    <p>Choose your preferred deployment method — all include the full stack.</p>
+  </div>
+  <div class="install-grid">
+
+    <div class="install-card fade-in">
+      <h3>&#x1F40B; Docker Compose</h3>
+      <p class="install-desc">Recommended for servers</p>
+      <div class="code-wrapper">
+        <button class="copy-btn" onclick="copyCode(this)" aria-label="Copy to clipboard">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+        </button>
+        <pre><code id="docker-snippet">services:
+  nidus:
+    image: ghcr.io/tdebuilt/nidus-dashboard:latest
+    ports:
+      - "3777:3777"
+    volumes:
+      - ./data:/data
+    restart: unless-stopped</code></pre>
+      </div>
+      <div class="install-bottom">
+        <div class="install-actions">
+          <button class="btn btn-primary download-btn" onclick="downloadDockerCompose()">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Download docker-compose.yml
+          </button>
+        </div>
+        <p class="install-hint">Then run <code>docker compose up -d</code></p>
+      </div>
+    </div>
+
+    <div class="install-card fade-in">
+      <h3>&#x1F4E6; Standalone Binary</h3>
+      <p class="install-desc">No Docker needed — single file with embedded go2rtc</p>
+      <div class="download-area">
+        <a href="https://github.com/tdebuilt/Nidus-Dashboard/releases/latest" class="btn btn-primary download-btn" target="_blank" rel="noopener" id="binary-main">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Download for your platform
+        </a>
+      </div>
+      <div class="install-bottom">
+        <div class="install-actions">
+          <div class="dropdown" id="binary-alt">
+            <button class="dropdown-toggle" onclick="toggleDropdown(this)">
+              <span>All platforms</span>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+            </button>
+            <div class="dropdown-menu">
+              <a href="#" class="dropdown-item" data-binary="linux">Linux x64</a>
+              <a href="#" class="dropdown-item" data-binary="darwin-amd64">macOS Intel</a>
+              <a href="#" class="dropdown-item" data-binary="darwin-arm64">macOS Apple Silicon</a>
+              <a href="#" class="dropdown-item" data-binary="windows">Windows x64</a>
+            </div>
+          </div>
+        </div>
+        <p class="install-hint">Extract, run <code>chmod +x nidus-*</code>, then <code>./nidus-*</code></p>
+      </div>
+    </div>
+
+    <div class="install-card fade-in">
+      <h3>&#x1F5A5; Desktop App</h3>
+      <p class="install-desc">Native window via Tauri — full stack embedded</p>
+      <div class="download-area">
+        <a href="https://github.com/tdebuilt/Nidus-Dashboard/releases/latest" class="btn btn-primary download-btn" target="_blank" rel="noopener" id="desktop-main">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Download for your platform
+        </a>
+      </div>
+      <div class="install-bottom">
+        <div class="install-actions">
+          <div class="dropdown" id="desktop-alt">
+            <button class="dropdown-toggle" onclick="toggleDropdown(this)">
+              <span>All platforms</span>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+            </button>
+            <div class="dropdown-menu">
+              <a href="#" class="dropdown-item" data-desktop="deb">Linux .deb</a>
+              <a href="#" class="dropdown-item" data-desktop="AppImage">Linux .AppImage</a>
+              <a href="#" class="dropdown-item" data-desktop="dmg">macOS .dmg</a>
+              <a href="#" class="dropdown-item" data-desktop="msi">Windows .msi</a>
+            </div>
+          </div>
+        </div>
+        <p class="install-hint">Install and launch — no terminal needed</p>
+      </div>
+    </div>
+
+  </div>
+  <p style="text-align:center; margin-top:24px; color:var(--text-muted); font-size:0.9rem;">
+    Open <a href="http://localhost:3777">http://localhost:3777</a> — the setup wizard will guide you through configuration.
+  </p>
+</section>
+
+<!-- ── Comparison ── -->
+<section id="compare" class="section">
+  <div class="section-header fade-in">
+    <h2>How Nidus compares</h2>
+    <p>Built to fill the gap between heavyweight dashboards and bookmark pages.</p>
+  </div>
+  <div class="compare-wrapper fade-in">
+    <table class="compare-table">
+      <thead>
+        <tr>
+          <th>Solution</th>
+          <th>Docker Control</th>
+          <th>Proxmox</th>
+          <th>RAM Usage</th>
+          <th>Widgets</th>
+          <th>i18n</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="highlight">
+          <td><strong>Nidus</strong></td>
+          <td><span class="check">&#x2714;</span> Full (via Portainer)</td>
+          <td><span class="check">&#x2714;</span> Yes</td>
+          <td>30-70 MB</td>
+          <td>19+</td>
+          <td><span class="check">&#x2714;</span> 11 languages + RTL</td>
+        </tr>
+        <tr>
+          <td>Homarr</td>
+          <td><span class="check">&#x2714;</span> Yes</td>
+          <td><span class="cross">&#x2718;</span> No</td>
+          <td>~600 MB+</td>
+          <td>15+</td>
+          <td><span class="check">&#x2714;</span> ~20 languages</td>
+        </tr>
+        <tr>
+          <td>Homepage</td>
+          <td><span class="cross">&#x2718;</span> Read-only</td>
+          <td><span class="cross">&#x2718;</span> Read-only</td>
+          <td>~50 MB</td>
+          <td>20+</td>
+          <td><span class="cross">&#x2718;</span> No</td>
+        </tr>
+        <tr>
+          <td>Heimdall</td>
+          <td><span class="cross">&#x2718;</span> No</td>
+          <td><span class="cross">&#x2718;</span> No</td>
+          <td>~80 MB</td>
+          <td>Bookmarks</td>
+          <td><span class="cross">&#x2718;</span> No</td>
+        </tr>
+        <tr>
+          <td>Dashy</td>
+          <td><span class="cross">&#x2718;</span> No</td>
+          <td><span class="cross">&#x2718;</span> No</td>
+          <td>~100 MB</td>
+          <td>Status checks</td>
+          <td><span class="check">&#x2714;</span> ~10 languages</td>
+        </tr>
+        <tr>
+          <td>Portainer</td>
+          <td><span class="check">&#x2714;</span> Full</td>
+          <td><span class="cross">&#x2718;</span> No</td>
+          <td>~200 MB</td>
+          <td>Docker only</td>
+          <td><span class="check">&#x2714;</span> ~15 languages</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- ── Footer ── -->
+<footer class="footer">
+  <div class="footer-inner">
+    <div class="footer-brand">
+      <img src="img/logo.png" alt="Nidus" width="28" height="28">
+      Nidus
+    </div>
+    <ul class="footer-links">
+      <li><a href="https://github.com/tdebuilt/Nidus-Dashboard" target="_blank" rel="noopener">GitHub</a></li>
+      <li><a href="docs/">Docs</a></li>
+      <li><a href="https://github.com/tdebuilt/Nidus-Dashboard/releases" target="_blank" rel="noopener">Releases</a></li>
+      <li><a href="https://github.com/tdebuilt/Nidus-Dashboard/blob/main/LICENSE" target="_blank" rel="noopener">MIT License</a></li>
+      <li><a href="https://github.com/tdebuilt/Nidus-Dashboard/blob/main/CONTRIBUTING.md" target="_blank" rel="noopener">Contribute</a></li>
+    </ul>
+    <div class="footer-copy">
+      Built with Go &amp; Svelte.
+    </div>
+  </div>
+</footer>
+
+<!-- ── Scroll animations ── -->
+<script>
+  const observer = new IntersectionObserver(
+    (entries) => {
+      entries.forEach((entry) => {
+        if (entry.isIntersecting) {
+          entry.target.classList.add('visible');
+          observer.unobserve(entry.target);
+        }
+      });
+    },
+    { threshold: 0.1 }
+  );
+  document.querySelectorAll('.fade-in').forEach((el) => observer.observe(el));
+
+  // Close mobile menu on link click
+  document.querySelectorAll('.nav-links a').forEach((link) => {
+    link.addEventListener('click', () => {
+      document.querySelector('.nav-links').classList.remove('open');
+    });
+  });
+
+  // ── Download docker-compose.yml ──
+  window.downloadDockerCompose = function () {
+    var content = document.getElementById('docker-snippet').textContent;
+    var blob = new Blob([content], { type: 'application/x-yaml' });
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'docker-compose.yml';
+    a.click();
+    URL.revokeObjectURL(a.href);
+  };
+
+  // ── Dropdown toggle ──
+  window.toggleDropdown = function (btn) {
+    var dropdown = btn.closest('.dropdown');
+    var wasOpen = dropdown.classList.contains('open');
+    // Close all dropdowns first
+    document.querySelectorAll('.dropdown.open').forEach(function (d) { d.classList.remove('open'); });
+    if (!wasOpen) dropdown.classList.add('open');
+  };
+
+  // Close dropdowns on click outside
+  document.addEventListener('click', function (e) {
+    if (!e.target.closest('.dropdown')) {
+      document.querySelectorAll('.dropdown.open').forEach(function (d) { d.classList.remove('open'); });
+    }
+  });
+
+  // ── Copy button ──
+  window.copyCode = function (btn) {
+    var code = btn.closest('.code-wrapper').querySelector('code');
+    navigator.clipboard.writeText(code.textContent).then(function () {
+      btn.classList.add('copied');
+      btn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>';
+      setTimeout(function () {
+        btn.classList.remove('copied');
+        btn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>';
+      }, 2000);
+    });
+  };
+
+  // ── OS detection ──
+  function detectOS() {
+    var ua = navigator.userAgent;
+    if (/Win/.test(ua)) return 'windows';
+    if (/Mac/.test(ua)) {
+      // Apple Silicon detection (not 100% reliable, but good enough)
+      if (/arm64|aarch64/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)) return 'darwin-arm64';
+      return 'darwin-amd64';
+    }
+    if (/Linux/.test(ua)) return 'linux';
+    return 'linux';
+  }
+
+  var userOS = detectOS();
+
+  var osLabels = {
+    'linux': 'Linux (x64)',
+    'darwin-amd64': 'macOS (Intel)',
+    'darwin-arm64': 'macOS (Apple Silicon)',
+    'windows': 'Windows (x64)'
+  };
+
+  var desktopLabels = {
+    'linux': 'Linux (.AppImage)',
+    'darwin-amd64': 'macOS (.dmg)',
+    'darwin-arm64': 'macOS (.dmg)',
+    'windows': 'Windows (.msi)'
+  };
+
+  // Asset name patterns from release workflow
+  var binaryPatterns = {
+    'linux': 'x86_64-unknown-linux-gnu',
+    'darwin-amd64': 'x86_64-apple-darwin',
+    'darwin-arm64': 'aarch64-apple-darwin',
+    'windows': 'x86_64-pc-windows-msvc'
+  };
+
+  var desktopExtensions = {
+    'linux': '.AppImage',
+    'darwin-amd64': '.dmg',
+    'darwin-arm64': '.dmg',
+    'windows': '.msi'
+  };
+
+  // Set initial button labels based on detected OS
+  var binaryMain = document.getElementById('binary-main');
+  var desktopMain = document.getElementById('desktop-main');
+  if (binaryMain) binaryMain.lastChild.textContent = ' Download for ' + osLabels[userOS];
+  if (desktopMain) desktopMain.lastChild.textContent = ' Download for ' + desktopLabels[userOS];
+
+  // Highlight detected OS in alt links
+  document.querySelectorAll('[data-binary="' + userOS + '"]').forEach(function (el) { el.classList.add('detected'); });
+  var desktopKey = userOS.startsWith('darwin') ? 'dmg' : (userOS === 'windows' ? 'msi' : 'AppImage');
+  document.querySelectorAll('[data-desktop="' + desktopKey + '"]').forEach(function (el) { el.classList.add('detected'); });
+
+  // ── Fetch latest release — populate badge + download links ──
+  var REPO = 'https://api.github.com/repos/tdebuilt/Nidus-Dashboard/releases/latest';
+  var RELEASES_URL = 'https://github.com/tdebuilt/Nidus-Dashboard/releases/latest';
+
+  fetch(REPO)
+    .then(function (r) { return r.ok ? r.json() : null; })
+    .then(function (data) {
+      // Version badge
+      var badge = document.getElementById('version-badge');
+      if (data && badge) {
+        badge.textContent = data.tag_name + ' — ' + data.name;
+      } else if (badge) {
+        badge.textContent = 'Latest Release';
+      }
+
+      if (!data || !data.assets || !data.assets.length) return;
+
+      var assets = data.assets;
+
+      // Helper: find asset by substring match
+      function findAsset(pattern, ext) {
+        return assets.find(function (a) {
+          var name = a.name.toLowerCase();
+          if (ext) return name.indexOf(pattern.toLowerCase()) !== -1 && name.endsWith(ext.toLowerCase());
+          return name.indexOf(pattern.toLowerCase()) !== -1;
+        });
+      }
+
+      // Populate binary download links
+      Object.keys(binaryPatterns).forEach(function (os) {
+        var pattern = binaryPatterns[os];
+        var asset = findAsset(pattern, os === 'windows' ? '.zip' : '.tar.gz');
+        if (!asset) asset = findAsset(pattern); // fallback: any match
+        if (asset) {
+          // Main button for detected OS
+          if (os === userOS && binaryMain) {
+            binaryMain.href = asset.browser_download_url;
+          }
+          // Alt links
+          var key = os === 'darwin-amd64' ? 'darwin-amd64' : (os === 'darwin-arm64' ? 'darwin-arm64' : os);
+          document.querySelectorAll('[data-binary="' + key + '"]').forEach(function (el) {
+            el.href = asset.browser_download_url;
+          });
+        }
+      });
+
+      // Populate desktop download links
+      var extMap = { 'deb': '.deb', 'AppImage': '.AppImage', 'dmg': '.dmg', 'msi': '.msi' };
+      Object.keys(extMap).forEach(function (key) {
+        var asset = findAsset(extMap[key]);
+        if (asset) {
+          document.querySelectorAll('[data-desktop="' + key + '"]').forEach(function (el) {
+            el.href = asset.browser_download_url;
+          });
+        }
+      });
+
+      // Main desktop button for detected OS
+      var desktopExt = desktopExtensions[userOS];
+      var desktopAsset = findAsset(desktopExt);
+      if (desktopAsset && desktopMain) {
+        desktopMain.href = desktopAsset.browser_download_url;
+      }
+    })
+    .catch(function () {
+      var badge = document.getElementById('version-badge');
+      if (badge) badge.textContent = 'Latest Release';
+    });
+</script>
+
+</body>
+</html>

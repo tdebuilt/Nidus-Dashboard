@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Translating — Nidus Docs</title>
+  <meta name="description" content="How to add or improve a Nidus translation. 11 languages currently supported.">
+  <link rel="icon" type="image/png" href="../img/favicon.png">
+  <link rel="stylesheet" href="../docs.css">
+</head>
+<body>
+
+<aside id="docs-sidebar" class="docs-sidebar"></aside>
+<div class="docs-overlay" onclick="document.getElementById('docs-sidebar').classList.remove('open')"></div>
+
+<main class="docs-main">
+  <div class="docs-mobile-header">
+    <button onclick="document.getElementById('docs-sidebar').classList.add('open')" aria-label="Open menu">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12h18M3 6h18M3 18h18"/></svg>
+    </button>
+    <span>Translating</span>
+  </div>
+
+  <div class="docs-content">
+    <h1>Translating Nidus</h1>
+    <p class="subtitle">Thanks for helping translate Nidus! This guide explains everything you need to add or improve a translation.</p>
+
+    <h2 id="quick-start">Quick start</h2>
+    <ol>
+      <li>
+        <p>Copy the template file:</p>
+        <pre><code><span class="cmd">cp</span> web/src/lib/i18n/template.json web/src/lib/i18n/<span class="string">&lt;code&gt;</span>.json</code></pre>
+        <p>Replace <code>&lt;code&gt;</code> with the <a href="https://en.wikipedia.org/wiki/List_of_ISO_639-1_codes" target="_blank" rel="noopener">ISO 639-1 language code</a> (e.g. <code>ko</code> for Korean).</p>
+      </li>
+      <li>
+        <p>Register your locale in <code>web/src/lib/i18n/locales.ts</code>:</p>
+        <pre><code>ko: { label: <span class="string">'&#xD55C;&#xAD6D;&#xC5B4;'</span>, flag: <span class="string">'&#x1F1F0;&#x1F1F7;'</span> },</code></pre>
+      </li>
+      <li><p>Translate all values in your JSON file (see format below).</p></li>
+      <li>
+        <p>Validate your file:</p>
+        <pre><code><span class="cmd">cd</span> web && <span class="cmd">npm run</span> i18n:validate</code></pre>
+      </li>
+      <li><p>Open a pull request.</p></li>
+    </ol>
+    <p>That's it — the i18n system auto-discovers JSON files and registers them automatically.</p>
+
+    <h2 id="format">File format</h2>
+    <p>Translation files are JSON with <strong>one level of nesting</strong> — sections containing key-value pairs:</p>
+    <pre><code>{
+  <span class="key">"section"</span>: {
+    <span class="key">"key"</span>: <span class="string">"Translated text"</span>,
+    <span class="key">"keyWithParam"</span>: <span class="string">"Hello {name}, you have {count} items"</span>
+  }
+}</code></pre>
+
+    <h3 id="rules">Rules</h3>
+    <ul>
+      <li><strong>Keys</strong> must be identical to <code>fr.json</code> (the reference file) — don't add, remove, or rename keys</li>
+      <li><strong>Values</strong> are the translated strings in your target language</li>
+      <li><strong>Placeholders</strong> use <code>{paramName}</code> syntax — keep them exactly as-is, only translate the surrounding text</li>
+      <li><strong>JSON special characters</strong> must be escaped: use <code>\"</code> for literal quotes, <code>\\</code> for backslashes</li>
+      <li>For CJK languages, prefer corner brackets <code>&#x300C;&#x300D;</code> over quotes <code>&#x201C;&#x201D;</code> to avoid JSON parsing issues</li>
+    </ul>
+
+    <h3 id="example">Example</h3>
+    <p>From <code>fr.json</code>:</p>
+    <pre><code>{
+  <span class="key">"setup"</span>: {
+    <span class="key">"progress"</span>: <span class="string">"&#xC9;tape {current} sur {total}"</span>
+  }
+}</code></pre>
+    <p>Korean translation:</p>
+    <pre><code>{
+  <span class="key">"setup"</span>: {
+    <span class="key">"progress"</span>: <span class="string">"{total}&#xB2E8;&#xACC4; &#xC911; {current}&#xB2E8;&#xACC4;"</span>
+  }
+}</code></pre>
+
+    <h2 id="reference">Reference file</h2>
+    <p>The reference file is <code>web/src/lib/i18n/fr.json</code> (French). All other locale files must have the <strong>exact same keys</strong>. English (<code>en.json</code>) is also available for reference if you don't read French.</p>
+
+    <h2 id="template">Template</h2>
+    <p><code>web/src/lib/i18n/template.json</code> contains all keys with empty values — use it as a starting point.</p>
+
+    <h2 id="validation">Validation</h2>
+    <p>Run the validation script to check your file against the reference:</p>
+    <pre><code><span class="cmd">cd</span> web && <span class="cmd">npm run</span> i18n:validate</code></pre>
+    <p>It reports:</p>
+    <ul>
+      <li><strong>Missing keys</strong> — keys present in <code>fr.json</code> but not in your file</li>
+      <li><strong>Extra keys</strong> — keys in your file that don't exist in <code>fr.json</code></li>
+    </ul>
+    <p>All keys must match for the validation to pass.</p>
+
+    <h2 id="fallback">Fallback chain</h2>
+    <p>When a key is missing in the current locale, Nidus falls back:</p>
+    <ol>
+      <li>Selected language</li>
+      <li>English (<code>en</code>)</li>
+      <li>French (<code>fr</code>)</li>
+      <li>Raw key (e.g. <code>common.loading</code>)</li>
+    </ol>
+    <p>This means partially translated files still work — missing strings fall back to English.</p>
+
+    <h2 id="languages">Currently supported languages</h2>
+    <table>
+      <thead><tr><th>Code</th><th>Language</th><th>Flag</th></tr></thead>
+      <tbody>
+        <tr><td><code>fr</code></td><td>Fran&#xE7;ais</td><td>&#x1F1EB;&#x1F1F7;</td></tr>
+        <tr><td><code>en</code></td><td>English</td><td>&#x1F1EC;&#x1F1E7;</td></tr>
+        <tr><td><code>es</code></td><td>Espa&#xF1;ol</td><td>&#x1F1EA;&#x1F1F8;</td></tr>
+        <tr><td><code>de</code></td><td>Deutsch</td><td>&#x1F1E9;&#x1F1EA;</td></tr>
+        <tr><td><code>pt</code></td><td>Portugu&#xEA;s</td><td>&#x1F1F5;&#x1F1F9;</td></tr>
+        <tr><td><code>it</code></td><td>Italiano</td><td>&#x1F1EE;&#x1F1F9;</td></tr>
+        <tr><td><code>nl</code></td><td>Nederlands</td><td>&#x1F1F3;&#x1F1F1;</td></tr>
+        <tr><td><code>ru</code></td><td>&#x420;&#x443;&#x441;&#x441;&#x43A;&#x438;&#x439;</td><td>&#x1F1F7;&#x1F1FA;</td></tr>
+        <tr><td><code>zh</code></td><td>&#x4E2D;&#x6587;</td><td>&#x1F1E8;&#x1F1F3;</td></tr>
+        <tr><td><code>ja</code></td><td>&#x65E5;&#x672C;&#x8A9E;</td><td>&#x1F1EF;&#x1F1F5;</td></tr>
+        <tr><td><code>ar</code></td><td>&#x627;&#x644;&#x639;&#x631;&#x628;&#x64A;&#x629;</td><td>&#x1F1F8;&#x1F1E6;</td></tr>
+      </tbody>
+    </table>
+
+    <h2 id="tips">Tips</h2>
+    <ul>
+      <li><strong>Test your translation</strong> by running <code>make dev</code> or <code>cd web &amp;&amp; npm run dev</code>, then switching to your language in Settings</li>
+      <li><strong>Keep it natural</strong> — don't translate word-for-word, adapt to how the concept is expressed in your language</li>
+      <li><strong>Be consistent</strong> — use the same term for the same concept throughout (e.g. always "container" or always "conteneur")</li>
+      <li><strong>UI space</strong> — some languages are more verbose; keep labels concise where possible</li>
+    </ul>
+  </div>
+</main>
+
+<script src="../docs-nav.js"></script>
+</body>
+</html>

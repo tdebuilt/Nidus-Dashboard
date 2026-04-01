@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Configuration — Nidus Docs</title>
+  <meta name="description" content="YAML configuration reference for Nidus — format, widget types, grid system, import/export.">
+  <link rel="icon" type="image/png" href="../img/favicon.png">
+  <link rel="stylesheet" href="../docs.css">
+</head>
+<body>
+
+<aside id="docs-sidebar" class="docs-sidebar"></aside>
+<div class="docs-overlay" onclick="document.getElementById('docs-sidebar').classList.remove('open')"></div>
+
+<main class="docs-main">
+  <div class="docs-mobile-header">
+    <button onclick="document.getElementById('docs-sidebar').classList.add('open')" aria-label="Open menu">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12h18M3 6h18M3 18h18"/></svg>
+    </button>
+    <span>Configuration</span>
+  </div>
+
+  <div class="docs-content">
+    <h1>YAML Configuration</h1>
+    <p class="subtitle">Nidus supports exporting and importing the full dashboard configuration as a human-readable YAML file.</p>
+
+    <p>This can be used for:</p>
+    <ul>
+      <li><strong>Backup</strong> — save your configuration in a readable format</li>
+      <li><strong>Version control</strong> — track configuration changes in Git</li>
+      <li><strong>Migration</strong> — move your setup to a new instance</li>
+      <li><strong>Bootstrapping</strong> — pre-configure a fresh Nidus install via <code>config.yaml</code></li>
+    </ul>
+
+    <h2 id="format">Format</h2>
+    <pre><code><span class="key">version</span>: 2
+
+<span class="key">settings</span>:
+  <span class="key">theme</span>: <span class="string">dark</span>           <span class="comment"># dark, light, nord, dracula</span>
+  <span class="key">language</span>: <span class="string">fr</span>          <span class="comment"># fr, en, es, de, pt, it, nl, ru, zh, ja, ar</span>
+  <span class="key">refresh_interval</span>: <span class="string">30</span>  <span class="comment"># seconds</span>
+  <span class="key">accent_color</span>: <span class="string">""</span>      <span class="comment"># hex color or empty for default</span>
+  <span class="key">custom_css</span>: <span class="string">""</span>        <span class="comment"># custom CSS injected in &lt;head&gt;</span>
+
+<span class="key">categories</span>:
+  - <span class="key">name</span>: <span class="string">Infrastructure</span>
+    <span class="key">icon</span>: <span class="string">server</span>
+    <span class="key">sort_order</span>: <span class="string">0</span>
+    <span class="key">widgets</span>:
+      - <span class="key">type</span>: <span class="string">docker</span>
+        <span class="key">title</span>: <span class="string">Docker Containers</span>
+        <span class="key">config</span>: <span class="string">'{"environment_id": 1}'</span>
+        <span class="key">pos_x</span>: <span class="string">0</span>
+        <span class="key">pos_y</span>: <span class="string">0</span>
+        <span class="key">width</span>: <span class="string">6</span>
+        <span class="key">height</span>: <span class="string">3</span>
+
+<span class="key">services</span>:
+  - <span class="key">type</span>: <span class="string">portainer</span>
+    <span class="key">name</span>: <span class="string">Portainer</span>
+    <span class="key">url</span>: <span class="string">"https://192.168.1.100:9443"</span>
+    <span class="key">credentials</span>: <span class="string">'{"token": "your-api-token"}'</span>
+    <span class="key">enabled</span>: <span class="string">true</span></code></pre>
+
+    <h2 id="widget-types">Widget types</h2>
+    <table>
+      <thead><tr><th>Type</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td><code>docker</code></td><td>Docker containers (via Portainer)</td></tr>
+        <tr><td><code>proxmox</code></td><td>Proxmox VMs and LXCs</td></tr>
+        <tr><td><code>homeassistant</code></td><td>Home Assistant entities</td></tr>
+        <tr><td><code>adguard</code></td><td>AdGuard Home DNS stats</td></tr>
+        <tr><td><code>jdownloader</code></td><td>JDownloader queue</td></tr>
+        <tr><td><code>transmission</code></td><td>Transmission torrents</td></tr>
+        <tr><td><code>applink</code></td><td>Bookmark links with health check</td></tr>
+      </tbody>
+    </table>
+
+    <h2 id="grid">Grid system</h2>
+    <ul>
+      <li>The grid uses <strong>12 columns</strong> (<code>pos_x</code>: 0-11, <code>width</code>: 1-12)</li>
+      <li>Rows are <strong>80px</strong> each (<code>pos_y</code> and <code>height</code> are in row units)</li>
+      <li><code>height: 0</code> means auto-height (fit content)</li>
+      <li>Widgets cannot overlap; collisions are resolved automatically</li>
+    </ul>
+
+    <h2 id="api-endpoints">API Endpoints</h2>
+
+    <h3 id="export">Export (admin only)</h3>
+    <div class="endpoint">
+      <span class="method method-get">GET</span>
+      <span class="path">/api/config/yaml</span>
+    </div>
+    <p>Returns the full configuration as a downloadable YAML file. Service credentials are included in plaintext.</p>
+
+    <h3 id="import">Import (admin only)</h3>
+    <div class="endpoint">
+      <span class="method method-post">POST</span>
+      <span class="path">/api/config/yaml</span>
+    </div>
+    <p>Replaces the current configuration with the imported one. Existing categories, widgets, and services are deleted before import.</p>
+    <pre><code>Content-Type: application/x-yaml
+
+&lt;yaml content&gt;</code></pre>
+
+    <h2 id="auto-import">Auto-import at startup</h2>
+    <p>If <code>data/config.yaml</code> contains dashboard sections (<code>settings</code>, <code>categories</code>, or <code>services</code>) <strong>and</strong> the database is empty (no categories exist), Nidus will automatically import the dashboard configuration on startup.</p>
+    <p>This allows pre-configuring Nidus by adding dashboard sections to the same <code>config.yaml</code> used for server settings:</p>
+
+    <pre><code><span class="comment"># Server settings (always read)</span>
+<span class="key">server</span>:
+  <span class="key">port</span>: <span class="string">3777</span>
+
+<span class="key">database</span>:
+  <span class="key">path</span>: <span class="string">./data/nidus.db</span>
+
+<span class="comment"># Dashboard settings (auto-imported on first startup only)</span>
+<span class="key">settings</span>:
+  <span class="key">theme</span>: <span class="string">dark</span>
+  <span class="key">language</span>: <span class="string">fr</span>
+
+<span class="key">categories</span>:
+  - <span class="key">name</span>: <span class="string">Home</span>
+    <span class="key">icon</span>: <span class="string">home</span>
+    <span class="key">sort_order</span>: <span class="string">0</span>
+    <span class="key">widgets</span>:
+      - <span class="key">type</span>: <span class="string">docker</span>
+        <span class="key">title</span>: <span class="string">Containers</span>
+        <span class="key">config</span>: <span class="string">'{}'</span>
+        <span class="key">pos_x</span>: <span class="string">0</span>
+        <span class="key">pos_y</span>: <span class="string">0</span>
+        <span class="key">width</span>: <span class="string">12</span>
+        <span class="key">height</span>: <span class="string">4</span>
+
+<span class="key">services</span>:
+  - <span class="key">type</span>: <span class="string">portainer</span>
+    <span class="key">name</span>: <span class="string">Portainer</span>
+    <span class="key">url</span>: <span class="string">"https://portainer.local:9443"</span>
+    <span class="key">credentials</span>: <span class="string">'{"token": "your-token"}'</span>
+    <span class="key">enabled</span>: <span class="string">true</span></code></pre>
+
+    <h2 id="security">Security warning</h2>
+    <div class="callout callout-danger">
+      The YAML export includes service credentials (API tokens, passwords) <strong>in plaintext</strong>. Do not commit this file to a public repository or share it without removing sensitive values first.
+    </div>
+    <p>For encrypted backups, use the standard export/import feature in Settings which encrypts the file with a password (AES-256-GCM).</p>
+  </div>
+</main>
+
+<script src="../docs-nav.js"></script>
+</body>
+</html>

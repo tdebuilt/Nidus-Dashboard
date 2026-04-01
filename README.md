@@ -18,7 +18,7 @@ The name comes from Latin — *nidus* means "nest". A central hub where all your
 - **~30-70 MB RAM** — runs on any x86_64 machine
 - **Single binary or Docker container** — no external database, includes embedded go2rtc for camera streaming
 - **Real control** — start, stop, restart, update containers and VMs directly
-- **18 widget types** — Docker, Proxmox, Home Assistant, media servers, cameras, and more
+- **19 widget types** — Docker, Proxmox, Home Assistant, media servers, cameras, and more
 - **Desktop app** — native installers for Linux, macOS, and Windows via Tauri
 
 <p align="center">
@@ -28,17 +28,17 @@ The name comes from Latin — *nidus* means "nest". A central hub where all your
 <details>
 <summary>Screenshots</summary>
 
-| Dashboard | Infrastructure |
+| Dashboard | Downloads |
 |:---:|:---:|
-| <img src="docs/screenshots/dashboard.png" alt="Dashboard" width="400" /> | <img src="docs/screenshots/edit-mode.png" alt="Infrastructure" width="400" /> |
+| <img src="docs/screenshots/dashboard.png" alt="Dashboard" width="400" /> | <img src="docs/screenshots/download.png" alt="Downloads" width="400" /> |
 
-| Login | Settings |
+| Edit Mode | Settings |
 |:---:|:---:|
-| <img src="docs/screenshots/login.png" alt="Login" width="400" /> | <img src="docs/screenshots/settings.png" alt="Settings" width="400" /> |
+| <img src="docs/screenshots/edit-mode.png" alt="Edit Mode" width="400" /> | <img src="docs/screenshots/settings.png" alt="Settings" width="400" /> |
 
-| Edit Mode | Mobile |
-|:---:|:---:|
-| <img src="docs/screenshots/edit-mode.png" alt="Edit Mode" width="400" /> | <img src="docs/screenshots/mobile.png" alt="Mobile" width="200" /> |
+| Login | Mobile | Mobile Sidebar |
+|:---:|:---:|:---:|
+| <img src="docs/screenshots/login.png" alt="Login" width="400" /> | <img src="docs/screenshots/mobile.png" alt="Mobile" width="200" /> | <img src="docs/screenshots/mobile-sidebar.png" alt="Mobile Sidebar" width="200" /> |
 
 </details>
 
@@ -76,6 +76,7 @@ Nidus fills the gap: a **fast, lightweight dashboard** with real container manag
 - **Pi-hole** — DNS queries, blocked stats, toggle filtering
 - **JDownloader** — Add links, manage download queue, cleanup finished downloads
 - **Transmission** — Add torrents, pause/resume, monitor progress
+- **qBittorrent** — Add torrents, pause/resume, search, sort and paginate
 - **Plex / Jellyfin** — Active sessions, now playing, progress tracking
 - **Sonarr / Radarr / Lidarr / Prowlarr** — Calendar, download queue, status
 - **Uptime Kuma** — Monitor status, uptime percentage, latency
@@ -231,6 +232,7 @@ Configuration can also be set via a `config.yaml` file. See [docs/DEPLOYMENT.md]
 | **Pi-hole** | Pi-hole API | DNS stats, blocked queries, toggle filtering |
 | **JDownloader** | MyJDownloader API | Add links, manage queue |
 | **Transmission** | Transmission RPC API | Add torrents, pause/resume |
+| **qBittorrent** | qBittorrent Web API | Add torrents, pause/resume, search, sort, paginate |
 | **Plex** | Plex API | Active sessions, now playing |
 | **Jellyfin** | Jellyfin API | Active sessions, now playing |
 | **Sonarr / Radarr** | *arr API | Calendar, download queue, status |

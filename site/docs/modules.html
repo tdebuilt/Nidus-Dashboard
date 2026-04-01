@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Modules — Nidus Docs</title>
+  <meta name="description" content="All 19+ Nidus widget modules — Docker, Proxmox, Home Assistant, media servers, cameras, and more.">
+  <link rel="icon" type="image/png" href="../img/favicon.png">
+  <link rel="stylesheet" href="../docs.css">
+</head>
+<body>
+
+<aside id="docs-sidebar" class="docs-sidebar"></aside>
+<div class="docs-overlay" onclick="document.getElementById('docs-sidebar').classList.remove('open')"></div>
+
+<main class="docs-main">
+  <div class="docs-mobile-header">
+    <button onclick="document.getElementById('docs-sidebar').classList.add('open')" aria-label="Open menu">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12h18M3 6h18M3 18h18"/></svg>
+    </button>
+    <span>Modules</span>
+  </div>
+
+  <div class="docs-content">
+    <h1>Modules &amp; Widgets</h1>
+    <p class="subtitle">All widget types available in Nidus. Each module connects to an external service via its API.</p>
+
+    <div class="callout callout-info">
+      All modules are configured via the UI during setup or in Settings. No manual config file editing required.
+    </div>
+
+    <!-- Infrastructure -->
+    <h2 id="infrastructure">Infrastructure</h2>
+
+    <h3 id="docker">Docker (via Portainer)</h3>
+    <table>
+      <tbody>
+        <tr><td><strong>Connection</strong></td><td>Portainer API (CE + EE)</td></tr>
+        <tr><td><strong>Features</strong></td><td>Stacks &amp; containers: start/stop/restart/update, CPU &amp; RAM stats per container</td></tr>
+        <tr><td><strong>Config</strong></td><td>Portainer URL + API token. Select environment (endpoint) in widget config.</td></tr>
+      </tbody>
+    </table>
+    <p>Nidus connects through Portainer's API rather than the Docker socket directly. This provides a secure abstraction layer and supports managing multiple Docker hosts.</p>
+
+    <h3 id="proxmox">Proxmox</h3>
+    <table>
+      <tbody>
+        <tr><td><strong>Connection</strong></td><td>Proxmox API (token auth)</td></tr>
+        <tr><td><strong>Features</strong></td><td>VMs &amp; LXCs: status, CPU/RAM/disk metrics, start/stop</td></tr>
+        <tr><td><strong>Config</strong></td><td>Proxmox URL + API token ID + secret</td></tr>
+      </tbody>
+    </table>
+
+    <h3 id="homeassistant">Home Assistant</h3>
+    <table>
+      <tbody>
+        <tr><td><strong>Connection</strong></td><td>HA REST + WebSocket API</td></tr>
+        <tr><td><strong>Features</strong></td><td>Any entity as a widget with real-time state updates and actions</td></tr>
+        <tr><td><strong>Config</strong></td><td>Home Assistant URL + long-lived access token</td></tr>
+      </tbody>
+    </table>
+    <p>Uses WebSocket for real-time updates — toggle lights, run scripts, control media players, and more without polling.</p>
+
+    <!-- Network & Security -->
+    <h2 id="network">Network &amp; Security</h2>
+
+    <h3 id="adguard">AdGuard Home</h3>
+    <table>
+      <tbody>
+        <tr><td><strong>Connection</strong></td><td>AdGuard Home API</td></tr>
+        <tr><td><strong>Features</strong></td><td>DNS query stats, blocked queries, toggle filtering on/off</td></tr>
+        <tr><td><strong>Config</strong></td><td>AdGuard URL + username/password</td></tr>
+      </tbody>
+    </table>
+
+    <h3 id="pihole">Pi-hole</h3>
+    <table>
+      <tbody>
+        <tr><td><strong>Connection</strong></td><td>Pi-hole API</td></tr>
+        <tr><td><strong>Features</strong></td><td>DNS queries, blocked stats, toggle filtering</td></tr>
+        <tr><td><strong>Config</strong></td><td>Pi-hole URL + API key</td></tr>
+      </tbody>
+    </table>
+
+    <h3 id="uptimekuma">Uptime Kuma</h3>
+    <table>
+      <tbody>
+        <tr><td><strong>Connection</strong></td><td>Uptime Kuma API</td></tr>
+        <tr><td><strong>Features</strong></td><td>Monitor status, uptime percentage, latency</td></tr>
+        <tr><td><strong>Config</strong></td><td>Uptime Kuma URL + optional slug filter</td></tr>
+      </tbody>
+    </table>
+
+    <!-- Media -->
+    <h2 id="media">Media</h2>
+
+    <h3 id="plex">Plex</h3>
+    <table>
+      <tbody>
+        <tr><td><strong>Connection</strong></td><td>Plex API</td></tr>
+        <tr><td><strong>Features</strong></td><td>Active sessions, now playing, progress tracking</td></tr>
+        <tr><td><strong>Config</strong></td><td>Plex URL + X-Plex-Token</td></tr>
+      </tbody>
+    </table>
+
+    <h3 id="jellyfin">Jellyfin</h3>
+    <table>
+      <tbody>
+        <tr><td><strong>Connection</strong></td><td>Jellyfin API</td></tr>
+        <tr><td><strong>Features</strong></td><td>Active sessions, now playing, progress tracking</td></tr>
+        <tr><td><strong>Config</strong></td><td>Jellyfin URL + API key</td></tr>
+      </tbody>
+    </table>
+
+    <h3 id="sonarr-radarr">Sonarr / Radarr</h3>
+    <table>
+      <tbody>
+        <tr><td><strong>Connection</strong></td><td>*arr API</td></tr>
+        <tr><td><strong>Features</strong></td><td>Calendar view, download queue, status</td></tr>
+        <tr><td><strong>Config</strong></td><td>Service URL + API key</td></tr>
+      </tbody>
+    </table>
+
+    <h3 id="lidarr-prowlarr">Lidarr / Prowlarr</h3>
+    <table>
+      <tbody>
+        <tr><td><strong>Connection</strong></td><td>*arr API</td></tr>
+        <tr><td><strong>Features</strong></td><td>Music library management, indexer status</td></tr>
+        <tr><td><strong>Config</strong></td><td>Service URL + API key</td></tr>
+      </tbody>
+    </table>
+
+    <!-- Downloads -->
+    <h2 id="downloads">Downloads</h2>
+
+    <h3 id="transmission">Transmission</h3>
+    <table>
+      <tbody>
+        <tr><td><strong>Connection</strong></td><td>Transmission RPC API</td></tr>
+        <tr><td><strong>Features</strong></td><td>Add torrents, pause/resume, monitor progress, search and sort</td></tr>
+        <tr><td><strong>Config</strong></td><td>Transmission URL + username/password</td></tr>
+      </tbody>
+    </table>
+
+    <h3 id="qbittorrent">qBittorrent</h3>
+    <table>
+      <tbody>
+        <tr><td><strong>Connection</strong></td><td>qBittorrent Web API</td></tr>
+        <tr><td><strong>Features</strong></td><td>Add torrents, pause/resume, search, sort, and paginate</td></tr>
+        <tr><td><strong>Config</strong></td><td>qBittorrent URL + username/password</td></tr>
+      </tbody>
+    </table>
+
+    <h3 id="jdownloader">JDownloader</h3>
+    <table>
+      <tbody>
+        <tr><td><strong>Connection</strong></td><td>MyJDownloader API</td></tr>
+        <tr><td><strong>Features</strong></td><td>Add links, manage download queue, cleanup finished downloads</td></tr>
+        <tr><td><strong>Config</strong></td><td>MyJDownloader email/password + device name</td></tr>
+      </tbody>
+    </table>
+
+    <!-- Cameras -->
+    <h2 id="cameras">Cameras</h2>
+
+    <h3 id="reolink">Reolink</h3>
+    <table>
+      <tbody>
+        <tr><td><strong>Connection</strong></td><td>RTSP via embedded go2rtc</td></tr>
+        <tr><td><strong>Features</strong></td><td>Live camera streams (RTSP to WebRTC), no extra service needed</td></tr>
+        <tr><td><strong>Config</strong></td><td>Camera IP + RTSP credentials</td></tr>
+      </tbody>
+    </table>
+    <p>go2rtc is embedded in the Nidus binary and starts automatically. It converts RTSP streams to WebRTC for low-latency browser viewing.</p>
+
+    <!-- Monitoring -->
+    <h2 id="monitoring">Monitoring</h2>
+
+    <h3 id="grafana">Grafana</h3>
+    <table>
+      <tbody>
+        <tr><td><strong>Connection</strong></td><td>Grafana API</td></tr>
+        <tr><td><strong>Features</strong></td><td>Embed any Grafana panel, dashboard and panel picker</td></tr>
+        <tr><td><strong>Config</strong></td><td>Grafana URL + optional API key</td></tr>
+      </tbody>
+    </table>
+
+    <h3 id="system">System Stats</h3>
+    <table>
+      <tbody>
+        <tr><td><strong>Connection</strong></td><td>Linux <code>/proc</code> filesystem</td></tr>
+        <tr><td><strong>Features</strong></td><td>Host CPU, RAM, disk usage, uptime</td></tr>
+        <tr><td><strong>Config</strong></td><td>No configuration needed</td></tr>
+      </tbody>
+    </table>
+
+    <!-- Additional widgets -->
+    <h2 id="additional">Additional widgets</h2>
+
+    <h3 id="weather">Weather</h3>
+    <table>
+      <tbody>
+        <tr><td><strong>Connection</strong></td><td>OpenWeatherMap API</td></tr>
+        <tr><td><strong>Features</strong></td><td>Current conditions and 5-day forecast</td></tr>
+        <tr><td><strong>Config</strong></td><td>OpenWeatherMap API key + city or coordinates</td></tr>
+      </tbody>
+    </table>
+
+    <h3 id="calendar">Calendar</h3>
+    <table>
+      <tbody>
+        <tr><td><strong>Connection</strong></td><td>iCalendar (ICS)</td></tr>
+        <tr><td><strong>Features</strong></td><td>Upcoming events from any ICS URL</td></tr>
+        <tr><td><strong>Config</strong></td><td>ICS feed URL</td></tr>
+      </tbody>
+    </table>
+
+    <h3 id="rss">RSS</h3>
+    <table>
+      <tbody>
+        <tr><td><strong>Connection</strong></td><td>RSS/Atom feeds</td></tr>
+        <tr><td><strong>Features</strong></td><td>Aggregated article list from multiple feeds</td></tr>
+        <tr><td><strong>Config</strong></td><td>One or more feed URLs</td></tr>
+      </tbody>
+    </table>
+
+    <h3 id="finance">Finance</h3>
+    <table>
+      <tbody>
+        <tr><td><strong>Connection</strong></td><td>Market data API</td></tr>
+        <tr><td><strong>Features</strong></td><td>Stock ticker, price tracking</td></tr>
+        <tr><td><strong>Config</strong></td><td>Ticker symbols</td></tr>
+      </tbody>
+    </table>
+
+    <h3 id="applinks">App Links</h3>
+    <table>
+      <tbody>
+        <tr><td><strong>Connection</strong></td><td>HTTP health checks</td></tr>
+        <tr><td><strong>Features</strong></td><td>Custom bookmarks with automatic health status and favicons</td></tr>
+        <tr><td><strong>Config</strong></td><td>List of URLs with optional names and icons</td></tr>
+      </tbody>
+    </table>
+  </div>
+</main>
+
+<script src="../docs-nav.js"></script>
+</body>
+</html>

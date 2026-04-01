@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>API Reference — Nidus Docs</title>
+  <meta name="description" content="Nidus REST API reference with curl examples — authentication, categories, widgets, services, Docker, and settings.">
+  <link rel="icon" type="image/png" href="../img/favicon.png">
+  <link rel="stylesheet" href="../docs.css">
+</head>
+<body>
+
+<aside id="docs-sidebar" class="docs-sidebar"></aside>
+<div class="docs-overlay" onclick="document.getElementById('docs-sidebar').classList.remove('open')"></div>
+
+<main class="docs-main">
+  <div class="docs-mobile-header">
+    <button onclick="document.getElementById('docs-sidebar').classList.add('open')" aria-label="Open menu">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12h18M3 6h18M3 18h18"/></svg>
+    </button>
+    <span>API Reference</span>
+  </div>
+
+  <div class="docs-content">
+    <h1>API Reference</h1>
+    <p class="subtitle">REST API endpoints with curl examples. Enable Swagger UI at <code>/api/docs/</code> with <code>NIDUS_ENABLE_DOCS=true</code>.</p>
+
+    <!-- Authentication -->
+    <h2 id="auth">Authentication</h2>
+
+    <h3 id="login">Login</h3>
+    <div class="endpoint">
+      <span class="method method-post">POST</span>
+      <span class="path">/api/auth/login</span>
+    </div>
+    <pre><code><span class="cmd">curl</span> -X POST http://localhost:3777/api/auth/login \
+  -H <span class="string">"Content-Type: application/json"</span> \
+  -d <span class="string">'{"username":"admin","password":"yourpassword"}'</span></code></pre>
+    <p>Response:</p>
+    <pre><code>{"message":"login successful","user":{"id":1,"username":"admin","role":"admin"}}</code></pre>
+    <p>The JWT token is set as a cookie (<code>nidus_token</code>). For curl, pass it with <code>-b</code>:</p>
+    <pre><code><span class="comment"># Save cookie on login</span>
+<span class="cmd">curl</span> -c cookies.txt -X POST http://localhost:3777/api/auth/login \
+  -H <span class="string">"Content-Type: application/json"</span> \
+  -d <span class="string">'{"username":"admin","password":"yourpassword"}'</span>
+
+<span class="comment"># Use cookie for authenticated requests</span>
+<span class="cmd">curl</span> -b cookies.txt http://localhost:3777/api/categories</code></pre>
+    <p>Or use the Authorization header:</p>
+    <pre><code><span class="cmd">curl</span> http://localhost:3777/api/categories \
+  -H <span class="string">"Authorization: Bearer &lt;your-jwt-token&gt;"</span></code></pre>
+
+    <h3 id="status">Check setup status</h3>
+    <div class="endpoint">
+      <span class="method method-get">GET</span>
+      <span class="path">/api/auth/status</span>
+    </div>
+    <pre><code><span class="cmd">curl</span> http://localhost:3777/api/auth/status</code></pre>
+
+    <!-- Categories -->
+    <h2 id="categories">Categories</h2>
+
+    <h3 id="list-categories">List categories</h3>
+    <div class="endpoint">
+      <span class="method method-get">GET</span>
+      <span class="path">/api/categories</span>
+    </div>
+    <pre><code><span class="cmd">curl</span> -b cookies.txt http://localhost:3777/api/categories</code></pre>
+
+    <h3 id="create-category">Create a category</h3>
+    <div class="endpoint">
+      <span class="method method-post">POST</span>
+      <span class="path">/api/categories</span>
+    </div>
+    <pre><code><span class="cmd">curl</span> -b cookies.txt -X POST http://localhost:3777/api/categories \
+  -H <span class="string">"Content-Type: application/json"</span> \
+  -d <span class="string">'{"name":"Media","icon":"tv"}'</span></code></pre>
+
+    <!-- Widgets -->
+    <h2 id="widgets">Widgets</h2>
+
+    <h3 id="list-widgets">List widgets in a category</h3>
+    <div class="endpoint">
+      <span class="method method-get">GET</span>
+      <span class="path">/api/categories/:id/widgets</span>
+    </div>
+    <pre><code><span class="cmd">curl</span> -b cookies.txt http://localhost:3777/api/categories/1/widgets</code></pre>
+
+    <h3 id="create-widget">Create a widget</h3>
+    <div class="endpoint">
+      <span class="method method-post">POST</span>
+      <span class="path">/api/categories/:id/widgets</span>
+    </div>
+    <pre><code><span class="cmd">curl</span> -b cookies.txt -X POST http://localhost:3777/api/categories/1/widgets \
+  -H <span class="string">"Content-Type: application/json"</span> \
+  -d <span class="string">'{"type":"docker","title":"My Docker","config":"{}","pos_x":0,"pos_y":0,"width":4,"height":0}'</span></code></pre>
+
+    <!-- Services -->
+    <h2 id="services">Services</h2>
+
+    <h3 id="list-services">List configured services</h3>
+    <div class="endpoint">
+      <span class="method method-get">GET</span>
+      <span class="path">/api/services</span>
+    </div>
+    <pre><code><span class="cmd">curl</span> -b cookies.txt http://localhost:3777/api/services</code></pre>
+
+    <h3 id="configure-service">Configure a service</h3>
+    <div class="endpoint">
+      <span class="method method-put">PUT</span>
+      <span class="path">/api/services/:type</span>
+    </div>
+    <pre><code><span class="cmd">curl</span> -b cookies.txt -X PUT http://localhost:3777/api/services/portainer \
+  -H <span class="string">"Content-Type: application/json"</span> \
+  -d <span class="string">'{"name":"Portainer","url":"https://portainer.local:9443","credentials":"{\"api_key\":\"your-api-key\"}"}'</span></code></pre>
+
+    <h3 id="test-service">Test service connectivity</h3>
+    <div class="endpoint">
+      <span class="method method-post">POST</span>
+      <span class="path">/api/services/:type/test</span>
+    </div>
+    <pre><code><span class="cmd">curl</span> -b cookies.txt -X POST http://localhost:3777/api/services/portainer/test</code></pre>
+
+    <!-- Docker -->
+    <h2 id="docker">Docker</h2>
+
+    <h3 id="list-environments">List environments</h3>
+    <div class="endpoint">
+      <span class="method method-get">GET</span>
+      <span class="path">/api/docker/environments</span>
+    </div>
+    <pre><code><span class="cmd">curl</span> -b cookies.txt http://localhost:3777/api/docker/environments</code></pre>
+
+    <h3 id="list-containers">List containers</h3>
+    <div class="endpoint">
+      <span class="method method-get">GET</span>
+      <span class="path">/api/docker/environments/:id/containers</span>
+    </div>
+    <pre><code><span class="cmd">curl</span> -b cookies.txt http://localhost:3777/api/docker/environments/1/containers</code></pre>
+
+    <h3 id="container-action">Container action (start/stop/restart)</h3>
+    <div class="endpoint">
+      <span class="method method-post">POST</span>
+      <span class="path">/api/docker/environments/:id/containers/:containerId/:action</span>
+    </div>
+    <pre><code><span class="cmd">curl</span> -b cookies.txt -X POST http://localhost:3777/api/docker/environments/1/containers/abc123/restart</code></pre>
+
+    <!-- Settings -->
+    <h2 id="settings">Settings</h2>
+
+    <h3 id="get-settings">Get current settings</h3>
+    <div class="endpoint">
+      <span class="method method-get">GET</span>
+      <span class="path">/api/settings</span>
+    </div>
+    <pre><code><span class="cmd">curl</span> -b cookies.txt http://localhost:3777/api/settings</code></pre>
+
+    <h3 id="update-settings">Update settings</h3>
+    <div class="endpoint">
+      <span class="method method-put">PUT</span>
+      <span class="path">/api/settings</span>
+    </div>
+    <pre><code><span class="cmd">curl</span> -b cookies.txt -X PUT http://localhost:3777/api/settings \
+  -H <span class="string">"Content-Type: application/json"</span> \
+  -d <span class="string">'{"theme":"nord","language":"en","refresh_interval":15}'</span></code></pre>
+
+    <!-- Config export/import -->
+    <h2 id="config">Config Export/Import</h2>
+
+    <h3 id="export-yaml">Export as YAML</h3>
+    <div class="endpoint">
+      <span class="method method-get">GET</span>
+      <span class="path">/api/config/yaml</span>
+    </div>
+    <pre><code><span class="cmd">curl</span> -b cookies.txt http://localhost:3777/api/config/yaml -o nidus-config.yaml</code></pre>
+
+    <h3 id="import-yaml">Import YAML</h3>
+    <div class="endpoint">
+      <span class="method method-post">POST</span>
+      <span class="path">/api/config/yaml</span>
+    </div>
+    <pre><code><span class="cmd">curl</span> -b cookies.txt -X POST http://localhost:3777/api/config/yaml \
+  -H <span class="string">"Content-Type: application/json"</span> \
+  --data-binary @nidus-config.yaml</code></pre>
+  </div>
+</main>
+
+<script src="../docs-nav.js"></script>
+</body>
+</html>

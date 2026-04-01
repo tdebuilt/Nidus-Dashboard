@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Documentation — Nidus</title>
+  <meta name="description" content="Nidus documentation — deployment, configuration, modules, API reference, and translation guide.">
+  <link rel="icon" type="image/png" href="../img/favicon.png">
+  <link rel="stylesheet" href="../docs.css">
+</head>
+<body>
+
+<aside id="docs-sidebar" class="docs-sidebar"></aside>
+<div class="docs-overlay" onclick="document.getElementById('docs-sidebar').classList.remove('open')"></div>
+
+<main class="docs-main">
+  <div class="docs-mobile-header">
+    <button onclick="document.getElementById('docs-sidebar').classList.add('open')" aria-label="Open menu">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12h18M3 6h18M3 18h18"/></svg>
+    </button>
+    <span>Documentation</span>
+  </div>
+
+  <div class="docs-content">
+    <h1>Nidus Documentation</h1>
+    <p class="subtitle">Everything you need to deploy, configure, and extend Nidus.</p>
+
+    <div class="toc-grid">
+      <a href="deployment.html" class="toc-card">
+        <span class="toc-icon">&#x1F680;</span>
+        <div>
+          <div class="toc-title">Deployment</div>
+          <div class="toc-desc">Docker, standalone binary, desktop app, CI/CD, and building from source.</div>
+        </div>
+      </a>
+
+      <a href="configuration.html" class="toc-card">
+        <span class="toc-icon">&#x2699;</span>
+        <div>
+          <div class="toc-title">Configuration</div>
+          <div class="toc-desc">YAML config format, widget types, grid system, and import/export.</div>
+        </div>
+      </a>
+
+      <a href="modules.html" class="toc-card">
+        <span class="toc-icon">&#x1F9E9;</span>
+        <div>
+          <div class="toc-title">Modules</div>
+          <div class="toc-desc">All 19+ widget types — connection details, features, and configuration.</div>
+        </div>
+      </a>
+
+      <a href="api.html" class="toc-card">
+        <span class="toc-icon">&#x1F4E1;</span>
+        <div>
+          <div class="toc-title">API Reference</div>
+          <div class="toc-desc">REST API endpoints with curl examples for authentication, widgets, services, and more.</div>
+        </div>
+      </a>
+
+      <a href="translating.html" class="toc-card">
+        <span class="toc-icon">&#x1F310;</span>
+        <div>
+          <div class="toc-title">Translating</div>
+          <div class="toc-desc">How to add or improve a translation. 11 languages currently supported.</div>
+        </div>
+      </a>
+
+      <a href="https://github.com/tdebuilt/Nidus-Dashboard" class="toc-card" target="_blank" rel="noopener">
+        <span class="toc-icon">&#x1F4BB;</span>
+        <div>
+          <div class="toc-title">Source Code</div>
+          <div class="toc-desc">Browse the source on GitHub, report issues, or contribute.</div>
+        </div>
+      </a>
+    </div>
+
+    <h2>Quick start</h2>
+    <p>The fastest way to get Nidus running:</p>
+    <pre><code>docker run -d -p 3777:3777 -v nidus-data:/data ghcr.io/tdebuilt/nidus-dashboard:latest</code></pre>
+    <p>Open <a href="http://localhost:3777">http://localhost:3777</a> — the setup wizard will guide you through creating your account and connecting your services.</p>
+    <p>For more options (Docker Compose, standalone binary, desktop app), see the <a href="deployment.html">Deployment guide</a>.</p>
+
+    <h2>Architecture</h2>
+    <pre><code>┌──────────────────────────────────────────────────┐
+│                 Nidus Container                   │
+│  Go backend + Svelte frontend + SQLite + go2rtc  │
+└───────────────────────┬──────────────────────────┘
+                        │
+     ┌──────────┬───────┼───────────┬──────────┐
+     │          │       │           │          │
+ Portainer   Proxmox  Services   Reolink    go2rtc
+  API         API    (HA, AdGuard, cameras   (RTSP →
+ (CE/EE)              Pi-hole,              WebRTC)
+                       *arr, Plex,
+                       Jellyfin, etc.)</code></pre>
+    <ul>
+      <li><strong>No agent</strong> — connects to existing APIs only</li>
+      <li><strong>Portainer API</strong> for all Docker operations (not Docker API directly)</li>
+      <li><strong>Embedded go2rtc</strong> for camera streaming (RTSP to WebRTC)</li>
+      <li><strong>SQLite</strong> for config, layout, auth — single file, zero setup</li>
+    </ul>
+  </div>
+</main>
+
+<script src="../docs-nav.js"></script>
+</body>
+</html>
