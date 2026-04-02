@@ -36,6 +36,18 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Determine tags
+        id: tags
+        env:
+          IMAGE: ${{ env.REGISTRY_IMAGE }}
+          VER: ${{ env.VERSION }}
+        run: |
+          TAGS="${IMAGE}:${VER}"
+          if [[ "${VER}" != *"-"* ]]; then
+            TAGS="${TAGS},${IMAGE}:latest"
+          fi
+          echo "tags=$TAGS" >> "$GITHUB_OUTPUT"
+
       - uses: docker/build-push-action@v6
         with:
           context: .
@@ -43,9 +55,7 @@ jobs:
           platforms: linux/amd64
           build-args: |
             VERSION=${{ env.VERSION }}
-          tags: |
-            ${{ env.REGISTRY_IMAGE }}:${{ env.VERSION }}
-            ${{ env.REGISTRY_IMAGE }}:latest
+          tags: ${{ steps.tags.outputs.tags }}
           cache-from: type=registry,ref=${{ env.REGISTRY_IMAGE }}:buildcache
           cache-to: type=registry,ref=${{ env.REGISTRY_IMAGE }}:buildcache,mode=max
 
