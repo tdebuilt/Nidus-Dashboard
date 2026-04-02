@@ -23,6 +23,7 @@ env:
 
 jobs:
   load-versions:
+    if: ${{ !github.event.release.prerelease || github.event_name == 'workflow_dispatch' }}
     runs-on: ubuntu-latest
     outputs:
       go: ${{ steps.v.outputs.GO_VERSION }}
