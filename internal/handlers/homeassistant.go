@@ -120,6 +120,10 @@ func (h *HomeAssistantHandler) ListEntities(w http.ResponseWriter, r *http.Reque
 	entities, err := client.ListStates(r.Context())
 	if err != nil {
 		slog.Error("homeassistant: failed to fetch entities", "error", err)
+		if errors.Is(err, homeassistant.ErrAuth) {
+			writeJSON(w, http.StatusBadGateway, models.ErrorResponse{Error: "authentication_failed"})
+			return
+		}
 		writeJSON(w, http.StatusBadGateway, models.ErrorResponse{Error: "failed to fetch entities"})
 		return
 	}

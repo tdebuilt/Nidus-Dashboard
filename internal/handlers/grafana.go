@@ -88,6 +88,10 @@ func (h *GrafanaHandler) ListDashboards(w http.ResponseWriter, r *http.Request) 
 	dashboards, err := client.SearchDashboards(r.Context())
 	if err != nil {
 		slog.Error("grafana: failed to fetch dashboards", "error", err)
+		if errors.Is(err, grafana.ErrAuth) {
+			writeJSON(w, http.StatusBadGateway, models.ErrorResponse{Error: "authentication_failed"})
+			return
+		}
 		writeJSON(w, http.StatusBadGateway, models.ErrorResponse{Error: "failed to fetch dashboards"})
 		return
 	}
@@ -125,6 +129,10 @@ func (h *GrafanaHandler) GetDashboardPanels(w http.ResponseWriter, r *http.Reque
 	detail, err := client.GetDashboard(r.Context(), uid)
 	if err != nil {
 		slog.Error("grafana: failed to fetch dashboard", "uid", uid, "error", err)
+		if errors.Is(err, grafana.ErrAuth) {
+			writeJSON(w, http.StatusBadGateway, models.ErrorResponse{Error: "authentication_failed"})
+			return
+		}
 		writeJSON(w, http.StatusBadGateway, models.ErrorResponse{Error: "failed to fetch dashboard"})
 		return
 	}

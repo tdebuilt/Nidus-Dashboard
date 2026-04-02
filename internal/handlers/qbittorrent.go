@@ -83,6 +83,10 @@ func (h *QBittorrentHandler) ListTorrents(w http.ResponseWriter, r *http.Request
 	torrents, err := client.ListTorrents(r.Context())
 	if err != nil {
 		slog.Error("qbittorrent: failed to fetch torrents", "error", err)
+		if errors.Is(err, qbittorrent.ErrAuth) {
+			writeJSON(w, http.StatusBadGateway, models.ErrorResponse{Error: "authentication_failed"})
+			return
+		}
 		writeJSON(w, http.StatusBadGateway, models.ErrorResponse{Error: "failed to fetch torrents"})
 		return
 	}

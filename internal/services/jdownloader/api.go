@@ -155,6 +155,9 @@ func (c *Client) callServer(ctx context.Context, query string, secret []byte, re
 
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		body, _ := io.ReadAll(resp.Body)
+		if resp.StatusCode == http.StatusBadRequest || resp.StatusCode == http.StatusUnauthorized || resp.StatusCode == http.StatusForbidden {
+			return fmt.Errorf("%w (HTTP %d): %s", ErrAuth, resp.StatusCode, string(body))
+		}
 		return fmt.Errorf("status %d: %s", resp.StatusCode, string(body))
 	}
 

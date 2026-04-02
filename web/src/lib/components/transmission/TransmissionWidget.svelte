@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { Loader2, AlertCircle, Settings, Play, Square, Plus, ArrowDown, ArrowUp, Trash2, Search } from 'lucide-svelte'
+  import { Loader2, AlertCircle, Settings, KeyRound, Play, Square, Plus, ArrowDown, ArrowUp, Trash2, Search } from 'lucide-svelte'
   import { api } from '../../api/client'
   import { toasts } from '../../stores/toast'
   import { pollingInterval } from '../../stores/polling'
@@ -114,15 +114,10 @@
     try {
       data = await api.get<TorrentsInfo>('/api/transmission/torrents')
     } catch (err: unknown) {
-      const status = (err as { status?: number })?.status
-      if (status === 404) {
-        error = 'not_configured'
-      } else if (status === 502) {
-        error = 'fetch_error'
-      } else {
-        error = 'fetch_error'
-        toasts.error(translate('transmission.fetchError'))
-      }
+      const { status, message } = err as { status?: number; message?: string }
+      if (status === 404) error = 'not_configured'
+      else if (message === 'authentication_failed') { error = 'auth_error'; polling.stop() }
+      else error = 'fetch_error'
     } finally {
       loading = false
     }
@@ -209,6 +204,15 @@
       <Settings size={24} />
       <p>{$t('transmission.notConfigured')}</p>
       <p class="text-xs">{$t('transmission.configureHint')}</p>
+    </div>
+  {:else if error === 'auth_error'}
+    <div class="flex h-full flex-col items-center justify-center gap-2 text-center text-sm text-[var(--color-text-muted)]">
+      <KeyRound size={24} class="text-[var(--color-danger)]" />
+      <p>{$t('transmission.authError')}</p>
+      <p class="text-xs">{$t('transmission.authErrorHint')}</p>
+      <button onclick={() => { polling.start() }} class="text-xs text-[var(--color-primary)] hover:underline">
+        {$t('common.retry')}
+      </button>
     </div>
   {:else if error === 'fetch_error' && !data}
     <div class="flex h-full flex-col items-center justify-center gap-2 text-center text-sm text-[var(--color-text-muted)]">

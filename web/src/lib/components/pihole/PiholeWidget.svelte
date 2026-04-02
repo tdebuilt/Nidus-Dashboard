@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { Loader2, AlertCircle, Settings, Shield, ShieldOff } from 'lucide-svelte'
+  import { Loader2, AlertCircle, Settings, Shield, ShieldOff, KeyRound } from 'lucide-svelte'
   import { api } from '../../api/client'
   import { toasts } from '../../stores/toast'
   import { pollingInterval } from '../../stores/polling'
@@ -42,12 +42,10 @@
     try {
       stats = await api.get<StatsInfo>('/api/pihole/stats')
     } catch (err: unknown) {
-      const status = (err as { status?: number })?.status
-      if (status === 404) {
-        error = 'not_configured'
-      } else {
-        error = 'fetch_error'
-      }
+      const { status, message } = err as { status?: number; message?: string }
+      if (status === 404) error = 'not_configured'
+      else if (message === 'authentication_failed') { error = 'auth_error'; polling.stop() }
+      else error = 'fetch_error'
     } finally {
       loading = false
     }
@@ -109,6 +107,15 @@
       <Settings size={24} />
       <p>{$t('pihole.notConfigured')}</p>
       <p class="text-xs">{$t('pihole.configureHint')}</p>
+    </div>
+  {:else if error === 'auth_error'}
+    <div class="flex h-full flex-col items-center justify-center gap-2 text-center text-sm text-[var(--color-text-muted)]">
+      <KeyRound size={24} class="text-[var(--color-danger)]" />
+      <p>{$t('pihole.authError')}</p>
+      <p class="text-xs">{$t('pihole.authErrorHint')}</p>
+      <button onclick={() => polling.start()} class="text-xs text-[var(--color-primary)] hover:underline">
+        {$t('common.retry')}
+      </button>
     </div>
   {:else if error === 'fetch_error' && !stats}
     <div class="flex h-full flex-col items-center justify-center gap-2 text-center text-sm text-[var(--color-text-muted)]">

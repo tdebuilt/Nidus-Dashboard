@@ -87,6 +87,10 @@ func (h *AdGuardHandler) GetStats(w http.ResponseWriter, r *http.Request) {
 	stats, err := client.GetStats(r.Context())
 	if err != nil {
 		slog.Error("adguard: failed to fetch stats", "error", err)
+		if errors.Is(err, adguard.ErrAuth) {
+			writeJSON(w, http.StatusBadGateway, models.ErrorResponse{Error: "authentication_failed"})
+			return
+		}
 		writeJSON(w, http.StatusBadGateway, models.ErrorResponse{Error: "failed to fetch stats"})
 		return
 	}
@@ -94,6 +98,10 @@ func (h *AdGuardHandler) GetStats(w http.ResponseWriter, r *http.Request) {
 	filtering, err := client.GetFilteringStatus(r.Context())
 	if err != nil {
 		slog.Error("adguard: failed to fetch filtering status", "error", err)
+		if errors.Is(err, adguard.ErrAuth) {
+			writeJSON(w, http.StatusBadGateway, models.ErrorResponse{Error: "authentication_failed"})
+			return
+		}
 		writeJSON(w, http.StatusBadGateway, models.ErrorResponse{Error: "failed to fetch filtering status"})
 		return
 	}

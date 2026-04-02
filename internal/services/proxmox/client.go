@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/tls"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -11,6 +12,9 @@ import (
 	"strings"
 	"time"
 )
+
+// ErrAuth is returned when authentication with Proxmox fails.
+var ErrAuth = errors.New("authentication failed")
 
 // Client communicates with the Proxmox VE API.
 type Client struct {
@@ -62,7 +66,7 @@ func (c *Client) Authenticate(ctx context.Context, username, password string) er
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("auth failed: status %d", resp.StatusCode)
+		return fmt.Errorf("%w: status %d", ErrAuth, resp.StatusCode)
 	}
 
 	var result APIResponse[TicketResponse]
@@ -186,7 +190,7 @@ func (c *Client) doRequest(req *http.Request, result any) error {
 	defer resp.Body.Close()
 
 	if resp.StatusCode == http.StatusUnauthorized || resp.StatusCode == http.StatusForbidden {
-		return fmt.Errorf("unauthorized: invalid or expired credentials")
+		return fmt.Errorf("%w: invalid or expired credentials", ErrAuth)
 	}
 
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {

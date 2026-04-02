@@ -3,6 +3,7 @@ package transmission
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -10,6 +11,9 @@ import (
 	"sync"
 	"time"
 )
+
+// ErrAuth is returned when authentication with Transmission fails.
+var ErrAuth = errors.New("authentication failed")
 
 const sessionIDHeader = "X-Transmission-Session-Id"
 
@@ -225,7 +229,7 @@ func (c *Client) doRPC(ctx context.Context, method string, args interface{}, res
 func decodeRPCResponse(resp *http.Response, result interface{}) error {
 	if resp.StatusCode == http.StatusUnauthorized {
 		_, _ = io.Copy(io.Discard, resp.Body)
-		return fmt.Errorf("unauthorized: invalid credentials")
+		return fmt.Errorf("%w: invalid credentials", ErrAuth)
 	}
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		bodyBytes, readErr := io.ReadAll(resp.Body)

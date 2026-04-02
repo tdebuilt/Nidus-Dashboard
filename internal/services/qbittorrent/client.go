@@ -3,6 +3,7 @@ package qbittorrent
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -11,6 +12,9 @@ import (
 	"sync"
 	"time"
 )
+
+// ErrAuth is returned when authentication with qBittorrent fails.
+var ErrAuth = errors.New("authentication failed")
 
 // Client communicates with the qBittorrent Web API (v2).
 type Client struct {
@@ -61,7 +65,7 @@ func (c *Client) authenticate(ctx context.Context) error {
 
 	body, _ := io.ReadAll(resp.Body)
 	if resp.StatusCode != http.StatusOK || strings.TrimSpace(string(body)) != "Ok." {
-		return fmt.Errorf("authentication failed (HTTP %d): %s", resp.StatusCode, string(body))
+		return fmt.Errorf("%w (HTTP %d): %s", ErrAuth, resp.StatusCode, string(body))
 	}
 
 	for _, cookie := range resp.Cookies() {

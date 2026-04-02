@@ -81,6 +81,10 @@ func (h *PiholeHandler) GetStats(w http.ResponseWriter, r *http.Request) {
 	stats, err := client.GetStats(r.Context())
 	if err != nil {
 		slog.Error("pihole: failed to fetch stats", "error", err)
+		if errors.Is(err, pihole.ErrAuth) {
+			writeJSON(w, http.StatusBadGateway, models.ErrorResponse{Error: "authentication_failed"})
+			return
+		}
 		writeJSON(w, http.StatusBadGateway, models.ErrorResponse{Error: "failed to fetch stats"})
 		return
 	}

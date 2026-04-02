@@ -1,10 +1,9 @@
 <script lang="ts">
-  import { Loader2, AlertCircle, Settings, Cpu, MemoryStick } from 'lucide-svelte'
+  import { Loader2, AlertCircle, Settings, KeyRound, Cpu, MemoryStick } from 'lucide-svelte'
   import { api } from '../../api/client'
-  import { toasts } from '../../stores/toast'
   import { pollingInterval } from '../../stores/polling'
   import { usePolling } from '../../utils/usePolling'
-  import { t, translate } from '../../i18n'
+  import { t } from '../../i18n'
   import VMCard from './VMCard.svelte'
 
   interface VMInfo {
@@ -75,15 +74,10 @@
       const data = await api.get<VMInfo[]>('/api/proxmox/vms')
       vms = Array.isArray(data) ? data : []
     } catch (err: unknown) {
-      const status = (err as { status?: number })?.status
-      if (status === 404) {
-        error = 'not_configured'
-      } else if (status === 502) {
-        error = 'fetch_error'
-      } else {
-        error = 'fetch_error'
-        toasts.error(translate('proxmox.fetchError'))
-      }
+      const { status, message } = err as { status?: number; message?: string }
+      if (status === 404) error = 'not_configured'
+      else if (message === 'authentication_failed') { error = 'auth_error'; polling.stop() }
+      else error = 'fetch_error'
     } finally {
       loading = false
     }
@@ -127,6 +121,15 @@
       <Settings size={24} />
       <p>{$t('proxmox.notConfigured')}</p>
       <p class="text-xs">{$t('proxmox.configureHint')}</p>
+    </div>
+  {:else if error === 'auth_error'}
+    <div class="flex h-full flex-col items-center justify-center gap-2 text-center text-sm text-[var(--color-text-muted)]">
+      <KeyRound size={24} class="text-[var(--color-warning)]" />
+      <p>{$t('proxmox.authError')}</p>
+      <p class="text-xs">{$t('proxmox.authErrorHint')}</p>
+      <button onclick={() => polling.start()} class="text-xs text-[var(--color-primary)] hover:underline">
+        {$t('common.retry')}
+      </button>
     </div>
   {:else if error === 'fetch_error' && vms.length === 0}
     <div class="flex h-full flex-col items-center justify-center gap-2 text-center text-sm text-[var(--color-text-muted)]">

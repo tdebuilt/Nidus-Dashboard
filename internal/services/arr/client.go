@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -11,6 +12,9 @@ import (
 	"strings"
 	"time"
 )
+
+// ErrAuth indicates an authentication failure (invalid API key).
+var ErrAuth = errors.New("authentication failed")
 
 // Client communicates with a *arr service API (Sonarr, Radarr, Lidarr, Prowlarr).
 type Client struct {
@@ -201,7 +205,7 @@ func (c *Client) get(ctx context.Context, path string, result any) error {
 	defer resp.Body.Close()
 
 	if resp.StatusCode == http.StatusUnauthorized || resp.StatusCode == http.StatusForbidden {
-		return fmt.Errorf("unauthorized: invalid API key")
+		return fmt.Errorf("%w: invalid API key", ErrAuth)
 	}
 
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
@@ -238,7 +242,7 @@ func (c *Client) post(ctx context.Context, path string, body any, result any) er
 	defer resp.Body.Close()
 
 	if resp.StatusCode == http.StatusUnauthorized || resp.StatusCode == http.StatusForbidden {
-		return fmt.Errorf("unauthorized: invalid API key")
+		return fmt.Errorf("%w: invalid API key", ErrAuth)
 	}
 
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {

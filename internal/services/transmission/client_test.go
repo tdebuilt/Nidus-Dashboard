@@ -3,6 +3,7 @@ package transmission
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -289,8 +290,11 @@ func TestUnauthorized(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected unauthorized error")
 	}
-	if !strings.Contains(err.Error(), "unauthorized") {
-		t.Fatalf("expected 'unauthorized' in error, got: %v", err)
+	if !errors.Is(err, ErrAuth) {
+		t.Fatalf("expected ErrAuth sentinel, got: %v", err)
+	}
+	if !strings.Contains(err.Error(), "authentication failed") {
+		t.Fatalf("expected 'authentication failed' in error, got: %v", err)
 	}
 }
 

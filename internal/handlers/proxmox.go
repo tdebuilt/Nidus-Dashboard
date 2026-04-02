@@ -95,6 +95,10 @@ func (h *ProxmoxHandler) ListNodes(w http.ResponseWriter, r *http.Request) {
 	client, err := h.getProxmoxClient(r.Context())
 	if err != nil {
 		slog.Error("proxmox: failed to connect for ListNodes", "error", err)
+		if errors.Is(err, proxmox.ErrAuth) {
+			writeJSON(w, http.StatusBadGateway, models.ErrorResponse{Error: "authentication_failed"})
+			return
+		}
 		writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "failed to connect to Proxmox"})
 		return
 	}
@@ -107,6 +111,10 @@ func (h *ProxmoxHandler) ListNodes(w http.ResponseWriter, r *http.Request) {
 	nodes, err := client.ListNodes(r.Context())
 	if err != nil {
 		slog.Error("proxmox: failed to fetch nodes", "error", err)
+		if errors.Is(err, proxmox.ErrAuth) {
+			writeJSON(w, http.StatusBadGateway, models.ErrorResponse{Error: "authentication_failed"})
+			return
+		}
 		writeJSON(w, http.StatusBadGateway, models.ErrorResponse{Error: "failed to fetch nodes"})
 		return
 	}
@@ -145,6 +153,10 @@ func (h *ProxmoxHandler) ListVMs(w http.ResponseWriter, r *http.Request) {
 	client, err := h.getProxmoxClient(r.Context())
 	if err != nil {
 		slog.Error("proxmox getClient failed", "error", err)
+		if errors.Is(err, proxmox.ErrAuth) {
+			writeJSON(w, http.StatusBadGateway, models.ErrorResponse{Error: "authentication_failed"})
+			return
+		}
 		writeJSON(w, http.StatusBadGateway, models.ErrorResponse{Error: "Proxmox not available"})
 		return
 	}
@@ -156,6 +168,10 @@ func (h *ProxmoxHandler) ListVMs(w http.ResponseWriter, r *http.Request) {
 	allVMs, err := client.ListAllVMs(r.Context())
 	if err != nil {
 		slog.Error("proxmox ListAllVMs failed", "error", err)
+		if errors.Is(err, proxmox.ErrAuth) {
+			writeJSON(w, http.StatusBadGateway, models.ErrorResponse{Error: "authentication_failed"})
+			return
+		}
 		writeJSON(w, http.StatusBadGateway, models.ErrorResponse{Error: "failed to fetch VMs"})
 		return
 	}
@@ -225,6 +241,10 @@ func (h *ProxmoxHandler) VMAction(w http.ResponseWriter, r *http.Request) {
 	client, err := h.getProxmoxClient(r.Context())
 	if err != nil || client == nil {
 		slog.Error("proxmox: not available for VM action", "error", err)
+		if errors.Is(err, proxmox.ErrAuth) {
+			writeJSON(w, http.StatusBadGateway, models.ErrorResponse{Error: "authentication_failed"})
+			return
+		}
 		writeJSON(w, http.StatusBadGateway, models.ErrorResponse{Error: "Proxmox not available"})
 		return
 	}
@@ -233,6 +253,10 @@ func (h *ProxmoxHandler) VMAction(w http.ResponseWriter, r *http.Request) {
 	taskID, err := client.VMAction(r.Context(), node, vmType, vmid, action)
 	if err != nil {
 		slog.Error("proxmox: VM action failed", "node", node, "vmid", vmid, "action", action, "error", err)
+		if errors.Is(err, proxmox.ErrAuth) {
+			writeJSON(w, http.StatusBadGateway, models.ErrorResponse{Error: "authentication_failed"})
+			return
+		}
 		writeJSON(w, http.StatusBadGateway, models.ErrorResponse{Error: "action failed: " + sanitizeError(err)})
 		return
 	}

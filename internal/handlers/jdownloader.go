@@ -92,6 +92,11 @@ func (h *JDownloaderHandler) GetQueue(w http.ResponseWriter, r *http.Request) {
 	packages, err := client.ListPackages(r.Context())
 	if err != nil {
 		slog.Error("jdownloader: failed to fetch queue", "error", err)
+		if errors.Is(err, jdownloader.ErrAuth) {
+			h.Cache.Invalidate("jd:client")
+			writeJSON(w, http.StatusBadGateway, models.ErrorResponse{Error: "authentication_failed"})
+			return
+		}
 		writeJSON(w, http.StatusBadGateway, models.ErrorResponse{Error: "failed to fetch queue"})
 		return
 	}

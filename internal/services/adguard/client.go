@@ -3,12 +3,16 @@ package adguard
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
 	"strings"
 	"time"
 )
+
+// ErrAuth is returned when authentication with AdGuard Home fails.
+var ErrAuth = errors.New("authentication failed")
 
 // Client communicates with the AdGuard Home API.
 type Client struct {
@@ -105,7 +109,7 @@ func (c *Client) doRequest(req *http.Request, result any) error {
 	defer resp.Body.Close()
 
 	if resp.StatusCode == http.StatusUnauthorized || resp.StatusCode == http.StatusForbidden {
-		return fmt.Errorf("unauthorized: invalid credentials")
+		return fmt.Errorf("%w: invalid credentials", ErrAuth)
 	}
 
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -11,6 +12,9 @@ import (
 	"sync"
 	"time"
 )
+
+// ErrAuth is returned when authentication with Pi-hole fails.
+var ErrAuth = errors.New("authentication failed")
 
 // Client communicates with the Pi-hole v6 API.
 type Client struct {
@@ -55,7 +59,7 @@ func (c *Client) authenticate(ctx context.Context) error {
 	defer resp.Body.Close()
 
 	if resp.StatusCode == http.StatusUnauthorized {
-		return fmt.Errorf("unauthorized: invalid password")
+		return fmt.Errorf("%w: invalid password", ErrAuth)
 	}
 
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
@@ -72,7 +76,7 @@ func (c *Client) authenticate(ctx context.Context) error {
 	}
 
 	if !authResp.Session.Valid {
-		return fmt.Errorf("unauthorized: invalid password")
+		return fmt.Errorf("%w: invalid password", ErrAuth)
 	}
 
 	c.sid = authResp.Session.SID
@@ -208,7 +212,7 @@ func (c *Client) doRequest(req *http.Request, result any) (int, error) {
 	defer resp.Body.Close()
 
 	if resp.StatusCode == http.StatusUnauthorized {
-		return http.StatusUnauthorized, fmt.Errorf("unauthorized: session expired or invalid")
+		return http.StatusUnauthorized, fmt.Errorf("%w: session expired or invalid", ErrAuth)
 	}
 
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {

@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { Loader2, AlertCircle, Settings, Database, Calendar, Download, ChevronDown, ChevronRight, Plus } from 'lucide-svelte'
+  import { Loader2, AlertCircle, Settings, Database, Calendar, Download, ChevronDown, ChevronRight, Plus, KeyRound } from 'lucide-svelte'
   import { api } from '../../api/client'
   import { pollingInterval } from '../../stores/polling'
   import { usePolling } from '../../utils/usePolling'
@@ -144,7 +144,15 @@
     <!-- Active service content -->
     {@const svc = services[activeTab]}
     {#if svc}
-      {#if svc.error}
+      {#if svc.error === 'authentication_failed'}
+        <div class="flex flex-col items-center gap-1 rounded-lg border border-[var(--color-danger)] bg-[var(--color-error-bg)] p-2 text-xs text-[var(--color-danger)]">
+          <div class="flex items-center gap-2">
+            <KeyRound size={14} />
+            {$t('arr.authError')}
+          </div>
+          <span class="text-[10px] text-[var(--color-text-muted)]">{$t('arr.authErrorHint')}</span>
+        </div>
+      {:else if svc.error}
         <div class="flex items-center gap-2 rounded-lg border border-[var(--color-danger)] bg-[var(--color-error-bg)] p-2 text-xs text-[var(--color-danger)]">
           <AlertCircle size={14} />
           {svc.error}

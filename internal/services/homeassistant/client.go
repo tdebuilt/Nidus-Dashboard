@@ -3,12 +3,16 @@ package homeassistant
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
 	"strings"
 	"time"
 )
+
+// ErrAuth is returned when authentication with Home Assistant fails.
+var ErrAuth = errors.New("authentication failed")
 
 // Client communicates with the Home Assistant REST API.
 type Client struct {
@@ -167,7 +171,7 @@ func (c *Client) doRequest(req *http.Request, result any) error {
 	defer resp.Body.Close()
 
 	if resp.StatusCode == http.StatusUnauthorized {
-		return fmt.Errorf("unauthorized: invalid or expired token")
+		return fmt.Errorf("%w: invalid or expired token", ErrAuth)
 	}
 
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {

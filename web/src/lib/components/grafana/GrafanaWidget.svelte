@@ -1,6 +1,6 @@
 <script lang="ts">
   import { untrack } from 'svelte'
-  import { Settings, AlertCircle } from 'lucide-svelte'
+  import { Settings, AlertCircle, KeyRound } from 'lucide-svelte'
   import { api } from '../../api/client'
   import { t } from '../../i18n'
   import { breakpoint } from '../../stores/breakpoint'
@@ -52,8 +52,10 @@
       }))
       embedUrls = urls
     } catch (err: unknown) {
-      const status = (err as { status?: number })?.status
-      error = status === 404 ? 'not_configured' : 'fetch_error'
+      const { status, message } = err as { status?: number; message?: string }
+      if (status === 404) error = 'not_configured'
+      else if (message === 'authentication_failed') error = 'auth_error'
+      else error = 'fetch_error'
     } finally {
       loading = false
     }
@@ -81,6 +83,15 @@
       <Settings size={24} />
       <p>{$t('grafana.notConfigured')}</p>
       <p class="text-xs">{$t('grafana.configureHint')}</p>
+    </div>
+  {:else if error === 'auth_error'}
+    <div class="flex h-full flex-col items-center justify-center gap-2 text-center text-sm text-[var(--color-text-muted)]">
+      <KeyRound size={24} class="text-[var(--color-danger)]" />
+      <p>{$t('grafana.authError')}</p>
+      <p class="text-xs">{$t('grafana.authErrorHint')}</p>
+      <button onclick={fetchEmbedUrls} class="text-xs text-[var(--color-primary)] hover:underline">
+        {$t('common.retry')}
+      </button>
     </div>
   {:else if error === 'fetch_error'}
     <div class="flex h-full flex-col items-center justify-center gap-2 text-center text-sm text-[var(--color-text-muted)]">

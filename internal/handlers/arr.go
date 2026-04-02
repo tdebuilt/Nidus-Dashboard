@@ -80,7 +80,12 @@ func (h *ArrHandler) fetchServiceOverview(ctx context.Context, serviceType strin
 	}
 
 	status, err := client.GetSystemStatus(ctx)
-	if err == nil {
+	if err != nil {
+		if errors.Is(err, arr.ErrAuth) {
+			overview.Error = "authentication_failed"
+			return overview
+		}
+	} else {
 		overview.Status = status
 	}
 

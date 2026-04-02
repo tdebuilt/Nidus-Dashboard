@@ -3,6 +3,7 @@ package jdownloader
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -11,6 +12,9 @@ import (
 	"sync/atomic"
 	"time"
 )
+
+// ErrAuth is returned when authentication with MyJDownloader fails.
+var ErrAuth = errors.New("authentication failed")
 
 const (
 	apiURL = "https://api.jdownloader.org"
