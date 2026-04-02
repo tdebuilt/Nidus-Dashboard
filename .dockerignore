@@ -4,4 +4,27 @@ web/static/
 .git/
 .env
 nidus
+
+# Documentation
 *.md
+docs/
+site/
+LICENSE
+
+# Desktop app
+desktop/
+
+# Tests
+web/e2e/
+web/playwright-report/
+web/test-results/
+
+# IDE and OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Git hooks
+.githooks/
+.github/
