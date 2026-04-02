@@ -13,22 +13,41 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  load-versions:
+    runs-on: ubuntu-latest
+    outputs:
+      go: ${{ steps.v.outputs.GO_VERSION }}
+      node: ${{ steps.v.outputs.NODE_VERSION }}
+      golangci-lint: ${{ steps.v.outputs.GOLANGCI_LINT_VERSION }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          sparse-checkout: .github/versions.env
+          sparse-checkout-cone-mode: false
+      - id: v
+        run: |
+          while IFS='=' read -r key value; do
+            [[ -z "$key" || "$key" == \#* ]] && continue
+            echo "${key}=${value}" >> "$GITHUB_OUTPUT"
+          done < .github/versions.env
+
   test-backend:
     runs-on: ubuntu-latest
+    needs: [load-versions]
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-go@v6
         with:
-          go-version: '1.24'
+          go-version: ${{ needs.load-versions.outputs.go }}
       - uses: actions/setup-node@v6
         with:
-          node-version: '24'
+          node-version: ${{ needs.load-versions.outputs.node }}
           cache: 'npm'
           cache-dependency-path: 'web/package-lock.json'
       - name: Go lint
         uses: golangci/golangci-lint-action@v7
         with:
-          version: v2.11.4
+          version: ${{ needs.load-versions.outputs.golangci-lint }}
       - run: go test ./...
       - name: Build frontend
         run: cd web && npm ci && npm run build
@@ -45,27 +64,28 @@ jobs:
 
   test-frontend:
     runs-on: ubuntu-latest
+    needs: [load-versions]
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-node@v6
         with:
-          node-version: '24'
+          node-version: ${{ needs.load-versions.outputs.node }}
           cache: 'npm'
           cache-dependency-path: 'web/package-lock.json'
       - run: cd web && npm ci
       - run: cd web && npm run lint
       - name: Svelte check
-        run: cd web && npx svelte-check --tsconfig ./tsconfig.app.json || true
+        run: cd web && npx svelte-check --tsconfig ./tsconfig.app.json
       - run: cd web && npm test -- --run
 
   test-e2e:
     runs-on: ubuntu-latest
-    needs: [test-backend]
+    needs: [load-versions, test-backend]
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-node@v6
         with:
-          node-version: '24'
+          node-version: ${{ needs.load-versions.outputs.node }}
           cache: 'npm'
           cache-dependency-path: 'web/package-lock.json'
       - name: Download build artifacts
@@ -105,9 +125,13 @@ jobs:
     needs: [test-backend, test-frontend, test-e2e]
     if: failure()
     steps:
-      - name: Notify test failure
-        run: |
-          curl -s "https://gotify.tdelab.eu/message?token=${{ secrets.GOTIFY_TOKEN }}" \
-            -F "title=Tests FAILED on ${{ github.ref_name }}" \
-            -F "message=Tests failed on branch ${{ github.ref_name }}. Check: github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}" \
-            -F "priority=8"
+      - uses: actions/checkout@v6
+        with:
+          sparse-checkout: .github/actions
+          sparse-checkout-cone-mode: false
+      - uses: ./.github/actions/gotify
+        with:
+          title: 'Tests FAILED on ${{ github.ref_name }}'
+          message: 'Tests failed on branch ${{ github.ref_name }}. Check: github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}'
+          priority: '8'
+          token: ${{ secrets.GOTIFY_TOKEN }}

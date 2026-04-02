@@ -1,0 +1,28 @@
+name: Gotify Notify
+description: Send a notification via Gotify
+
+inputs:
+  title:
+    description: Notification title
+    required: true
+  message:
+    description: Notification message
+    required: true
+  priority:
+    description: Notification priority (1-10)
+    required: false
+    default: '5'
+  token:
+    description: Gotify application token
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Send Gotify notification
+      shell: bash
+      run: |
+        curl -s "https://gotify.tdelab.eu/message?token=${{ inputs.token }}" \
+          -F "title=${{ inputs.title }}" \
+          -F "message=${{ inputs.message }}" \
+          -F "priority=${{ inputs.priority }}"
