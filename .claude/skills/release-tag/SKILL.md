@@ -16,6 +16,20 @@ Run all in parallel:
 - `git tag --sort=-v:refname | head -10` — list recent tags
 - `git log --oneline $(git tag --sort=-v:refname | head -1)..HEAD --no-merges` — commits since last tag (or all if no tags)
 - `gh run list --workflow=Release --repo tdebuilt/Nidus-Dashboard --limit 3` — recent workflow runs
+- `gh run list --workflow=test --branch=main --status=success --limit=1 --json headSha,conclusion` — last successful test run
+
+### Verify tests pass on HEAD
+
+Compare the SHA of the last successful test run with the current HEAD:
+
+```bash
+LAST_TEST_SHA=$(gh run list --workflow=test --branch=main --status=success --limit=1 --json headSha --jq '.[0].headSha' --repo tdebuilt/Nidus-Dashboard)
+HEAD_SHA=$(git rev-parse HEAD)
+```
+
+- If `LAST_TEST_SHA` equals `HEAD_SHA` → tests are green on the latest commit, proceed.
+- If they differ → **STOP** and warn the user: "Tests have not passed on the latest commit (HEAD: `<HEAD_SHA>`). Last green test was on `<LAST_TEST_SHA>`. Push or wait for tests to pass before releasing."
+- The user can explicitly override this check if they want to proceed anyway.
 
 ## Step 2: Determine Next Version
 
@@ -25,8 +39,13 @@ Use it as the proposed version. Ensure it starts with `v` (e.g., `v0.2.0`).
 
 ### If no argument was provided:
 
-Suggest the next version based on existing tags:
-- Latest tag `v0.1.0` → suggest `v0.1.1` (patch), `v0.2.0` (minor), `v1.0.0` (major)
+Suggest the next version based on existing tags. Include both stable and pre-release options:
+- Latest stable tag `v0.2.1` → suggest:
+  - `v0.2.2` (patch)
+  - `v0.3.0` (minor)
+  - `v1.0.0` (major)
+  - `v0.3.0-beta.1` (pre-release)
+- If a pre-release already exists (e.g., `v0.3.0-beta.1`) → also suggest `v0.3.0-beta.2` (increment)
 - No existing tags → suggest `v0.1.0`
 
 ### Pre-release versions
@@ -34,6 +53,7 @@ Suggest the next version based on existing tags:
 Tags containing a hyphen (e.g., `v0.3.0-beta.1`, `v0.3.0-rc.1`) are treated as pre-releases:
 - The Docker image will NOT be tagged as `:latest` (only the versioned tag)
 - The GitHub release should be marked as a prerelease (`gh release edit <tag> --prerelease`)
+- The desktop build workflow will NOT be triggered
 - Users on `:latest` are not affected
 
 Examples: `v0.3.0-alpha.1`, `v0.3.0-beta.1`, `v0.3.0-rc.1`
