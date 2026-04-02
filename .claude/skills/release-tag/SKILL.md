@@ -29,6 +29,15 @@ Suggest the next version based on existing tags:
 - Latest tag `v0.1.0` → suggest `v0.1.1` (patch), `v0.2.0` (minor), `v1.0.0` (major)
 - No existing tags → suggest `v0.1.0`
 
+### Pre-release versions
+
+Tags containing a hyphen (e.g., `v0.3.0-beta.1`, `v0.3.0-rc.1`) are treated as pre-releases:
+- The Docker image will NOT be tagged as `:latest` (only the versioned tag)
+- The GitHub release should be marked as a prerelease (`gh release edit <tag> --prerelease`)
+- Users on `:latest` are not affected
+
+Examples: `v0.3.0-alpha.1`, `v0.3.0-beta.1`, `v0.3.0-rc.1`
+
 ## Step 3: Ask for Confirmation
 
 Use `AskUserQuestion` to confirm. Show:
