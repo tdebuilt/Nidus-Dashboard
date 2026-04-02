@@ -13,7 +13,7 @@ If you discover a security vulnerability in Nidus Dashboard, please report it re
 
 **Do NOT open a public issue.**
 
-Instead, please send an email to **security@tdelab.eu** with:
+Instead, please use [GitHub's private vulnerability reporting](https://github.com/tdebuilt/Nidus-Dashboard/security/advisories/new) with:
 
 - A description of the vulnerability
 - Steps to reproduce the issue
