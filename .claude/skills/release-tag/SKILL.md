@@ -1,11 +1,11 @@
 ---
 name: release-tag
-description: Creates a new release for Nidus Dashboard by triggering the GitHub Actions Release workflow. Lists existing tags, suggests the next version, and asks for user confirmation.
+description: Creates a new release for Nidus Dashboard — updates all documentation, then triggers the GitHub Actions Release workflow. Lists existing tags, suggests the next version, and asks for user confirmation.
 user_invocable: true
 argument: Optional tag version (e.g., "/release-tag v0.1.0")
 ---
 
-You create releases for Nidus Dashboard by triggering the GitHub Actions `Release` workflow.
+You create releases for Nidus Dashboard by updating documentation and triggering the GitHub Actions `Release` workflow.
 
 **The workflow handles everything:** tag creation, Docker image build, GitHub release, and Gotify notification. You must NEVER create tags or releases manually.
 
@@ -46,12 +46,67 @@ Use `AskUserQuestion` to confirm. Show:
 - Number of commits since last tag
 - Summary of changes
 
-## Step 4: Update CHANGELOG.md
+## Step 4: Update Documentation
+
+Review and update all documentation files to match the current state of the codebase.
+
+### 4a. CHANGELOG.md
 
 1. Read `CHANGELOG.md`
 2. Move the `[Unreleased]` content into a new `[X.Y.Z] - YYYY-MM-DD` section
 3. Reset `[Unreleased]` to empty
-4. Commit and push the changelog update
+
+### 4b. ROADMAP.md
+
+1. Read `ROADMAP.md`
+2. Check each item in "Planned" against the codebase
+3. If an item is implemented (code exists, tests pass), move it to "Completed" with `[x]`
+4. Do NOT add new items to "Planned" — that's a manual decision
+
+### 4c. SPEC.md
+
+1. Compare the widget list in SPEC.md against `web/src/lib/widgetRegistry.ts`
+2. Check that all features mentioned in the codebase are documented
+3. Update any outdated sections (don't rewrite from scratch — make targeted edits)
+
+### 4d. README.md
+
+1. Verify badges point to the correct repo (`tdebuilt/Nidus-Dashboard`)
+2. Check feature list matches current widgets
+3. Verify installation instructions (Docker image, binary, desktop)
+
+### 4e. CONTRIBUTING.md
+
+1. Verify project structure matches actual directory layout
+2. Check commands (`make lint`, `make test`, `make setup`, etc.) are current
+3. Verify Node/Go version requirements match `package.json` and `go.mod`
+
+### 4f. .todo/TESTING.md
+
+1. Compare test cases against implemented features
+2. Add missing test cases for new features, remove ones for removed features
+3. Keep the same format: `## N. Section Name` with `- [ ]` checkboxes
+
+### 4g. i18n Template
+
+Check if `web/src/lib/i18n/fr.json` and `docs/i18n-template.json` have the same keys. If not, regenerate the template:
+
+```python
+python3 -c "
+import json
+with open('web/src/lib/i18n/fr.json') as f:
+    fr = json.load(f)
+def empty(d):
+    return {k: empty(v) if isinstance(v, dict) else '' for k, v in d.items()}
+with open('docs/i18n-template.json', 'w') as f:
+    json.dump(empty(fr), f, indent=2, ensure_ascii=False)
+    f.write('\n')
+"
+```
+
+### 4h. Commit Documentation Updates
+
+Commit and push all documentation changes before triggering the release.
 
 ## Step 5: Trigger the Release Workflow
 
@@ -124,6 +179,9 @@ Release: https://github.com/tdebuilt/Nidus-Dashboard/releases/tag/<tag>
 - NEVER create tags manually (`git tag`) — the workflow does it
 - NEVER create GitHub releases manually (`gh release create`) — the workflow does it
 - ALWAYS ask for user confirmation before triggering
-- ALWAYS update CHANGELOG.md before triggering
+- ALWAYS update documentation before triggering
 - ALWAYS update release notes after workflow completes with Docker image link and changes summary
+- Only update doc files that actually need changes — don't rewrite for style
+- All documentation must be in English
+- Never mention Claude, AI, or automation in any documentation
 - If the workflow trigger fails, display the error and STOP
