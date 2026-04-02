@@ -1,14 +1,19 @@
-import type { Component } from 'svelte'
+import type { Component, ComponentType, SvelteComponent } from 'svelte'
 
-type SvelteComponent = Component<Record<string, unknown>>
-type LazyComponent = () => Promise<{ default: SvelteComponent }>
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type IconComponent = ComponentType<SvelteComponent<any>>
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type AnyComponent = Component<any>
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type WidgetComponent = Component<Record<string, any>>
+type LazyComponent = () => Promise<{ default: WidgetComponent }>
 
 import { Container, Monitor, Activity, Shield, Download, Radio, Link, HeartPulse, MonitorPlay, CloudSun, CalendarDays, Rss, Server, ShieldCheck, Film, Camera, TrendingUp, LayoutDashboard } from 'lucide-svelte'
 
 export interface WidgetDefinition {
   type: string
   label: string
-  icon: SvelteComponent
+  icon: IconComponent
   component: LazyComponent
   configComponent?: LazyComponent
   /** Backend service type(s) that must be configured (null for standalone widgets like applink) */

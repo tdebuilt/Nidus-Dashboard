@@ -1,12 +1,13 @@
 <script lang="ts">
   import { t } from '../../i18n'
 
-  import type { Component } from 'svelte'
+  import type { ComponentType, SvelteComponent } from 'svelte'
 
   interface TabDef {
     id: string
     labelKey: string
-    icon: Component<{ size?: number; class?: string }>
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    icon: ComponentType<SvelteComponent<any>>
   }
 
   interface Props {

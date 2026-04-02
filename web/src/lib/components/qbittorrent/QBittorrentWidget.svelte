@@ -297,7 +297,7 @@
           { field: 'ratio', labelKey: 'qbittorrent.sortRatio' },
           { field: 'added_on', labelKey: 'qbittorrent.sortAdded' },
         ]}
-        {sortField} {sortDirection} onToggleSort={toggleSort}
+        {sortField} {sortDirection} onToggleSort={(field) => toggleSort(field as SortField)}
       />
 
       <!-- Torrent list -->

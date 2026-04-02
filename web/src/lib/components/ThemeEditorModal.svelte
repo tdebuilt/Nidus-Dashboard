@@ -142,7 +142,7 @@
     const def = validateAndParseTheme()
     if (!def) return
     saving = true
-    await persistTheme(def, $themeEditorState.editingDbId)
+    await persistTheme(def, $themeEditorState.editingDbId ?? undefined)
     saving = false
   }
 
