@@ -34,6 +34,8 @@ func configRouter(t *testing.T) (*chi.Mux, *ConfigHandler) {
 	r := chi.NewRouter()
 	r.Post("/api/config/export", h.Export)
 	r.Post("/api/config/import", h.Import)
+	r.Get("/api/config/yaml", h.ExportYAML)
+	r.Post("/api/config/yaml", h.ImportYAML)
 
 	catH := &CategoriesHandler{DB: db}
 	r.Post("/api/categories", catH.Create)
@@ -660,6 +662,146 @@ func TestImportServiceURLTooLong(t *testing.T) {
 	code := importEncrypted(t, r, password, exportResult{Data: encrypted})
 	if code != http.StatusBadRequest {
 		t.Errorf("expected 400 for service URL too long, got %d", code)
+	}
+}
+
+func TestYAMLRoundTrip(t *testing.T) {
+	t.Parallel()
+	r, h := configRouter(t)
+
+	// Create data: category + widget + service + settings
+	catBody, _ := json.Marshal(models.CreateCategoryRequest{Name: "Monitoring", Icon: "activity"})
+	catReq := httptest.NewRequest(http.MethodPost, "/api/categories", bytes.NewReader(catBody))
+	catW := httptest.NewRecorder()
+	r.ServeHTTP(catW, catReq)
+	if catW.Code != http.StatusCreated {
+		t.Fatalf("create category: expected 201, got %d: %s", catW.Code, catW.Body.String())
+	}
+	var cat models.Category
+	json.NewDecoder(catW.Body).Decode(&cat)
+
+	widgetBody, _ := json.Marshal(models.CreateWidgetRequest{
+		Type: "docker", Title: "Containers", Config: `{"env":1}`,
+		PosX: 0, PosY: 0, Width: 12, Height: 0,
+	})
+	widgetReq := httptest.NewRequest(http.MethodPost, "/api/categories/"+itoa(cat.ID)+"/widgets", bytes.NewReader(widgetBody))
+	widgetW := httptest.NewRecorder()
+	r.ServeHTTP(widgetW, widgetReq)
+
+	svcBody, _ := json.Marshal(models.UpdateServiceRequest{
+		Name: "Portainer", URL: "https://portainer.local",
+		Credentials: `{"token":"yaml-test-token"}`,
+	})
+	svcReq := httptest.NewRequest(http.MethodPut, "/api/services/portainer", bytes.NewReader(svcBody))
+	svcW := httptest.NewRecorder()
+	r.ServeHTTP(svcW, svcReq)
+
+	theme := "dark"
+	lang := "fr"
+	interval := 30
+	settingsBody, _ := json.Marshal(models.UpdateSettingsRequest{
+		Theme: &theme, Language: &lang, RefreshInterval: &interval,
+	})
+	settingsReq := httptest.NewRequest(http.MethodPut, "/api/settings", bytes.NewReader(settingsBody))
+	settingsW := httptest.NewRecorder()
+	r.ServeHTTP(settingsW, settingsReq)
+
+	// Export YAML
+	exportReq := httptest.NewRequest(http.MethodGet, "/api/config/yaml", nil)
+	exportW := httptest.NewRecorder()
+	r.ServeHTTP(exportW, exportReq)
+	if exportW.Code != http.StatusOK {
+		t.Fatalf("YAML export: expected 200, got %d: %s", exportW.Code, exportW.Body.String())
+	}
+	yamlData := exportW.Body.Bytes()
+
+	// Import YAML
+	importReq := httptest.NewRequest(http.MethodPost, "/api/config/yaml", bytes.NewReader(yamlData))
+	importReq.Header.Set("Content-Type", "application/x-yaml")
+	importW := httptest.NewRecorder()
+	r.ServeHTTP(importW, importReq)
+	if importW.Code != http.StatusOK {
+		t.Fatalf("YAML import: expected 200, got %d: %s", importW.Code, importW.Body.String())
+	}
+
+	// Verify data after round-trip
+	ctx := context.Background()
+	cats, _ := h.DB.GetCategories(ctx)
+	if len(cats) != 1 || cats[0].Name != "Monitoring" {
+		t.Errorf("expected category 'Monitoring', got %v", cats)
+	}
+
+	widgets, _ := h.DB.GetAllWidgets(ctx)
+	if len(widgets) != 1 || widgets[0].Title != "Containers" {
+		t.Errorf("expected widget 'Containers', got %v", widgets)
+	}
+
+	settings, _ := h.DB.GetSettings(ctx)
+	if settings.Theme != "dark" || settings.Language != "fr" || settings.RefreshInterval != 30 {
+		t.Errorf("settings mismatch: %+v", settings)
+	}
+
+	svc, _ := h.DB.GetServiceByType(ctx, "portainer")
+	if svc == nil {
+		t.Fatal("expected portainer service after YAML import")
+	}
+}
+
+func TestImportWidgetLargeHeightAccepted(t *testing.T) {
+	t.Parallel()
+	r, _ := configRouter(t)
+
+	// Simulate a widget resized to 800px (height=80 in 10px row units)
+	// This commonly happens when locking auto-height on tall widgets
+	cfg := models.EncryptedExport{
+		Version:  2,
+		Settings: models.Settings{Theme: "dark", Language: "fr", RefreshInterval: 30},
+		Categories: []models.Category{
+			{ID: 1, Name: "Cat1", Icon: "star"},
+		},
+		Widgets: []models.Widget{
+			{CategoryID: 1, Type: "docker", Title: "Tall Widget", Config: "{}", Width: 12, Height: 80},
+		},
+	}
+	jsonData, _ := json.Marshal(cfg)
+	password := "test"
+	encrypted, _ := crypto.Encrypt(string(jsonData), crypto.DeriveKey(password)) //nolint:staticcheck // testing legacy format
+
+	code := importEncrypted(t, r, password, exportResult{Data: encrypted})
+	if code != http.StatusOK {
+		t.Errorf("expected 200 for widget with height=80 (800px), got %d", code)
+	}
+}
+
+func TestYAMLImportWidgetLargeHeightAccepted(t *testing.T) {
+	t.Parallel()
+	r, _ := configRouter(t)
+
+	yamlContent := `version: 2
+settings:
+  theme: dark
+  language: fr
+  refresh_interval: 30
+categories:
+  - name: Infra
+    icon: server
+    sort_order: 0
+    widgets:
+      - type: docker
+        title: Tall Docker
+        config: "{}"
+        pos_x: 0
+        pos_y: 0
+        width: 12
+        height: 100
+`
+	req := httptest.NewRequest(http.MethodPost, "/api/config/yaml", bytes.NewReader([]byte(yamlContent)))
+	req.Header.Set("Content-Type", "application/x-yaml")
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Errorf("expected 200 for YAML widget with height=100 (1000px), got %d: %s", w.Code, w.Body.String())
 	}
 }
 

@@ -25,7 +25,7 @@ const (
 	MaxServicesImport = 50
 	MaxNameLength     = 255
 	MaxURLLength      = 2048
-	MaxWidgetHeight   = 50
+	MaxWidgetHeight   = 500
 )
 
 // ConfigHandler handles config export/import HTTP requests.
