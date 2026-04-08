@@ -6,6 +6,22 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 
 ## [Unreleased]
 
+## [0.3.0-beta.7] - 2026-04-08
+
+### Added
+- Responsive columns for Uptime Kuma widget
+
+### Fixed
+- **Reolink live stream stuck on frozen snapshot** — Svelte 5 reactive tracking created unintended dependencies in the initialization effect, destroying the MSE player before it could connect
+- Camera snapshots showing stale images (blob URL + forced src update)
+- Service worker caching snapshot and stream endpoints
+- WebSocket connections rejected when accessed through a reverse proxy
+- Fullscreen icon not visible on mobile
+- Config import failing on unknown service types instead of skipping them
+
+### Infrastructure
+- Release workflow auto-creates git tag and GitHub release
+
 ## [0.3.0-beta.1] - 2026-04-08
 
 ### Added
