@@ -25,8 +25,9 @@
     if (e.key === 'Escape' && fullscreen) fullscreen = false
   }
 
-  let snapshotTs = $state(Date.now())
-  const imgSrc = $derived(`/api/reolink/cameras/${id}/snapshot?t=${snapshotTs}`)
+  let blobUrl = $state<string | null>(null)
+  const fallbackSrc = `/api/reolink/cameras/${id}/snapshot?t=${Date.now()}`
+  const imgSrc = $derived(blobUrl || fallbackSrc)
   let timer: ReturnType<typeof setTimeout> | null = null
   let destroyed = false
 
@@ -47,6 +48,7 @@
       stopRefresh()
       player?.destroy()
       player = null
+      if (blobUrl) { URL.revokeObjectURL(blobUrl); blobUrl = null }
     }
   })
 
@@ -88,20 +90,19 @@
     }, delay)
   }
 
-  function preloadSnapshot(gen: number) {
-    const ts = Date.now()
-    const next = `/api/reolink/cameras/${id}/snapshot?t=${ts}`
-    const img = new Image()
-    img.onload = () => {
-      if (gen === refreshGeneration && !destroyed && !mseActive) {
-        snapshotTs = ts
-        scheduleRefresh()
-      }
+  async function preloadSnapshot(gen: number) {
+    try {
+      const response = await fetch(`/api/reolink/cameras/${id}/snapshot?t=${Date.now()}`, { credentials: 'same-origin' })
+      if (!response.ok) throw new Error('snapshot failed')
+      const blob = await response.blob()
+      if (gen !== refreshGeneration || destroyed || mseActive) return
+      const oldUrl = blobUrl
+      blobUrl = URL.createObjectURL(blob)
+      if (oldUrl) URL.revokeObjectURL(oldUrl)
+    } catch {
+      // ignore
     }
-    img.onerror = () => {
-      if (gen === refreshGeneration && !destroyed && !mseActive) scheduleRefresh()
-    }
-    img.src = next
+    if (gen === refreshGeneration && !destroyed && !mseActive) scheduleRefresh()
   }
 
   function stopRefresh() {
@@ -180,7 +181,6 @@
       src={imgSrc}
       alt={name}
       class={fullscreen ? 'h-full w-full object-contain' : 'w-full object-cover'}
-      loading="lazy"
     />
   {/if}
 
