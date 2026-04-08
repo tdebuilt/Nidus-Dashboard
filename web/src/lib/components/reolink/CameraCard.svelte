@@ -217,7 +217,7 @@
   {#if !fullscreen}
     <button
       onclick={toggleFullscreen}
-      class="absolute bottom-2 end-2 rounded-full bg-black/50 p-1.5 text-white opacity-0 transition-opacity hover:bg-black/70 group-hover:opacity-100"
+      class="absolute bottom-2 end-2 rounded-full bg-black/50 p-1.5 text-white opacity-100 transition-opacity hover:bg-black/70 sm:opacity-0 sm:group-hover:opacity-100"
       title={$t('reolink.fullscreen')}
       aria-label={$t('reolink.fullscreen')}
     >
