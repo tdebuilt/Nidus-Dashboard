@@ -443,7 +443,7 @@ func TestImportServiceWithoutURL(t *testing.T) {
 	}
 }
 
-func TestConfigValidationServiceInvalidType(t *testing.T) {
+func TestConfigImportSkipsUnknownServiceType(t *testing.T) {
 	t.Parallel()
 	r, _ := configRouter(t)
 
@@ -459,8 +459,8 @@ func TestConfigValidationServiceInvalidType(t *testing.T) {
 	encrypted, _ := crypto.Encrypt(string(jsonData), crypto.DeriveKey(password)) //nolint:staticcheck // testing legacy format
 
 	code := importEncrypted(t, r, password, exportResult{Data: encrypted})
-	if code != http.StatusBadRequest {
-		t.Errorf("expected 400 for invalid service type, got %d", code)
+	if code != http.StatusOK {
+		t.Errorf("expected 200 (unknown services skipped), got %d", code)
 	}
 }
 

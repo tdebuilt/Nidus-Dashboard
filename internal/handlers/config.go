@@ -140,6 +140,8 @@ func (h *ConfigHandler) Import(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	filterUnknownServices(cfg)
+
 	if err := h.DB.ImportConfigFull(r.Context(), *cfg, encKey); err != nil {
 		slog.Error("config: failed to import config", "error", err)
 		writeJSON(w, http.StatusInternalServerError, models.ErrorResponse{Error: "failed to import config"})
@@ -253,6 +255,19 @@ func validateWidgets(widgets []models.Widget, categories []models.Category) erro
 	return nil
 }
 
+// filterUnknownServices removes services with types not in the registry.
+func filterUnknownServices(cfg *models.EncryptedExport) {
+	filtered := make([]models.ServiceExport, 0, len(cfg.Services))
+	for _, s := range cfg.Services {
+		if ValidServiceTypes[s.Type] {
+			filtered = append(filtered, s)
+		} else {
+			slog.Warn("config: filtering unknown service type from import", "type", s.Type)
+		}
+	}
+	cfg.Services = filtered
+}
+
 // validateServiceExports checks that all service exports have valid fields.
 func validateServiceExports(services []models.ServiceExport) error {
 	if len(services) > MaxServicesImport {
@@ -263,7 +278,8 @@ func validateServiceExports(services []models.ServiceExport) error {
 			return fmt.Errorf("service at index %d: type is required", i)
 		}
 		if !ValidServiceTypes[s.Type] {
-			return fmt.Errorf("service at index %d: invalid type '%s'", i, s.Type)
+			slog.Warn("config: skipping unknown service type during import", "type", s.Type, "index", i)
+			continue
 		}
 		if len(s.Name) > MaxNameLength {
 			return fmt.Errorf("service at index %d: name too long (%d chars, max %d)", i, len(s.Name), MaxNameLength)

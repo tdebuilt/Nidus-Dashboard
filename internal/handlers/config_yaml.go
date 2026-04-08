@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"fmt"
+	"log/slog"
 
 	"github.com/tdebuilt/nidus/internal/models"
 )
@@ -91,6 +92,9 @@ func convertFromYAMLConfig(yamlCfg *models.YAMLConfig) models.EncryptedExport {
 
 	services := make([]models.ServiceExport, 0, len(yamlCfg.Services))
 	for _, ys := range yamlCfg.Services {
+		if !ValidServiceTypes[ys.Type] {
+			continue
+		}
 		services = append(services, models.ServiceExport(ys))
 	}
 
@@ -180,7 +184,8 @@ func validateYAMLServices(services []models.YAMLService) error {
 			return fmt.Errorf("service at index %d: type is required", i)
 		}
 		if !ValidServiceTypes[s.Type] {
-			return fmt.Errorf("service at index %d: invalid type '%s'", i, s.Type)
+			slog.Warn("config: skipping unknown service type during import", "type", s.Type, "index", i)
+			continue
 		}
 		if len(s.Name) > MaxNameLength {
 			return fmt.Errorf("service at index %d: name too long (%d chars, max %d)", i, len(s.Name), MaxNameLength)
