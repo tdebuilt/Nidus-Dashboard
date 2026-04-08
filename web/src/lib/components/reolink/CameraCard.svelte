@@ -25,9 +25,9 @@
     if (e.key === 'Escape' && fullscreen) fullscreen = false
   }
 
-  let blobUrl = $state<string | null>(null)
-  const fallbackSrc = `/api/reolink/cameras/${id}/snapshot?t=${Date.now()}`
-  const imgSrc = $derived(blobUrl || fallbackSrc)
+  let snapshotTs = $state(Date.now())
+  const imgSrc = $derived(`/api/reolink/cameras/${id}/snapshot?t=${snapshotTs}`)
+  let imgEl: HTMLImageElement | undefined = $state()
   let timer: ReturnType<typeof setTimeout> | null = null
   let destroyed = false
 
@@ -48,7 +48,7 @@
       stopRefresh()
       player?.destroy()
       player = null
-      if (blobUrl) { URL.revokeObjectURL(blobUrl); blobUrl = null }
+      imgEl = undefined
     }
   })
 
@@ -90,19 +90,22 @@
     }, delay)
   }
 
-  async function preloadSnapshot(gen: number) {
-    try {
-      const response = await fetch(`/api/reolink/cameras/${id}/snapshot?t=${Date.now()}`, { credentials: 'same-origin' })
-      if (!response.ok) throw new Error('snapshot failed')
-      const blob = await response.blob()
-      if (gen !== refreshGeneration || destroyed || mseActive) return
-      const oldUrl = blobUrl
-      blobUrl = URL.createObjectURL(blob)
-      if (oldUrl) URL.revokeObjectURL(oldUrl)
-    } catch {
-      // ignore
+  function preloadSnapshot(gen: number) {
+    const ts = Date.now()
+    const next = `/api/reolink/cameras/${id}/snapshot?t=${ts}`
+    const img = new Image()
+    img.onload = () => {
+      if (gen === refreshGeneration && !destroyed && !mseActive) {
+        snapshotTs = ts
+        // Force DOM update in case Svelte reactivity doesn't trigger re-render
+        if (imgEl) imgEl.src = next
+        scheduleRefresh()
+      }
     }
-    if (gen === refreshGeneration && !destroyed && !mseActive) scheduleRefresh()
+    img.onerror = () => {
+      if (gen === refreshGeneration && !destroyed && !mseActive) scheduleRefresh()
+    }
+    img.src = next
   }
 
   function stopRefresh() {
@@ -178,6 +181,7 @@
     ></video>
   {:else}
     <img
+      bind:this={imgEl}
       src={imgSrc}
       alt={name}
       class={fullscreen ? 'h-full w-full object-contain' : 'w-full object-cover'}
