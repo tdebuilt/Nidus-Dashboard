@@ -22,7 +22,7 @@ type WebSocketHandler struct {
 	BaseURL string
 }
 
-// newUpgrader creates a WebSocket upgrader that validates the origin against the configured base URL.
+// newUpgrader creates a WebSocket upgrader that validates the origin against the request Host header.
 func (h *WebSocketHandler) newUpgrader() ws.Upgrader {
 	return ws.Upgrader{
 		ReadBufferSize:  1024,
@@ -32,14 +32,11 @@ func (h *WebSocketHandler) newUpgrader() ws.Upgrader {
 			if origin == "" {
 				return true
 			}
-			if h.BaseURL != "" {
-				if parsed, err := url.Parse(h.BaseURL); err == nil {
-					allowed := parsed.Scheme + "://" + parsed.Host
-					return origin == allowed
-				}
+			u, err := url.Parse(origin)
+			if err != nil {
+				return false
 			}
-			host := r.Host
-			return origin == "https://"+host || origin == "http://"+host
+			return u.Host == r.Host
 		},
 	}
 }
