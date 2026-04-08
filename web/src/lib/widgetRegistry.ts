@@ -8,7 +8,7 @@ type AnyComponent = Component<any>
 type WidgetComponent = Component<Record<string, any>>
 type LazyComponent = () => Promise<{ default: WidgetComponent }>
 
-import { Container, Monitor, Activity, Shield, Download, Radio, Link, HeartPulse, MonitorPlay, CloudSun, CalendarDays, Rss, Server, ShieldCheck, Film, Camera, TrendingUp, LayoutDashboard } from 'lucide-svelte'
+import { Container, Monitor, Activity, Shield, Download, Radio, Link, HeartPulse, MonitorPlay, CloudSun, CalendarDays, Rss, Server, ShieldCheck, Film, Camera, TrendingUp, LayoutDashboard, SquareTerminal } from 'lucide-svelte'
 
 export interface WidgetDefinition {
   type: string
@@ -186,6 +186,15 @@ register({
   component: () => import('./components/grafana/GrafanaWidget.svelte'),
   configComponent: () => import('./components/config/GrafanaConfig.svelte'),
   serviceType: 'grafana',
+})
+
+register({
+  type: 'terminal',
+  label: 'SSH Terminal',
+  icon: SquareTerminal,
+  component: () => import('./components/terminal/TerminalWidget.svelte'),
+  configComponent: () => import('./components/config/TerminalConfig.svelte'),
+  extraProps: ['widgetId'],
 })
 
 // --- Public API ---

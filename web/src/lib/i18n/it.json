@@ -920,6 +920,16 @@
         "invite": "Sistema di inviti: generare un link di invito con un ruolo predefinito, l'utente crea il proprio account tramite il link",
         "manage": "Modificare il ruolo o eliminare utenti esistenti"
       }
+    },
+    "terminal": {
+      "title": "Terminale SSH",
+      "prerequisite": "Configura una connessione SSH nelle Impostazioni (host:porta + credenziali).",
+      "configDesc": "Personalizza dimensione carattere e righe di scorrimento.",
+      "features": {
+        "ssh": "Terminale SSH interattivo direttamente nella dashboard",
+        "resize": "Ridimensionamento automatico del terminale",
+        "reconnect": "Riconnessione manuale in caso di disconnessione"
+      }
     }
   },
   "errors": {
@@ -1289,5 +1299,27 @@
   },
   "services": {
     "apiKey": "Chiave API"
+  },
+  "terminal": {
+    "connecting": "Connessione...",
+    "connected": "Connesso",
+    "disconnected": "Disconnesso",
+    "reconnect": "Riconnetti",
+    "notConfigured": "Terminale SSH non configurato",
+    "configureHint": "Configura una connessione SSH nelle Impostazioni.",
+    "connectionFailed": "Connessione fallita",
+    "fontSize": "Dimensione carattere",
+    "scrollback": "Righe di scorrimento",
+    "connection": "Connessione",
+    "selectConnection": "Seleziona una connessione",
+    "noConnections": "Nessuna connessione configurata.",
+    "connectionsHint": "Aggiungi connessioni SSH.",
+    "connName": "Nome",
+    "connHost": "Host",
+    "connPort": "Porta",
+    "addConnection": "Aggiungi",
+    "snippets": "Scorciatoie",
+    "snippetLabel": "Nome",
+    "snippetCommand": "Comando..."
   }
 }

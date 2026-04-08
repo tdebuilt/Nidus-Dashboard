@@ -110,8 +110,13 @@
   }
 
   $effect(() => {
-    if (selectedCategoryId !== null && !widgets[selectedCategoryId]) {
-      loadWidgets(selectedCategoryId)
+    if (selectedCategoryId !== null) {
+      if (!(selectedCategoryId in showAddWidgetMap)) {
+        showAddWidgetMap[selectedCategoryId] = false
+      }
+      if (!widgets[selectedCategoryId]) {
+        loadWidgets(selectedCategoryId)
+      }
     }
   })
 

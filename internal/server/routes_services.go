@@ -89,4 +89,7 @@ func registerViewerServiceRoutes(r chi.Router, srv *Server, db *database.DB) {
 	go2rtcHandler := &handlers.Go2RTCHandler{Manager: srv.Go2RTCManager}
 	r.Get("/go2rtc/status", go2rtcHandler.Status)
 	r.Get("/go2rtc/ws", go2rtcHandler.ProxyWS)
+
+	terminalHandler := &handlers.TerminalHandler{DB: db, Cache: srv.ServiceCache}
+	r.Get("/terminal/ws", terminalHandler.HandleWS)
 }

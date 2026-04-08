@@ -920,6 +920,16 @@
         "invite": "Sistema de convites: gerar uma ligação de convite com uma função predefinida, o utilizador cria a sua conta através da ligação",
         "manage": "Alterar a função ou eliminar utilizadores existentes"
       }
+    },
+    "terminal": {
+      "title": "Terminal SSH",
+      "prerequisite": "Configure uma conexão SSH nas Configurações (host:porta + credenciais).",
+      "configDesc": "Personalizar tamanho da fonte e linhas de rolagem.",
+      "features": {
+        "ssh": "Terminal SSH interativo diretamente no painel",
+        "resize": "Redimensionamento automático do terminal",
+        "reconnect": "Reconexão manual em caso de desconexão"
+      }
     }
   },
   "errors": {
@@ -1289,5 +1299,27 @@
   },
   "services": {
     "apiKey": "Chave API"
+  },
+  "terminal": {
+    "connecting": "Conectando...",
+    "connected": "Conectado",
+    "disconnected": "Desconectado",
+    "reconnect": "Reconectar",
+    "notConfigured": "Terminal SSH não configurado",
+    "configureHint": "Configure uma conexão SSH nas Configurações.",
+    "connectionFailed": "Falha na conexão",
+    "fontSize": "Tamanho da fonte",
+    "scrollback": "Linhas de rolagem",
+    "connection": "Conexão",
+    "selectConnection": "Selecionar uma conexão",
+    "noConnections": "Nenhuma conexão configurada.",
+    "connectionsHint": "Adicione conexões SSH.",
+    "connName": "Nome",
+    "connHost": "Host",
+    "connPort": "Porta",
+    "addConnection": "Adicionar",
+    "snippets": "Atalhos",
+    "snippetLabel": "Nome",
+    "snippetCommand": "Comando..."
   }
 }

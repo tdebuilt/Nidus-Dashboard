@@ -921,6 +921,16 @@
         "invite": "Invitation system: generate an invite link with a preset role, users create their account via the link",
         "manage": "Change role or delete existing users"
       }
+    },
+    "terminal": {
+      "title": "SSH Terminal",
+      "prerequisite": "Configure an SSH connection in Settings (host:port + credentials).",
+      "configDesc": "Customize font size and scrollback lines.",
+      "features": {
+        "ssh": "Interactive SSH terminal directly in the dashboard",
+        "resize": "Automatic terminal resizing",
+        "reconnect": "Manual reconnection on disconnect"
+      }
     }
   },
   "errors": {
@@ -1290,5 +1300,27 @@
   },
   "services": {
     "apiKey": "API Key"
+  },
+  "terminal": {
+    "connecting": "Connecting...",
+    "connected": "Connected",
+    "disconnected": "Disconnected",
+    "reconnect": "Reconnect",
+    "notConfigured": "SSH Terminal not configured",
+    "configureHint": "Configure an SSH connection in Settings.",
+    "connectionFailed": "Connection failed",
+    "fontSize": "Font size",
+    "scrollback": "Scrollback lines",
+    "connection": "Connection",
+    "selectConnection": "Select a connection",
+    "noConnections": "No connections configured. Add one in Settings.",
+    "connectionsHint": "Add one or more SSH connections.",
+    "connName": "Name",
+    "connHost": "Host",
+    "connPort": "Port",
+    "addConnection": "Add",
+    "snippets": "Snippets",
+    "snippetLabel": "Label",
+    "snippetCommand": "Command..."
   }
 }

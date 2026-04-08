@@ -920,6 +920,16 @@
         "invite": "Uitnodigingssysteem: uitnodigingslink genereren met een vooraf ingestelde rol, de gebruiker maakt een account aan via de link",
         "manage": "Rol wijzigen of bestaande gebruikers verwijderen"
       }
+    },
+    "terminal": {
+      "title": "SSH-terminal",
+      "prerequisite": "Configureer een SSH-verbinding in Instellingen (host:poort + inloggegevens).",
+      "configDesc": "Lettergrootte en scrollback-regels aanpassen.",
+      "features": {
+        "ssh": "Interactieve SSH-terminal direct in het dashboard",
+        "resize": "Automatische terminal-grootteverandering",
+        "reconnect": "Handmatige herverbinding bij verbroken verbinding"
+      }
     }
   },
   "errors": {
@@ -1289,5 +1299,27 @@
   },
   "services": {
     "apiKey": "API-sleutel"
+  },
+  "terminal": {
+    "connecting": "Verbinden...",
+    "connected": "Verbonden",
+    "disconnected": "Verbinding verbroken",
+    "reconnect": "Opnieuw verbinden",
+    "notConfigured": "SSH-terminal niet geconfigureerd",
+    "configureHint": "Configureer een SSH-verbinding in Instellingen.",
+    "connectionFailed": "Verbinding mislukt",
+    "fontSize": "Lettergrootte",
+    "scrollback": "Scrollback-regels",
+    "connection": "Verbinding",
+    "selectConnection": "Selecteer een verbinding",
+    "noConnections": "Geen verbindingen geconfigureerd.",
+    "connectionsHint": "Voeg SSH-verbindingen toe.",
+    "connName": "Naam",
+    "connHost": "Host",
+    "connPort": "Poort",
+    "addConnection": "Toevoegen",
+    "snippets": "Snippets",
+    "snippetLabel": "Naam",
+    "snippetCommand": "Commando..."
   }
 }

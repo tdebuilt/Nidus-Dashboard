@@ -920,6 +920,16 @@
         "invite": "نظام دعوات: إنشاء رابط دعوة بدور محدد مسبقاً، يقوم المستخدم بإنشاء حسابه عبر الرابط",
         "manage": "تغيير الدور أو حذف المستخدمين الحاليين"
       }
+    },
+    "terminal": {
+      "title": "طرفية SSH",
+      "prerequisite": "قم بتكوين اتصال SSH في الإعدادات (المضيف:المنفذ + بيانات الاعتماد).",
+      "configDesc": "تخصيص حجم الخط وسطور التمرير.",
+      "features": {
+        "ssh": "طرفية SSH تفاعلية مباشرة في لوحة المعلومات",
+        "resize": "تغيير حجم الطرفية تلقائيًا",
+        "reconnect": "إعادة الاتصال يدويًا عند الانقطاع"
+      }
     }
   },
   "errors": {
@@ -1289,5 +1299,27 @@
   },
   "services": {
     "apiKey": "مفتاح API"
+  },
+  "terminal": {
+    "connecting": "جاري الاتصال...",
+    "connected": "متصل",
+    "disconnected": "غير متصل",
+    "reconnect": "إعادة الاتصال",
+    "notConfigured": "طرفية SSH غير مكوّنة",
+    "configureHint": "قم بتكوين اتصال SSH في الإعدادات.",
+    "connectionFailed": "فشل الاتصال",
+    "fontSize": "حجم الخط",
+    "scrollback": "سطور التمرير",
+    "connection": "الاتصال",
+    "selectConnection": "اختر اتصالاً",
+    "noConnections": "لا توجد اتصالات.",
+    "connectionsHint": "أضف اتصالات SSH.",
+    "connName": "الاسم",
+    "connHost": "المضيف",
+    "connPort": "المنفذ",
+    "addConnection": "إضافة",
+    "snippets": "الاختصارات",
+    "snippetLabel": "الاسم",
+    "snippetCommand": "الأمر..."
   }
 }

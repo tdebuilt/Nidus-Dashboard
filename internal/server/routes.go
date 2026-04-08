@@ -85,7 +85,7 @@ func registerAPIRoutes(r chi.Router, srv *Server, db *database.DB) {
 	r.Use(func(next http.Handler) http.Handler {
 		timeout := middleware.Timeout(10 * time.Second)
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			if r.URL.Path == "/api/ws" || strings.HasPrefix(r.URL.Path, "/api/go2rtc/") {
+			if r.URL.Path == "/api/ws" || strings.HasPrefix(r.URL.Path, "/api/go2rtc/") || strings.HasPrefix(r.URL.Path, "/api/terminal/") {
 				next.ServeHTTP(w, r)
 				return
 			}

@@ -920,6 +920,16 @@
         "invite": "Sistema de invitaciones: generar un enlace de invitación con un rol predefinido, el usuario crea su cuenta a través del enlace",
         "manage": "Cambiar el rol o eliminar usuarios existentes"
       }
+    },
+    "terminal": {
+      "title": "Terminal SSH",
+      "prerequisite": "Configure una conexión SSH en Ajustes (host:puerto + credenciales).",
+      "configDesc": "Personalizar tamaño de fuente y líneas de desplazamiento.",
+      "features": {
+        "ssh": "Terminal SSH interactivo directamente en el panel",
+        "resize": "Redimensionamiento automático del terminal",
+        "reconnect": "Reconexión manual en caso de desconexión"
+      }
     }
   },
   "errors": {
@@ -1289,5 +1299,27 @@
   },
   "services": {
     "apiKey": "Clave API"
+  },
+  "terminal": {
+    "connecting": "Conectando...",
+    "connected": "Conectado",
+    "disconnected": "Desconectado",
+    "reconnect": "Reconectar",
+    "notConfigured": "Terminal SSH no configurado",
+    "configureHint": "Configure una conexión SSH en Ajustes.",
+    "connectionFailed": "Error de conexión",
+    "fontSize": "Tamaño de fuente",
+    "scrollback": "Líneas de desplazamiento",
+    "connection": "Conexión",
+    "selectConnection": "Seleccionar una conexión",
+    "noConnections": "Sin conexiones configuradas.",
+    "connectionsHint": "Agregue conexiones SSH.",
+    "connName": "Nombre",
+    "connHost": "Host",
+    "connPort": "Puerto",
+    "addConnection": "Agregar",
+    "snippets": "Atajos",
+    "snippetLabel": "Nombre",
+    "snippetCommand": "Comando..."
   }
 }

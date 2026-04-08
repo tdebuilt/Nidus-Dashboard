@@ -4,7 +4,7 @@
     Container, Server, Home, Shield, Download, Link,
     HeartPulse, MonitorPlay, CloudSun, CalendarDays, Rss,
     ShieldCheck, Film, Camera, TrendingUp, Activity,
-    LayoutDashboard, Bell, Webhook, Users
+    LayoutDashboard, Bell, Webhook, Users, SquareTerminal
   } from 'lucide-svelte'
   import { t } from '../lib/i18n'
   import { navigate } from '../lib/stores/router'
@@ -117,6 +117,12 @@
       icon: TrendingUp,
       hasConfig: true,
       featureKeys: ['quotes', 'chart', 'portfolio']
+    },
+    {
+      key: 'terminal',
+      icon: SquareTerminal,
+      hasConfig: true,
+      featureKeys: ['ssh', 'resize', 'reconnect']
     },
     {
       key: 'system',

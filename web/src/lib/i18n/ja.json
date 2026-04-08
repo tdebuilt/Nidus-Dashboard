@@ -920,6 +920,16 @@
         "invite": "招待システム：事前に設定した役割の招待リンクを生成し、ユーザーはリンクからアカウントを作成",
         "manage": "既存ユーザーの役割変更または削除"
       }
+    },
+    "terminal": {
+      "title": "SSHターミナル",
+      "prerequisite": "設定でSSH接続を構成してください（ホスト:ポート + 認証情報）。",
+      "configDesc": "フォントサイズとスクロールバック行数をカスタマイズ。",
+      "features": {
+        "ssh": "ダッシュボード上のインタラクティブSSHターミナル",
+        "resize": "ターミナルの自動リサイズ",
+        "reconnect": "切断時の手動再接続"
+      }
     }
   },
   "errors": {
@@ -1289,5 +1299,27 @@
   },
   "services": {
     "apiKey": "APIキー"
+  },
+  "terminal": {
+    "connecting": "接続中...",
+    "connected": "接続済み",
+    "disconnected": "切断",
+    "reconnect": "再接続",
+    "notConfigured": "SSHターミナル未設定",
+    "configureHint": "設定でSSH接続を構成してください。",
+    "connectionFailed": "接続失敗",
+    "fontSize": "フォントサイズ",
+    "scrollback": "スクロールバック行数",
+    "connection": "接続",
+    "selectConnection": "接続を選択",
+    "noConnections": "接続が設定されていません。",
+    "connectionsHint": "SSH接続を追加してください。",
+    "connName": "名前",
+    "connHost": "ホスト",
+    "connPort": "ポート",
+    "addConnection": "追加",
+    "snippets": "スニペット",
+    "snippetLabel": "名前",
+    "snippetCommand": "コマンド..."
   }
 }

@@ -920,6 +920,16 @@
         "invite": "Einladungssystem: Einladungslink mit voreingestellter Rolle generieren, Benutzer erstellt sein Konto über den Link",
         "manage": "Rolle ändern oder vorhandene Benutzer löschen"
       }
+    },
+    "terminal": {
+      "title": "SSH-Terminal",
+      "prerequisite": "Konfigurieren Sie eine SSH-Verbindung in den Einstellungen (Host:Port + Anmeldedaten).",
+      "configDesc": "Schriftgröße und Scrollback-Zeilen anpassen.",
+      "features": {
+        "ssh": "Interaktives SSH-Terminal direkt im Dashboard",
+        "resize": "Automatische Terminal-Größenanpassung",
+        "reconnect": "Manuelle Wiederverbindung bei Trennung"
+      }
     }
   },
   "errors": {
@@ -1289,5 +1299,27 @@
   },
   "services": {
     "apiKey": "API-Schlüssel"
+  },
+  "terminal": {
+    "connecting": "Verbinde...",
+    "connected": "Verbunden",
+    "disconnected": "Getrennt",
+    "reconnect": "Neu verbinden",
+    "notConfigured": "SSH-Terminal nicht konfiguriert",
+    "configureHint": "Konfigurieren Sie eine SSH-Verbindung in den Einstellungen.",
+    "connectionFailed": "Verbindung fehlgeschlagen",
+    "fontSize": "Schriftgröße",
+    "scrollback": "Scrollback-Zeilen",
+    "connection": "Verbindung",
+    "selectConnection": "Verbindung auswählen",
+    "noConnections": "Keine Verbindungen konfiguriert.",
+    "connectionsHint": "Fügen Sie SSH-Verbindungen hinzu.",
+    "connName": "Name",
+    "connHost": "Host",
+    "connPort": "Port",
+    "addConnection": "Hinzufügen",
+    "snippets": "Snippets",
+    "snippetLabel": "Name",
+    "snippetCommand": "Befehl..."
   }
 }

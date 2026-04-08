@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"log/slog"
@@ -9,6 +10,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
+	"github.com/tdebuilt/nidus/internal/crypto"
 	"github.com/tdebuilt/nidus/internal/database"
 	"github.com/tdebuilt/nidus/internal/models"
 )
@@ -17,6 +19,72 @@ import (
 type WidgetsHandler struct {
 	DB              *database.DB
 	OnReolinkChange func()
+}
+
+// encryptTerminalConfig encrypts the password field in a terminal widget config.
+func (h *WidgetsHandler) encryptTerminalConfig(ctx context.Context, config string) string {
+	var cfg map[string]interface{}
+	if err := json.Unmarshal([]byte(config), &cfg); err != nil {
+		return config
+	}
+	pw, ok := cfg["password"].(string)
+	if !ok || pw == "" || pw == "***" {
+		return config
+	}
+	encKey, err := h.DB.GetSystemSetting(ctx, "encryption_key")
+	if err != nil || encKey == "" {
+		return config
+	}
+	encrypted, err := crypto.Encrypt(pw, encKey)
+	if err != nil {
+		return config
+	}
+	cfg["password"] = encrypted
+	cfg["_encrypted"] = true
+	out, _ := json.Marshal(cfg)
+	return string(out)
+}
+
+// maskTerminalConfig replaces the password with "***" for API responses.
+func maskTerminalConfig(config string) string {
+	var cfg map[string]interface{}
+	if err := json.Unmarshal([]byte(config), &cfg); err != nil {
+		return config
+	}
+	if _, ok := cfg["password"]; ok {
+		cfg["password"] = "***"
+		delete(cfg, "_encrypted")
+		out, _ := json.Marshal(cfg)
+		return string(out)
+	}
+	return config
+}
+
+// preserveOrEncryptPassword handles terminal password on update.
+// If the password is "***" (masked), preserve the existing encrypted password.
+// Otherwise, encrypt the new password.
+func (h *WidgetsHandler) preserveOrEncryptPassword(ctx context.Context, widgetID int64, config string) string {
+	var cfg map[string]interface{}
+	if err := json.Unmarshal([]byte(config), &cfg); err != nil {
+		return config
+	}
+	pw, _ := cfg["password"].(string)
+	if pw == "***" || pw == "" {
+		// Preserve existing encrypted password from DB
+		existing, err := h.DB.GetWidget(ctx, widgetID)
+		if err != nil {
+			return config
+		}
+		var existingCfg map[string]interface{}
+		if err := json.Unmarshal([]byte(existing.Config), &existingCfg); err != nil {
+			return config
+		}
+		cfg["password"] = existingCfg["password"]
+		cfg["_encrypted"] = existingCfg["_encrypted"]
+		out, _ := json.Marshal(cfg)
+		return string(out)
+	}
+	return h.encryptTerminalConfig(ctx, config)
 }
 
 // ListByCategory godoc
@@ -59,6 +127,11 @@ func (h *WidgetsHandler) ListByCategory(w http.ResponseWriter, r *http.Request) 
 	}
 	if widgets == nil {
 		widgets = []models.Widget{}
+	}
+	for i := range widgets {
+		if widgets[i].Type == "terminal" {
+			widgets[i].Config = maskTerminalConfig(widgets[i].Config)
+		}
 	}
 	writeJSON(w, http.StatusOK, widgets)
 }
@@ -110,6 +183,10 @@ func (h *WidgetsHandler) Create(w http.ResponseWriter, r *http.Request) {
 	if req.Title == "" {
 		writeJSON(w, http.StatusBadRequest, models.ErrorResponse{Error: "title is required"})
 		return
+	}
+
+	if req.Type == "terminal" {
+		req.Config = h.encryptTerminalConfig(r.Context(), req.Config)
 	}
 
 	widget, err := h.DB.CreateWidget(r.Context(), categoryID, req.Type, req.Title, req.Config, req.PosX, req.PosY, req.Width, req.Height)
@@ -164,6 +241,10 @@ func (h *WidgetsHandler) Update(w http.ResponseWriter, r *http.Request) {
 	}
 	if req.Config == "" {
 		req.Config = "{}"
+	}
+
+	if req.Type == "terminal" {
+		req.Config = h.preserveOrEncryptPassword(r.Context(), id, req.Config)
 	}
 
 	widget, err := h.DB.UpdateWidget(r.Context(), id, req.Type, req.Title, req.Config)

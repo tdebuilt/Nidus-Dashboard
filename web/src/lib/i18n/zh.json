@@ -920,6 +920,16 @@
         "invite": "邀请系统：生成带有预设角色的邀请链接，用户通过链接创建账户",
         "manage": "更改角色或删除现有用户"
       }
+    },
+    "terminal": {
+      "title": "SSH终端",
+      "prerequisite": "在设置中配置SSH连接（主机:端口 + 凭据）。",
+      "configDesc": "自定义字体大小和滚动行数。",
+      "features": {
+        "ssh": "直接在仪表板中使用交互式SSH终端",
+        "resize": "自动调整终端大小",
+        "reconnect": "断开时手动重新连接"
+      }
     }
   },
   "errors": {
@@ -1289,5 +1299,27 @@
   },
   "services": {
     "apiKey": "API 密钥"
+  },
+  "terminal": {
+    "connecting": "连接中...",
+    "connected": "已连接",
+    "disconnected": "已断开",
+    "reconnect": "重新连接",
+    "notConfigured": "SSH终端未配置",
+    "configureHint": "在设置中配置SSH连接。",
+    "connectionFailed": "连接失败",
+    "fontSize": "字体大小",
+    "scrollback": "滚动行数",
+    "connection": "连接",
+    "selectConnection": "选择连接",
+    "noConnections": "未配置连接。",
+    "connectionsHint": "添加SSH连接。",
+    "connName": "名称",
+    "connHost": "主机",
+    "connPort": "端口",
+    "addConnection": "添加",
+    "snippets": "代码片段",
+    "snippetLabel": "名称",
+    "snippetCommand": "命令..."
   }
 }

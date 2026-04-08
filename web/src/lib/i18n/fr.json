@@ -921,6 +921,16 @@
         "invite": "Système d'invitations : générer un lien d'invitation avec un rôle prédéfini, l'utilisateur crée son compte via ce lien",
         "manage": "Modifier le rôle ou supprimer un utilisateur existant"
       }
+    },
+    "terminal": {
+      "title": "Terminal SSH",
+      "prerequisite": "Configurez une connexion SSH dans Paramètres (hôte:port + identifiants).",
+      "configDesc": "Personnalisez la taille de police et le nombre de lignes de défilement.",
+      "features": {
+        "ssh": "Terminal SSH interactif directement dans le dashboard",
+        "resize": "Redimensionnement automatique du terminal",
+        "reconnect": "Reconnexion manuelle en cas de déconnexion"
+      }
     }
   },
   "errors": {
@@ -1290,5 +1300,27 @@
   },
   "services": {
     "apiKey": "Clé API"
+  },
+  "terminal": {
+    "connecting": "Connexion...",
+    "connected": "Connecté",
+    "disconnected": "Déconnecté",
+    "reconnect": "Reconnecter",
+    "notConfigured": "Terminal SSH non configuré",
+    "configureHint": "Configurez une connexion SSH dans les Paramètres.",
+    "connectionFailed": "Échec de connexion",
+    "fontSize": "Taille de police",
+    "scrollback": "Lignes de défilement",
+    "connection": "Connexion",
+    "selectConnection": "Sélectionner une connexion",
+    "noConnections": "Aucune connexion configurée. Ajoutez-en dans Paramètres.",
+    "connectionsHint": "Ajoutez une ou plusieurs connexions SSH.",
+    "connName": "Nom",
+    "connHost": "Hôte",
+    "connPort": "Port",
+    "addConnection": "Ajouter",
+    "snippets": "Raccourcis",
+    "snippetLabel": "Nom",
+    "snippetCommand": "Commande..."
   }
 }
