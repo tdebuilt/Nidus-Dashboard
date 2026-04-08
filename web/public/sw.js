@@ -1,4 +1,4 @@
-const CACHE_NAME = 'nidus-v4'
+const CACHE_NAME = 'nidus-v5'
 const STATIC_ASSETS = [
   '/',
   '/manifest.json',
@@ -28,6 +28,11 @@ self.addEventListener('fetch', (event) => {
 
   // Skip non-GET requests
   if (request.method !== 'GET') return
+
+  // Streaming/snapshot APIs: always network, never cache
+  if (request.url.includes('/snapshot') || request.url.includes('/stream') || request.url.includes('/api/ws') || request.url.includes('/api/go2rtc/')) {
+    return
+  }
 
   // API requests: network-first
   if (request.url.includes('/api/')) {
