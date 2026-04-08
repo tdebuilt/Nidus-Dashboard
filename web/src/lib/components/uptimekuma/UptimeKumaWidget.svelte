@@ -2,7 +2,9 @@
   import { Loader2, AlertCircle, Settings, ArrowUp, ArrowDown } from 'lucide-svelte'
   import { api } from '../../api/client'
   import { pollingInterval } from '../../stores/polling'
+  import { breakpoint } from '../../stores/breakpoint'
   import { usePolling } from '../../utils/usePolling'
+  import { getResponsiveColumns } from '../../utils/responsiveColumns'
   import { t } from '../../i18n'
   import MonitorCard from './MonitorCard.svelte'
 
@@ -41,6 +43,7 @@
   })
 
   const slug = $derived(parsedConfig().slug || 'default')
+  const cols = $derived(getResponsiveColumns(parsedConfig(), $breakpoint, 1))
 
   async function fetchData() {
     const hadData = data !== null
@@ -143,7 +146,7 @@
       </div>
 
       <!-- Monitor list -->
-      <div class="space-y-1.5">
+      <div class="grid gap-1.5" style="grid-template-columns: repeat({cols}, 1fr)">
         {#each data.monitors as monitor (monitor.id)}
           <MonitorCard {monitor} />
         {/each}
