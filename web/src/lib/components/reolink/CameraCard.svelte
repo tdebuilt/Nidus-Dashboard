@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { onMount, untrack } from 'svelte'
   import { Video, Camera, Maximize2, X } from 'lucide-svelte'
   import { api } from '../../api/client'
   import { t } from '../../i18n'
@@ -36,7 +37,7 @@
   let videoEl: HTMLVideoElement | undefined = $state()
   let player: MsePlayer | null = null
 
-  $effect(() => {
+  onMount(() => {
     api
       .get<{ go2rtc?: string }>(`/api/reolink/cameras/${id}/stream`)
       .then((info) => { go2rtcWsUrl = info.go2rtc || null })
@@ -64,17 +65,8 @@
       wasActive = false
     } else if (active && !wasActive) {
       wasActive = true
-      if (!destroyed) scheduleRefresh()
+      if (!destroyed) untrack(() => scheduleRefresh())
     }
-  })
-
-  // Reactive: attach video src when element becomes available
-  let mseAttached = false
-  $effect(() => {
-    if (videoEl && mseActive && player && !mseAttached) {
-      mseAttached = true
-    }
-    if (!mseActive) mseAttached = false
   })
 
   // Snapshot polling
