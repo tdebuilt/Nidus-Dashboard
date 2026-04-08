@@ -18,7 +18,7 @@ The name comes from Latin — *nidus* means "nest". A central hub where all your
 - **~30-70 MB RAM** — runs on any x86_64 machine
 - **Single binary or Docker container** — no external database, includes embedded go2rtc for camera streaming
 - **Real control** — start, stop, restart, update containers and VMs directly
-- **19 widget types** — Docker, Proxmox, Home Assistant, media servers, cameras, and more
+- **20 widget types** — Docker, Proxmox, Home Assistant, SSH terminal, media servers, cameras, and more
 - **Desktop app** — native installers for Linux, macOS, and Windows via Tauri
 
 <p align="center">
@@ -82,6 +82,7 @@ Nidus fills the gap: a **fast, lightweight dashboard** with real container manag
 - **Uptime Kuma** — Monitor status, uptime percentage, latency
 - **Reolink cameras** — Live RTSP streams via embedded go2rtc (WebRTC)
 - **Grafana** — Embed Grafana panels with dashboard and panel picker
+- **SSH Terminal** — Interactive SSH terminal with xterm.js, command snippets, and mobile toolbar
 - **App Links** — Custom bookmarks with automatic health checks and favicons
 
 ### Additional widgets
@@ -245,6 +246,7 @@ Configuration can also be set via a `config.yaml` file. See [docs/DEPLOYMENT.md]
 | **RSS** | RSS/Atom feeds | Aggregated article list |
 | **System** | Linux /proc | Host CPU, RAM, disk, uptime |
 | **Finance** | Market data API | Stock ticker, price tracking |
+| **SSH Terminal** | SSH via WebSocket | Interactive terminal, command snippets |
 
 All modules are configured via the UI during setup or in settings.
 

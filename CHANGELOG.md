@@ -6,6 +6,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 
 ## [Unreleased]
 
+## [0.3.0-beta.1] - 2026-04-08
+
+### Added
+- **SSH Terminal** — interactive SSH terminal widget with xterm.js, command snippets, and mobile toolbar
+- SECURITY.md with vulnerability reporting guidelines
+- Improved .dockerignore for smaller build context
+
+### Infrastructure
+- Pre-release Docker tags no longer update `latest`
+- Desktop builds skipped for pre-release versions
+
 ## [0.1.0] - 2026-03-26
 
 ### Core

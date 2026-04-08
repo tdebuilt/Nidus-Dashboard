@@ -236,6 +236,15 @@ Service configuration is done afterward in Settings.
 - Add torrents (URL/magnet or file upload)
 - Start/stop individual or all
 
+### SSH Terminal
+
+- Interactive SSH terminal via xterm.js (WebSocket-based)
+- Multiple saved SSH connections (host, port, credentials)
+- Command snippets for quick execution
+- Mobile-friendly toolbar
+- Configurable font size and scrollback buffer
+- Auto-resize on widget resize
+
 ---
 
 ## Internationalization (i18n)

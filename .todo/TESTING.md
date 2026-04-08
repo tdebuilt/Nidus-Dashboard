@@ -182,7 +182,24 @@
 - [ ] Multi-panel grid layout displays selected panels
 - [ ] Config: select dashboard and panels to embed
 
-## 18. Internationalization (i18n)
+## 18. SSH Terminal
+
+- [ ] Add SSH terminal widget to a category
+- [ ] Widget shows "not configured" when no SSH connection is saved
+- [ ] Configure SSH connection in widget config (name, host, port)
+- [ ] Connect to SSH server → terminal opens with xterm.js
+- [ ] Type commands → output displayed in terminal
+- [ ] Terminal auto-resizes when widget is resized
+- [ ] Disconnect → status changes to "Disconnected"
+- [ ] Reconnect button works after disconnect
+- [ ] Command snippets: add a snippet (label + command)
+- [ ] Command snippets: click snippet → command sent to terminal
+- [ ] Font size config applied to terminal
+- [ ] Scrollback buffer config applied
+- [ ] Mobile toolbar visible and functional on mobile viewport
+- [ ] Multiple SSH connections: switch between saved connections
+
+## 19. Internationalization (i18n)
 
 - [ ] Switch language in Settings (dropdown with flag + native name)
 - [ ] French: all labels correct
@@ -193,7 +210,7 @@
 - [ ] Browser language auto-detected on first visit
 - [ ] Language preference persists after reload
 
-## 19. Themes & Customization
+## 20. Themes & Customization
 
 - [ ] Settings → Theme selector with live preview
 - [ ] Dark theme: all elements properly styled
@@ -206,7 +223,7 @@
 - [ ] Custom CSS textarea in Settings
 - [ ] Custom CSS injected and applied
 
-## 20. Multi-user & Roles
+## 21. Multi-user & Roles
 
 - [ ] Admin can manage users in Settings
 - [ ] Create invitation link/code
@@ -215,7 +232,7 @@
 - [ ] **Editor**: can modify dashboard (widgets, categories) but NOT settings/services
 - [ ] **Viewer**: read-only (edit mode hidden)
 
-## 21. YAML Configuration
+## 22. YAML Configuration
 
 - [ ] Settings → Export YAML: file downloaded
 - [ ] Exported YAML contains categories, widgets, services, settings
@@ -224,7 +241,7 @@
 - [ ] After failed import, existing data intact
 - [ ] Auto-import from `config.yaml` on first startup (empty DB)
 
-## 22. Notifications
+## 23. Notifications
 
 - [ ] Settings → Notifications section (admin only)
 - [ ] Add Gotify provider (URL + token)
@@ -236,7 +253,7 @@
 - [ ] Delete notification rule
 - [ ] Event types: container down, service unreachable
 
-## 23. Kiosk Mode
+## 24. Kiosk Mode
 
 - [ ] Navigate to `/kiosk`
 - [ ] No sidebar, no header, no edit buttons
@@ -253,7 +270,7 @@
 - [ ] Keyboard: F → fullscreen
 - [ ] Rotation indicator dots at bottom
 
-## 24. Search
+## 25. Search
 
 - [ ] Search bar visible in header
 - [ ] Type >= 2 chars → results in dropdown
@@ -261,21 +278,21 @@
 - [ ] Click result navigates to correct category
 - [ ] Escape or click outside closes dropdown
 
-## 25. Polling & Refresh
+## 26. Polling & Refresh
 
 - [ ] Settings → Refresh interval selector
 - [ ] Options: 10s, 15s, 30s, 60s, 120s, 300s
 - [ ] Change interval → widgets refresh at new rate
 - [ ] Setting persists after reload
 
-## 26. JSON Export/Import
+## 27. JSON Export/Import
 
 - [ ] Settings → Export JSON config → file downloaded
 - [ ] Import exported JSON → config restored
 - [ ] Import invalid JSON → error message
 - [ ] After failed import, existing data intact
 
-## 27. PWA & Offline
+## 28. PWA & Offline
 
 - [ ] Site is installable (button in browser address bar)
 - [ ] Manifest visible in DevTools > Application > Manifest
@@ -284,7 +301,7 @@
 - [ ] Cached data still displayed while offline
 - [ ] Restore network → banner disappears
 
-## 28. Mobile / Responsive
+## 29. Mobile / Responsive
 
 - [ ] Mobile: single column grid
 - [ ] Action buttons large enough for touch (>= 44px)
@@ -293,7 +310,7 @@
 - [ ] No horizontal scroll
 - [ ] Dialogs usable on mobile
 
-## 29. General
+## 30. General
 
 - [ ] 404 page for unknown routes
 - [ ] Network error page with retry button
