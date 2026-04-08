@@ -23,8 +23,39 @@ env:
   VERSION: ${{ github.event.release.tag_name || inputs.version }}
 
 jobs:
+  create-release:
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Create tag
+        run: |
+          git tag "${{ env.VERSION }}"
+          git push origin "${{ env.VERSION }}"
+
+      - name: Determine prerelease
+        id: pre
+        run: |
+          if [[ "${{ env.VERSION }}" == *"-"* ]]; then
+            echo "flag=--prerelease" >> "$GITHUB_OUTPUT"
+          else
+            echo "flag=" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Create GitHub release
+        run: |
+          gh release create "${{ env.VERSION }}" \
+            --title "Release ${{ env.VERSION }}" \
+            --generate-notes \
+            ${{ steps.pre.outputs.flag }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
   build-docker:
     runs-on: ubuntu-latest
+    needs: [create-release]
+    if: always() && (needs.create-release.result == 'success' || needs.create-release.result == 'skipped')
     steps:
       - uses: actions/checkout@v6
 
@@ -61,7 +92,8 @@ jobs:
 
   notify-success:
     runs-on: ubuntu-latest
-    needs: [build-docker]
+    needs: [create-release, build-docker]
+    if: always() && needs.build-docker.result == 'success'
     steps:
       - uses: actions/checkout@v6
         with:
@@ -76,8 +108,8 @@ jobs:
 
   notify-failure:
     runs-on: ubuntu-latest
-    needs: [build-docker]
-    if: failure()
+    needs: [create-release, build-docker]
+    if: always() && (needs.create-release.result == 'failure' || needs.build-docker.result == 'failure')
     steps:
       - uses: actions/checkout@v6
         with:
