@@ -6,6 +6,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 
 ## [Unreleased]
 
+### Fixed
+- **Terminal widget shows real SSH error** — replaced the opaque "WebSocket failed" message with structured error frames classifying authentication, network, timeout, host resolution, decryption-key mismatch and handshake failures, rendered in red inside xterm
+
 ## [0.3.0-beta.7] - 2026-04-08
 
 ### Added

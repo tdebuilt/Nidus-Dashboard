@@ -106,6 +106,8 @@
     ws.onmessage = (event: MessageEvent) => {
       if (event.data instanceof ArrayBuffer) {
         terminal?.write(new Uint8Array(event.data))
+      } else if (typeof event.data === 'string') {
+        handleTextFrame(event.data)
       }
     }
 
@@ -122,6 +124,27 @@
         ws.send(JSON.stringify({ type: 'input', data: btoa(data) }))
       }
     })
+  }
+
+  // Text frames carry structured error messages from the backend
+  // (auth failures, decryption mismatches, network problems). They are
+  // rendered in red inside xterm so the user sees the actual reason
+  // instead of an opaque "WebSocket failed".
+  function handleTextFrame(raw: string) {
+    let message = raw
+    try {
+      const parsed = JSON.parse(raw) as { type?: string; message?: string }
+      if (parsed.type === 'error' && parsed.message) {
+        message = parsed.message
+      }
+    } catch {
+      // Non-JSON text frames fall through and are written as-is.
+    }
+    if (!terminal) return
+    const lines = message.split('\n')
+    for (const line of lines) {
+      terminal.writeln(`\x1b[31m\u2716 ${line}\x1b[0m`)
+    }
   }
 
   function sendResize() {
