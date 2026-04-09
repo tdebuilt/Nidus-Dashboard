@@ -3,6 +3,7 @@ package qbittorrent
 import (
 	"context"
 	"encoding/json"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -111,6 +112,18 @@ func mockQBittorrentServer(t *testing.T) (*httptest.Server, *atomic.Int32) {
 			w.WriteHeader(http.StatusOK)
 		})
 	}
+
+	// Categories endpoint
+	mux.HandleFunc("/api/v2/torrents/categories", func(w http.ResponseWriter, r *http.Request) {
+		requestCount.Add(1)
+		if !checkSID(w, r) {
+			return
+		}
+		json.NewEncoder(w).Encode(map[string]Category{
+			"linux": {Name: "linux", SavePath: "/downloads/linux"},
+			"tv":    {Name: "tv", SavePath: "/downloads/tv"},
+		})
+	})
 
 	return httptest.NewServer(mux), requestCount
 }
@@ -251,7 +264,7 @@ func TestDeleteTorrents(t *testing.T) {
 	}
 }
 
-func TestAddTorrent(t *testing.T) {
+func TestAddTorrentMagnet(t *testing.T) {
 	t.Parallel()
 	srv, _ := mockQBittorrentServer(t)
 	defer srv.Close()
@@ -259,8 +272,124 @@ func TestAddTorrent(t *testing.T) {
 	client := NewClient(srv.URL, srv.Client())
 	client.SetCredentials("admin", "secret")
 
-	if err := client.AddTorrent(context.Background(), "magnet:?xt=urn:btih:test"); err != nil {
+	err := client.AddTorrent(context.Background(), AddOptions{URL: "magnet:?xt=urn:btih:test"})
+	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestAddTorrentWithCategoryAndSavePath(t *testing.T) {
+	t.Parallel()
+
+	var gotBody string
+	var gotContentType string
+	mux := http.NewServeMux()
+	mux.HandleFunc("/api/v2/auth/login", func(w http.ResponseWriter, r *http.Request) {
+		http.SetCookie(w, &http.Cookie{Name: "SID", Value: testSID})
+		w.Write([]byte("Ok."))
+	})
+	mux.HandleFunc("/api/v2/torrents/add", func(w http.ResponseWriter, r *http.Request) {
+		gotContentType = r.Header.Get("Content-Type")
+		body, _ := io.ReadAll(r.Body)
+		gotBody = string(body)
+		w.WriteHeader(http.StatusOK)
+	})
+	srv := httptest.NewServer(mux)
+	defer srv.Close()
+
+	client := NewClient(srv.URL, srv.Client())
+	client.SetCredentials("admin", "secret")
+
+	err := client.AddTorrent(context.Background(), AddOptions{
+		URL:      "magnet:?xt=urn:btih:test",
+		Category: "linux",
+		SavePath: "/mnt/linux",
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !strings.Contains(gotContentType, "application/x-www-form-urlencoded") {
+		t.Fatalf("expected form content-type, got %q", gotContentType)
+	}
+	if !strings.Contains(gotBody, "category=linux") {
+		t.Fatalf("expected category in body, got %q", gotBody)
+	}
+	if !strings.Contains(gotBody, "savepath=") {
+		t.Fatalf("expected savepath in body, got %q", gotBody)
+	}
+}
+
+func TestAddTorrentFile(t *testing.T) {
+	t.Parallel()
+
+	var gotContentType string
+	var gotBody []byte
+	mux := http.NewServeMux()
+	mux.HandleFunc("/api/v2/auth/login", func(w http.ResponseWriter, r *http.Request) {
+		http.SetCookie(w, &http.Cookie{Name: "SID", Value: testSID})
+		w.Write([]byte("Ok."))
+	})
+	mux.HandleFunc("/api/v2/torrents/add", func(w http.ResponseWriter, r *http.Request) {
+		gotContentType = r.Header.Get("Content-Type")
+		gotBody, _ = io.ReadAll(r.Body)
+		w.WriteHeader(http.StatusOK)
+	})
+	srv := httptest.NewServer(mux)
+	defer srv.Close()
+
+	client := NewClient(srv.URL, srv.Client())
+	client.SetCredentials("admin", "secret")
+
+	err := client.AddTorrent(context.Background(), AddOptions{
+		File:     []byte("d8:announce..."),
+		Category: "tv",
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !strings.HasPrefix(gotContentType, "multipart/form-data") {
+		t.Fatalf("expected multipart content-type, got %q", gotContentType)
+	}
+	body := string(gotBody)
+	if !strings.Contains(body, `name="torrents"`) {
+		t.Fatalf("expected torrents part, got %q", body)
+	}
+	if !strings.Contains(body, `name="category"`) || !strings.Contains(body, "tv") {
+		t.Fatalf("expected category field, got %q", body)
+	}
+}
+
+func TestAddTorrentRequiresInput(t *testing.T) {
+	t.Parallel()
+	client := NewClient("http://example.invalid", nil)
+	client.SetCredentials("admin", "secret")
+
+	err := client.AddTorrent(context.Background(), AddOptions{})
+	if err == nil {
+		t.Fatal("expected error for empty options")
+	}
+	if !strings.Contains(err.Error(), "url or file required") {
+		t.Fatalf("expected 'url or file required', got: %v", err)
+	}
+}
+
+func TestGetCategories(t *testing.T) {
+	t.Parallel()
+	srv, _ := mockQBittorrentServer(t)
+	defer srv.Close()
+
+	client := NewClient(srv.URL, srv.Client())
+	client.SetCredentials("admin", "secret")
+
+	cats, err := client.GetCategories(context.Background())
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(cats) != 2 {
+		t.Fatalf("expected 2 categories, got %d", len(cats))
+	}
+	if cats["linux"].SavePath != "/downloads/linux" {
+		t.Fatalf("unexpected save path: %v", cats["linux"])
 	}
 }
 

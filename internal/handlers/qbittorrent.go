@@ -120,43 +120,6 @@ func (h *QBittorrentHandler) ListTorrents(w http.ResponseWriter, r *http.Request
 	writeJSON(w, http.StatusOK, result)
 }
 
-// AddTorrent godoc
-// @Summary Add a torrent by URL/magnet
-// @Tags qbittorrent
-// @Accept json
-// @Produce json
-// @Param body body object true "Torrent to add" SchemaExample({"url": "magnet:?xt=..."})
-// @Success 200 {object} map[string]string
-// @Failure 400 {object} models.ErrorResponse
-// @Failure 502 {object} models.ErrorResponse
-// @Router /qbittorrent/torrents [post]
-// @Security BearerAuth
-func (h *QBittorrentHandler) AddTorrent(w http.ResponseWriter, r *http.Request) {
-	var body struct {
-		URL string `json:"url"`
-	}
-	if err := json.NewDecoder(r.Body).Decode(&body); err != nil || body.URL == "" {
-		writeJSON(w, http.StatusBadRequest, models.ErrorResponse{Error: "url is required"})
-		return
-	}
-
-	client, err := h.getClient(r.Context())
-	if err != nil || client == nil {
-		slog.Error("qbittorrent: not available for AddTorrent", "error", err)
-		writeJSON(w, http.StatusBadGateway, models.ErrorResponse{Error: "qBittorrent not available"})
-		return
-	}
-
-	if err := client.AddTorrent(r.Context(), body.URL); err != nil {
-		slog.Error("qbittorrent: failed to add torrent", "error", err)
-		writeJSON(w, http.StatusBadGateway, models.ErrorResponse{Error: "failed to add torrent"})
-		return
-	}
-
-	h.Cache.InvalidatePrefix("qbt:")
-	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
-}
-
 // ResumeTorrent godoc
 // @Summary Resume a torrent
 // @Tags qbittorrent

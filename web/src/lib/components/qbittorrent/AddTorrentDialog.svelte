@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { X } from 'lucide-svelte'
+  import { X, Link, Upload } from 'lucide-svelte'
   import { api } from '../../api/client'
   import { toasts } from '../../stores/toast'
   import { t, translate } from '../../i18n'
@@ -11,20 +11,86 @@
     onAdded?: () => void
   }
 
+  interface QbtCategory {
+    name: string
+    savePath: string
+  }
+
   const { open, onClose, onAdded }: Props = $props()
 
+  const MAX_FILE_BYTES = 10 * 1024 * 1024 // 10 MB, must match backend cap
+
+  let mode = $state<'url' | 'file'>('url')
   let url = $state('')
+  let fileName = $state('')
+  let fileBase64 = $state('')
+  let category = $state('')
+  let savePath = $state('')
+  let categories = $state<Record<string, QbtCategory>>({})
   let submitting = $state(false)
+  let fileInput: HTMLInputElement | undefined = $state()
+
+  async function loadCategories() {
+    try {
+      categories = await api.get<Record<string, QbtCategory>>('/api/qbittorrent/categories')
+    } catch {
+      toasts.error(translate('qbittorrent.categoriesError'))
+      categories = {}
+    }
+  }
+
+  $effect(() => {
+    if (open) {
+      loadCategories()
+    }
+  })
+
+  const categorySavePath = $derived(category ? categories[category]?.savePath ?? '' : '')
 
   function reset() {
     url = ''
+    fileName = ''
+    fileBase64 = ''
+    category = ''
+    savePath = ''
+    mode = 'url'
+  }
+
+  function handleFileChange(e: Event) {
+    const input = e.target as HTMLInputElement
+    const file = input.files?.[0]
+    if (!file) return
+
+    if (file.size > MAX_FILE_BYTES) {
+      toasts.error(translate('qbittorrent.fileTooLarge'))
+      input.value = ''
+      return
+    }
+
+    fileName = file.name
+    const reader = new FileReader()
+    reader.onload = () => {
+      const result = reader.result as string
+      fileBase64 = result.split(',')[1] ?? ''
+    }
+    reader.readAsDataURL(file)
   }
 
   async function handleSubmit() {
-    if (!url.trim()) return
     submitting = true
     try {
-      await api.post('/api/qbittorrent/torrents', { url: url.trim() })
+      const payload: Record<string, string> = {}
+      if (mode === 'file' && fileBase64) {
+        payload.metainfo = fileBase64
+      } else if (mode === 'url' && url.trim()) {
+        payload.url = url.trim()
+      } else {
+        return
+      }
+      if (category) payload.category = category
+      if (savePath.trim()) payload.save_path = savePath.trim()
+
+      await api.post('/api/qbittorrent/torrents', payload)
       toasts.success(translate('qbittorrent.torrentAdded'))
       reset()
       onClose()
@@ -36,7 +102,10 @@
     }
   }
 
-  const canSubmit = $derived(url.trim().length > 0)
+  const canSubmit = $derived(
+    (mode === 'url' && url.trim().length > 0) ||
+    (mode === 'file' && fileBase64.length > 0)
+  )
 </script>
 
 {#if open}
@@ -50,13 +119,82 @@
         </button>
       </div>
 
-      <input
-        type="text"
-        bind:value={url}
-        placeholder={$t('qbittorrent.urlPlaceholder')}
-        aria-label={$t('qbittorrent.urlPlaceholder')}
-        class="w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-2 text-sm text-[var(--color-text)] placeholder:text-[var(--color-text-muted)] focus:border-[var(--color-primary)] focus:outline-none"
-      />
+      <!-- Mode tabs -->
+      <div class="mb-3 flex gap-1 rounded-lg bg-[var(--color-bg)] p-1">
+        <button
+          onclick={() => mode = 'url'}
+          class="flex flex-1 items-center justify-center gap-1.5 rounded-md px-3 py-1.5 text-sm transition-colors {mode === 'url' ? 'bg-[var(--color-bg-secondary)] text-[var(--color-text)] shadow-sm' : 'text-[var(--color-text-muted)] hover:text-[var(--color-text)]'}"
+        >
+          <Link size={14} />
+          {$t('qbittorrent.urlTab')}
+        </button>
+        <button
+          onclick={() => mode = 'file'}
+          class="flex flex-1 items-center justify-center gap-1.5 rounded-md px-3 py-1.5 text-sm transition-colors {mode === 'file' ? 'bg-[var(--color-bg-secondary)] text-[var(--color-text)] shadow-sm' : 'text-[var(--color-text-muted)] hover:text-[var(--color-text)]'}"
+        >
+          <Upload size={14} />
+          {$t('qbittorrent.fileTab')}
+        </button>
+      </div>
+
+      {#if mode === 'url'}
+        <input
+          type="text"
+          bind:value={url}
+          placeholder={$t('qbittorrent.urlPlaceholder')}
+          aria-label={$t('qbittorrent.urlPlaceholder')}
+          class="w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-2 text-sm text-[var(--color-text)] placeholder:text-[var(--color-text-muted)] focus:border-[var(--color-primary)] focus:outline-none"
+        />
+      {:else}
+        <div
+          class="flex flex-col items-center gap-2 rounded-lg border-2 border-dashed border-[var(--color-border)] bg-[var(--color-bg)] p-4 text-center transition-colors hover:border-[var(--color-primary)]"
+          role="button"
+          tabindex="0"
+          onclick={() => fileInput?.click()}
+          onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') fileInput?.click() }}
+        >
+          <Upload size={24} class="text-[var(--color-text-muted)]" />
+          {#if fileName}
+            <span class="text-sm text-[var(--color-text)]">{fileName}</span>
+          {:else}
+            <span class="text-sm text-[var(--color-text-muted)]">{$t('qbittorrent.fileDropHint')}</span>
+          {/if}
+          <input
+            bind:this={fileInput}
+            type="file"
+            accept=".torrent"
+            class="hidden"
+            onchange={handleFileChange}
+          />
+        </div>
+      {/if}
+
+      <!-- Category selector -->
+      <div class="mt-3">
+        <label for="qbt-category" class="mb-1 block text-xs text-[var(--color-text-muted)]">{$t('qbittorrent.category')}</label>
+        <select
+          id="qbt-category"
+          bind:value={category}
+          class="w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-2 text-sm text-[var(--color-text)] focus:border-[var(--color-primary)] focus:outline-none"
+        >
+          <option value="">{$t('qbittorrent.categoryDefault')}</option>
+          {#each Object.keys(categories) as name (name)}
+            <option value={name}>{name}</option>
+          {/each}
+        </select>
+      </div>
+
+      <!-- Save path -->
+      <div class="mt-3">
+        <label for="qbt-savepath" class="mb-1 block text-xs text-[var(--color-text-muted)]">{$t('qbittorrent.savePath')}</label>
+        <input
+          id="qbt-savepath"
+          type="text"
+          bind:value={savePath}
+          placeholder={categorySavePath || $t('qbittorrent.savePathPlaceholder')}
+          class="w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-2 text-sm text-[var(--color-text)] placeholder:text-[var(--color-text-muted)] focus:border-[var(--color-primary)] focus:outline-none"
+        />
+      </div>
 
       <div class="mt-4 flex justify-end gap-2">
         <button onclick={() => { reset(); onClose() }}

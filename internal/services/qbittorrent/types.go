@@ -60,6 +60,21 @@ type TorrentsInfo struct {
 	ActiveCount   int           `json:"active_count"`
 }
 
+// Category represents a qBittorrent category from /api/v2/torrents/categories.
+type Category struct {
+	Name     string `json:"name"`
+	SavePath string `json:"savePath"`
+}
+
+// AddOptions carries the parameters accepted by the qBittorrent "add torrent"
+// endpoint. Exactly one of URL or File must be set.
+type AddOptions struct {
+	URL      string // magnet link or HTTP URL to a .torrent
+	File     []byte // raw .torrent file contents
+	Category string // optional category name
+	SavePath string // optional save path (overrides category's savePath)
+}
+
 // stateToStatus maps qBittorrent states to simplified Nidus statuses.
 func stateToStatus(state string) string {
 	switch state {

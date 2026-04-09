@@ -85,6 +85,7 @@ func registerViewerServiceRoutes(r chi.Router, srv *Server, db *database.DB) {
 
 	qbtHandler := &handlers.QBittorrentHandler{DB: db, Cache: srv.ServiceCache}
 	r.Get("/qbittorrent/torrents", qbtHandler.ListTorrents)
+	r.Get("/qbittorrent/categories", qbtHandler.GetCategories)
 
 	go2rtcHandler := &handlers.Go2RTCHandler{Manager: srv.Go2RTCManager}
 	r.Get("/go2rtc/status", go2rtcHandler.Status)

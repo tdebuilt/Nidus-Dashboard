@@ -1,11 +1,13 @@
 package qbittorrent
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
+	"mime/multipart"
 	"net/http"
 	"net/url"
 	"strings"
@@ -171,6 +173,37 @@ func (c *Client) executePost(ctx context.Context, path string, form url.Values, 
 	return c.doRequest(req, nil)
 }
 
+// doMultipartPost performs an authenticated multipart/form-data POST. On 403,
+// it re-authenticates once and retries with the same pre-built body.
+func (c *Client) doMultipartPost(ctx context.Context, path, contentType string, body []byte) error {
+	sid, err := c.getSID(ctx)
+	if err != nil {
+		return err
+	}
+
+	status, err := c.executeMultipartPost(ctx, path, contentType, body, sid)
+	if err != nil && status == http.StatusForbidden {
+		sid, err = c.refreshSID(ctx)
+		if err != nil {
+			return err
+		}
+		_, err = c.executeMultipartPost(ctx, path, contentType, body, sid)
+		return err
+	}
+	return err
+}
+
+func (c *Client) executeMultipartPost(ctx context.Context, path, contentType string, body []byte, sid string) (int, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.baseURL+path, bytes.NewReader(body))
+	if err != nil {
+		return 0, fmt.Errorf("creating request: %w", err)
+	}
+	req.Header.Set("Content-Type", contentType)
+	req.AddCookie(&http.Cookie{Name: "SID", Value: sid})
+
+	return c.doRequest(req, nil)
+}
+
 // doRequest executes the request and optionally decodes JSON.
 func (c *Client) doRequest(req *http.Request, result any) (int, error) {
 	resp, err := c.httpClient.Do(req)
@@ -248,13 +281,63 @@ func (c *Client) DeleteTorrents(ctx context.Context, hashes []string, deleteFile
 	return nil
 }
 
-// AddTorrent adds a torrent by URL or magnet link.
-func (c *Client) AddTorrent(ctx context.Context, urls string) error {
-	form := url.Values{"urls": {urls}}
+// AddTorrent adds a torrent from a URL/magnet link or raw .torrent bytes.
+// Category and SavePath are optional and forwarded to qBittorrent as-is.
+func (c *Client) AddTorrent(ctx context.Context, opts AddOptions) error {
+	if len(opts.File) == 0 && opts.URL == "" {
+		return errors.New("add torrent: url or file required")
+	}
+	if len(opts.File) > 0 {
+		return c.addTorrentMultipart(ctx, opts)
+	}
+	form := url.Values{"urls": {opts.URL}}
+	if opts.Category != "" {
+		form.Set("category", opts.Category)
+	}
+	if opts.SavePath != "" {
+		form.Set("savepath", opts.SavePath)
+	}
 	if err := c.doPost(ctx, "/api/v2/torrents/add", form); err != nil {
 		return fmt.Errorf("adding torrent: %w", err)
 	}
 	return nil
+}
+
+// addTorrentMultipart uploads a .torrent file via multipart/form-data.
+func (c *Client) addTorrentMultipart(ctx context.Context, opts AddOptions) error {
+	body := &bytes.Buffer{}
+	writer := multipart.NewWriter(body)
+
+	part, err := writer.CreateFormFile("torrents", "upload.torrent")
+	if err != nil {
+		return fmt.Errorf("building multipart: %w", err)
+	}
+	if _, err := part.Write(opts.File); err != nil {
+		return fmt.Errorf("writing torrent bytes: %w", err)
+	}
+	if opts.Category != "" {
+		_ = writer.WriteField("category", opts.Category)
+	}
+	if opts.SavePath != "" {
+		_ = writer.WriteField("savepath", opts.SavePath)
+	}
+	if err := writer.Close(); err != nil {
+		return fmt.Errorf("closing multipart: %w", err)
+	}
+
+	if err := c.doMultipartPost(ctx, "/api/v2/torrents/add", writer.FormDataContentType(), body.Bytes()); err != nil {
+		return fmt.Errorf("adding torrent file: %w", err)
+	}
+	return nil
+}
+
+// GetCategories returns the list of categories configured in qBittorrent.
+func (c *Client) GetCategories(ctx context.Context) (map[string]Category, error) {
+	categories := map[string]Category{}
+	if err := c.doGet(ctx, "/api/v2/torrents/categories", nil, &categories); err != nil {
+		return nil, fmt.Errorf("fetching categories: %w", err)
+	}
+	return categories, nil
 }
 
 // ResumeAll resumes all torrents.

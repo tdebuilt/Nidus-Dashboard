@@ -6,6 +6,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 
 ## [Unreleased]
 
+### Added
+- **qBittorrent `.torrent` file upload** — add torrents from a local file in addition to URL/magnet, with category selection, custom save path and a 10 MB upload cap
+
 ### Fixed
 - **Terminal widget shows real SSH error** — replaced the opaque "WebSocket failed" message with structured error frames classifying authentication, network, timeout, host resolution, decryption-key mismatch and handshake failures, rendered in red inside xterm
 
