@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { onMount, untrack } from 'svelte'
   import { Video, Camera, Maximize2, X } from 'lucide-svelte'
   import { api } from '../../api/client'
   import { t } from '../../i18n'
@@ -27,6 +28,7 @@
 
   let snapshotTs = $state(Date.now())
   const imgSrc = $derived(`/api/reolink/cameras/${id}/snapshot?t=${snapshotTs}`)
+  let imgEl: HTMLImageElement | undefined = $state()
   let timer: ReturnType<typeof setTimeout> | null = null
   let destroyed = false
 
@@ -35,7 +37,7 @@
   let videoEl: HTMLVideoElement | undefined = $state()
   let player: MsePlayer | null = null
 
-  $effect(() => {
+  onMount(() => {
     api
       .get<{ go2rtc?: string }>(`/api/reolink/cameras/${id}/stream`)
       .then((info) => { go2rtcWsUrl = info.go2rtc || null })
@@ -47,6 +49,7 @@
       stopRefresh()
       player?.destroy()
       player = null
+      imgEl = undefined
     }
   })
 
@@ -62,17 +65,8 @@
       wasActive = false
     } else if (active && !wasActive) {
       wasActive = true
-      if (!destroyed) scheduleRefresh()
+      if (!destroyed) untrack(() => scheduleRefresh())
     }
-  })
-
-  // Reactive: attach video src when element becomes available
-  let mseAttached = false
-  $effect(() => {
-    if (videoEl && mseActive && player && !mseAttached) {
-      mseAttached = true
-    }
-    if (!mseActive) mseAttached = false
   })
 
   // Snapshot polling
@@ -95,6 +89,8 @@
     img.onload = () => {
       if (gen === refreshGeneration && !destroyed && !mseActive) {
         snapshotTs = ts
+        // Force DOM update in case Svelte reactivity doesn't trigger re-render
+        if (imgEl) imgEl.src = next
         scheduleRefresh()
       }
     }
@@ -177,10 +173,10 @@
     ></video>
   {:else}
     <img
+      bind:this={imgEl}
       src={imgSrc}
       alt={name}
       class={fullscreen ? 'h-full w-full object-contain' : 'w-full object-cover'}
-      loading="lazy"
     />
   {/if}
 
@@ -217,7 +213,7 @@
   {#if !fullscreen}
     <button
       onclick={toggleFullscreen}
-      class="absolute bottom-2 end-2 rounded-full bg-black/50 p-1.5 text-white opacity-0 transition-opacity hover:bg-black/70 group-hover:opacity-100"
+      class="absolute bottom-2 end-2 rounded-full bg-black/50 p-1.5 text-white opacity-100 transition-opacity hover:bg-black/70 sm:opacity-0 sm:group-hover:opacity-100"
       title={$t('reolink.fullscreen')}
       aria-label={$t('reolink.fullscreen')}
     >

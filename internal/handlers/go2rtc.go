@@ -17,8 +17,11 @@ var wsUpgrader = websocket.Upgrader{
 		if origin == "" {
 			return true // no Origin header = same-origin request
 		}
-		host := r.Host
-		return origin == "https://"+host || origin == "http://"+host
+		u, err := url.Parse(origin)
+		if err != nil {
+			return false
+		}
+		return u.Host == r.Host
 	},
 }
 
