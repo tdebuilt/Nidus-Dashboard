@@ -631,7 +631,10 @@
     "sortStatusDown": "Offline eerst",
     "fillMode": "Vulrichting",
     "fillByRow": "Per rij",
-    "fillByColumn": "Per kolom"
+    "fillByColumn": "Per kolom",
+    "healthCheckInterval": "Interval gezondheidscontrole",
+    "healthCheckDisabled": "Uitgeschakeld",
+    "healthCheckMinutes": "{count} min"
   },
   "search": {
     "placeholder": "Zoeken...",

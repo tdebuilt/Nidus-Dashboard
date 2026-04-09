@@ -631,7 +631,10 @@
     "sortStatusDown": "Offline zuerst",
     "fillMode": "Füllrichtung",
     "fillByRow": "Zeilenweise",
-    "fillByColumn": "Spaltenweise"
+    "fillByColumn": "Spaltenweise",
+    "healthCheckInterval": "Erreichbarkeits-Intervall",
+    "healthCheckDisabled": "Deaktiviert",
+    "healthCheckMinutes": "{count} Min"
   },
   "search": {
     "placeholder": "Suchen...",

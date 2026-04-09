@@ -631,7 +631,10 @@
     "sortStatusDown": "オフライン優先",
     "fillMode": "配置方向",
     "fillByRow": "行順",
-    "fillByColumn": "列順"
+    "fillByColumn": "列順",
+    "healthCheckInterval": "ヘルスチェック間隔",
+    "healthCheckDisabled": "無効",
+    "healthCheckMinutes": "{count}分"
   },
   "search": {
     "placeholder": "検索...",

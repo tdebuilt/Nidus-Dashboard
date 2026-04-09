@@ -631,7 +631,10 @@
     "sortStatusDown": "Офлайн сначала",
     "fillMode": "Направление заполнения",
     "fillByRow": "По строкам",
-    "fillByColumn": "По столбцам"
+    "fillByColumn": "По столбцам",
+    "healthCheckInterval": "Интервал проверки",
+    "healthCheckDisabled": "Отключено",
+    "healthCheckMinutes": "{count} мин"
   },
   "search": {
     "placeholder": "Поиск...",

@@ -631,7 +631,10 @@
     "sortStatusDown": "Fuera de línea primero",
     "fillMode": "Dirección de relleno",
     "fillByRow": "Por filas",
-    "fillByColumn": "Por columnas"
+    "fillByColumn": "Por columnas",
+    "healthCheckInterval": "Intervalo de comprobación",
+    "healthCheckDisabled": "Desactivado",
+    "healthCheckMinutes": "{count} min"
   },
   "search": {
     "placeholder": "Buscar...",

@@ -22,6 +22,7 @@
   let columnsMobile = $state(0)
   let sortBy = $state('manual')
   let fillMode = $state<'row' | 'column'>('row')
+  let healthCheckInterval = $state(5)
   let dragIndex = $state<number | null>(null)
   let dragOverIndex = $state<number | null>(null)
 
@@ -36,6 +37,7 @@
       if (typeof parsed.columnsMobile === 'number') columnsMobile = parsed.columnsMobile
       if (parsed.sortBy) sortBy = parsed.sortBy
       if (parsed.fillMode) fillMode = parsed.fillMode
+      if (typeof parsed.healthCheckInterval === 'number') healthCheckInterval = parsed.healthCheckInterval
       if (parsed.links && Array.isArray(parsed.links)) {
         links = parsed.links.map((l: Record<string, string>) => ({
           name: l.name ?? '',
@@ -59,6 +61,7 @@
     const config: Record<string, unknown> = { links: validLinks, columns, sortBy, fillMode }
     if (columnsTablet > 0) config.columnsTablet = columnsTablet
     if (columnsMobile > 0) config.columnsMobile = columnsMobile
+    if (healthCheckInterval !== 5) config.healthCheckInterval = healthCheckInterval
     onchange?.(JSON.stringify(config))
   }
 
@@ -143,6 +146,21 @@
       >
         <option value="row">{$t('applink.fillByRow')}</option>
         <option value="column">{$t('applink.fillByColumn')}</option>
+      </select>
+    </div>
+    <div class="flex items-center gap-2">
+      <label for="applink-health-interval-select" class="shrink-0 text-sm text-[var(--color-text-secondary)]">{$t('applink.healthCheckInterval')}</label>
+      <select
+        id="applink-health-interval-select"
+        value={healthCheckInterval}
+        onchange={(e) => { healthCheckInterval = Number((e.target as HTMLSelectElement).value); emitChange() }}
+        class="rounded-lg border border-[var(--color-border)] bg-[var(--color-bg)] px-2 py-1 text-sm text-[var(--color-text)]"
+      >
+        <option value={0}>{$t('applink.healthCheckDisabled')}</option>
+        <option value={1}>{$t('applink.healthCheckMinutes', { count: 1 })}</option>
+        <option value={5}>{$t('applink.healthCheckMinutes', { count: 5 })}</option>
+        <option value={15}>{$t('applink.healthCheckMinutes', { count: 15 })}</option>
+        <option value={30}>{$t('applink.healthCheckMinutes', { count: 30 })}</option>
       </select>
     </div>
   </div>

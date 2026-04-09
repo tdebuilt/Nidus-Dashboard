@@ -631,7 +631,10 @@
     "sortStatusDown": "离线优先",
     "fillMode": "填充方向",
     "fillByRow": "按行",
-    "fillByColumn": "按列"
+    "fillByColumn": "按列",
+    "healthCheckInterval": "健康检查间隔",
+    "healthCheckDisabled": "已禁用",
+    "healthCheckMinutes": "{count}分钟"
   },
   "search": {
     "placeholder": "搜索...",

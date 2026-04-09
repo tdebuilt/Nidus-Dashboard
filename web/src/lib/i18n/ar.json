@@ -631,7 +631,10 @@
     "sortStatusDown": "غير المتصل أولاً",
     "fillMode": "اتجاه الملء",
     "fillByRow": "بالصفوف",
-    "fillByColumn": "بالأعمدة"
+    "fillByColumn": "بالأعمدة",
+    "healthCheckInterval": "فترة فحص الحالة",
+    "healthCheckDisabled": "معطّل",
+    "healthCheckMinutes": "{count} دقيقة"
   },
   "search": {
     "placeholder": "بحث...",

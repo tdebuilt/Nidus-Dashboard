@@ -632,7 +632,10 @@
     "sortStatusDown": "Offline first",
     "fillMode": "Fill direction",
     "fillByRow": "By rows",
-    "fillByColumn": "By columns"
+    "fillByColumn": "By columns",
+    "healthCheckInterval": "Health check interval",
+    "healthCheckDisabled": "Disabled",
+    "healthCheckMinutes": "{count} min"
   },
   "search": {
     "placeholder": "Search...",

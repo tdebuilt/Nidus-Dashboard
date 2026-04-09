@@ -33,6 +33,7 @@
   const columns = $derived(getResponsiveColumns(parsedConfig, $breakpoint, 1))
   const sortBy = $derived<string>(parsedConfig.sortBy ?? 'manual')
   const fillMode = $derived<'row' | 'column'>(parsedConfig.fillMode ?? 'row')
+  const healthCheckIntervalMin = $derived<number>(parsedConfig.healthCheckInterval ?? 5)
 
   function sortLinks(items: LinkConfig[]): LinkConfig[] {
     if (sortBy === 'manual') return items
@@ -114,14 +115,24 @@
     refreshing = false
   }
 
-  const polling = usePolling({
-    fetchFn: fetchAllHealthWrapped,
-    active: () => active,
-    fixedIntervalMs: 60000,
-  })
-
   $effect(() => {
-    if (active) polling.start(); else polling.stop()
+    if (!active) return
+
+    const intervalMin = healthCheckIntervalMin
+
+    if (intervalMin === 0) {
+      // Disabled polling: perform initial fetch only
+      fetchAllHealthWrapped()
+      return
+    }
+
+    const polling = usePolling({
+      fetchFn: fetchAllHealthWrapped,
+      active: () => active,
+      fixedIntervalMs: intervalMin * 60000,
+    })
+    polling.start()
+
     return () => polling.stop()
   })
 </script>

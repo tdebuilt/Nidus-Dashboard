@@ -632,7 +632,10 @@
     "sortStatusDown": "Hors ligne d'abord",
     "fillMode": "Sens de remplissage",
     "fillByRow": "Par lignes",
-    "fillByColumn": "Par colonnes"
+    "fillByColumn": "Par colonnes",
+    "healthCheckInterval": "Intervalle health check",
+    "healthCheckDisabled": "Désactivé",
+    "healthCheckMinutes": "{count} min"
   },
   "search": {
     "placeholder": "Rechercher...",
