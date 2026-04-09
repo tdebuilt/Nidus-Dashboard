@@ -6,6 +6,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 
 ## [Unreleased]
 
+## [0.3.0-beta.8] - 2026-04-09
+
 ### Added
 - **qBittorrent `.torrent` file upload** — add torrents from a local file in addition to URL/magnet, with category selection, custom save path and a 10 MB upload cap
 
